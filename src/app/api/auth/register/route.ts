@@ -1,17 +1,17 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { loginSchema } from "../../../../lib/schemas/auth";
+import { registerSchema } from "../../../../lib/schemas/auth";
 import { SESSION_COOKIE_NAME, sessionCookieOptions } from "../../../../server/auth/cookie";
 import { isOriginTrusted } from "../../../../server/auth/origin";
 import { clientIp } from "../../../../server/rate-limit/client-ip";
 import { policies } from "../../../../server/rate-limit/policies";
 import { RateLimitExceededError, requireNotLimited } from "../../../../server/rate-limit";
-import { InvalidCredentialsError, login } from "../../../../server/services/auth";
+import { EmailAlreadyRegisteredError, register } from "../../../../server/services/auth";
+import { InvalidInviteError } from "../../../../server/services/invites";
 
 /**
- * Thin per ADR-0003: Origin check, then rate limit **before** the Argon2
- * hash is computed — hashing first makes this a free CPU-exhaustion
- * primitive. Error shapes are hand-rolled here; T013 consolidates every
- * route behind one mapper.
+ * Origin check, then rate limit **before** the Argon2 hash — same ordering
+ * as login, same reasoning (ADR-0003, security.md). Error shapes are
+ * hand-rolled here; T013 consolidates every route behind one mapper.
  */
 export async function POST(request: NextRequest) {
   if (!isOriginTrusted(request)) {
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const parsed = loginSchema.safeParse(json);
+  const parsed = registerSchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json(
       { error: { code: "VALIDATION_ERROR", message: "Invalid request body" } },
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await requireNotLimited(policies.login, `login:${clientIp(request)}`);
+    await requireNotLimited(policies.register, `register:${clientIp(request)}`);
   } catch (error) {
     if (error instanceof RateLimitExceededError) {
       return NextResponse.json(
@@ -52,15 +52,26 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { user, token } = await login(parsed.data.email, parsed.data.password);
-    const response = NextResponse.json({ user }, { status: 200 });
+    const { user, token } = await register(parsed.data);
+    const response = NextResponse.json({ user }, { status: 201 });
     response.cookies.set(SESSION_COOKIE_NAME, token, sessionCookieOptions());
     return response;
   } catch (error) {
-    if (error instanceof InvalidCredentialsError) {
+    if (error instanceof EmailAlreadyRegisteredError) {
       return NextResponse.json(
-        { error: { code: "INVALID_CREDENTIALS", message: "Invalid email or password" } },
-        { status: 401 },
+        { error: { code: "EMAIL_ALREADY_REGISTERED", message: "Email is already registered" } },
+        { status: 409 },
+      );
+    }
+    if (error instanceof InvalidInviteError) {
+      return NextResponse.json(
+        {
+          error: {
+            code: "INVALID_INVITE_CODE",
+            message: "Invite code is invalid, expired, or already used",
+          },
+        },
+        { status: 409 },
       );
     }
     throw error;
