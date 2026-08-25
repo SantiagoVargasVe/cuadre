@@ -2,7 +2,7 @@
 id: T010
 title: Schema for users and invite codes, plus the seed:invite script
 epic: E2-auth
-status: todo
+status: done
 depends_on: [T003]
 size: S
 ---
@@ -19,17 +19,17 @@ registration invite and a group invite. Read
 
 ## Acceptance criteria
 
-- [ ] `users`: `id uuid pk`, `email citext unique`, `display_name`, `password_hash`, timestamps.
+- [x] `users`: `id uuid pk`, `email citext unique`, `display_name`, `password_hash`, timestamps.
       Enable the `citext` extension in the migration
-- [ ] **No role column.** Authorization here is membership-based
-- [ ] `invite_codes`: `code` pk (16-char nanoid), `created_by`, **`group_id` nullable**,
+- [x] **No role column.** Authorization here is membership-based
+- [x] `invite_codes`: `code` pk (16-char nanoid), `created_by`, **`group_id` nullable**,
       `expires_at` nullable, `consumed_by` nullable, `consumed_at` nullable, `created_at`
-- [ ] `group_id` FK is added in T020 when `groups` exists — leave the column, note the follow-up in
+- [x] `group_id` FK is added in T020 when `groups` exists — leave the column, note the follow-up in
       the migration
-- [ ] Index on `invite_codes(consumed_at) WHERE consumed_at IS NULL`
-- [ ] `npm run seed:invite` mints a code and prints it, accepting an optional `--expires` and
+- [x] Index on `invite_codes(consumed_at) WHERE consumed_at IS NULL`
+- [x] `npm run seed:invite` mints a code and prints it, accepting an optional `--expires` and
       `--group`
-- [ ] Migration generated via `db:generate`, SQL reviewed, committed with the schema
+- [x] Migration generated via `db:generate`, SQL reviewed, committed with the schema
 
 ## Out of scope
 

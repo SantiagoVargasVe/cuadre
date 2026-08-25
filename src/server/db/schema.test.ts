@@ -1,29 +1,55 @@
 import { describe, expect, it } from "vitest";
 import { hasTestDatabase, setupTestDb, getTestDb } from "../../test/db";
-import { schemaSmokeTest } from "./schema";
+import { inviteCodes, users } from "./schema";
 
-/**
- * Proves the whole harness loop end to end: migrations apply against
- * DATABASE_URL_TEST, the pooled test client can read and write, and
- * afterEach truncates between tests rather than leaking rows.
- */
-describe.skipIf(!hasTestDatabase)("db harness smoke test", () => {
+describe.skipIf(!hasTestDatabase)("users / invite_codes schema", () => {
   setupTestDb();
 
-  it("runs migrations and reads back what it writes", async () => {
+  it("inserts and reads back a user", async () => {
     const db = getTestDb();
 
-    await db.insert(schemaSmokeTest).values({});
-    const rows = await db.select().from(schemaSmokeTest);
+    const [user] = await db
+      .insert(users)
+      .values({ email: "ana@example.com", displayName: "Ana", passwordHash: "hash" })
+      .returning();
 
-    expect(rows).toHaveLength(1);
+    expect(user?.email).toBe("ana@example.com");
+    expect(user?.id).toBeTruthy();
   });
 
-  it("starts empty because afterEach truncated the previous test's row", async () => {
+  it("enforces email uniqueness case-insensitively via citext", async () => {
     const db = getTestDb();
 
-    const rows = await db.select().from(schemaSmokeTest);
+    await db
+      .insert(users)
+      .values({ email: "Ana@Example.com", displayName: "Ana", passwordHash: "hash" });
 
-    expect(rows).toHaveLength(0);
+    await expect(
+      db
+        .insert(users)
+        .values({ email: "ana@example.com", displayName: "Ana Again", passwordHash: "hash" }),
+    ).rejects.toThrow();
+  });
+
+  it("mints a bootstrap invite with no creator and no group yet", async () => {
+    const db = getTestDb();
+
+    const [invite] = await db.insert(inviteCodes).values({ code: "bootstrap12345" }).returning();
+
+    expect(invite?.createdBy).toBeNull();
+    expect(invite?.groupId).toBeNull();
+    expect(invite?.consumedAt).toBeNull();
+  });
+
+  it("stores a group_id even though there is no groups table yet", async () => {
+    const db = getTestDb();
+    const groupId = "00000000-0000-0000-0000-000000000000";
+
+    const [invite] = await db
+      .insert(inviteCodes)
+      .values({ code: "groupinvite1234", groupId })
+      .returning();
+
+    expect(invite?.groupId).toBe(groupId);
   });
 });
