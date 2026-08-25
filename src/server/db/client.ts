@@ -12,7 +12,7 @@ const client = postgres(config.DATABASE_URL);
 
 export const db = drizzle(client, { schema });
 
-type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /**
  * Wraps a multi-step write in one transaction. Services use this instead of

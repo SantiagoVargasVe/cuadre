@@ -2,7 +2,7 @@
 id: T011
 title: POST /api/auth/register with transactional invite consumption
 epic: E2-auth
-status: todo
+status: done
 depends_on: [T010]
 size: M
 ---
@@ -19,23 +19,23 @@ Read [ADR-0002](../../docs/adr/0002-invite-only-registration.md) and
 
 ## Acceptance criteria
 
-- [ ] `POST /api/auth/register { email, displayName, password, inviteCode }` → `201 { user }`
-- [ ] Argon2id via `@node-rs/argon2`
-- [ ] **One transaction**: create user → consume the code → insert `group_members` if the code
+- [x] `POST /api/auth/register { email, displayName, password, inviteCode }` → `201 { user }`
+- [x] Argon2id via `@node-rs/argon2`
+- [x] **One transaction**: create user → consume the code → insert `group_members` if the code
       carries a `group_id`. All of it commits or none does. A burned code with no account is the
       failure being prevented
-- [ ] Consumption is a **conditional update** — `UPDATE … WHERE consumed_at IS NULL RETURNING` —
+- [x] Consumption is a **conditional update** — `UPDATE … WHERE consumed_at IS NULL RETURNING` —
       and zero rows returned is a `409`. Check-then-insert races, and this is the exact endpoint
       where that matters
-- [ ] Expired and already-consumed codes are **indistinguishable** in the response. Both are
+- [x] Expired and already-consumed codes are **indistinguishable** in the response. Both are
       "invalid"
-- [ ] Duplicate email returns `409` without revealing whether the address exists elsewhere in a
+- [x] Duplicate email returns `409` without revealing whether the address exists elsewhere in a
       timing-observable way
-- [ ] Password minimum length enforced by the Zod schema shared with the frontend
-- [ ] Rate limited by IP **before** the Argon2 hash is computed — hashing first makes the endpoint
+- [x] Password minimum length enforced by the Zod schema shared with the frontend
+- [x] Rate limited by IP **before** the Argon2 hash is computed — hashing first makes the endpoint
       a free CPU-exhaustion primitive
-- [ ] Sets the session cookie on success, so registering logs you in
-- [ ] Tests, including the one that matters: **two concurrent registrations against one code —
+- [x] Sets the session cookie on success, so registering logs you in
+- [x] Tests, including the one that matters: **two concurrent registrations against one code —
       exactly one succeeds, the other gets `409`.** Real Postgres, genuinely concurrent
 
 ## Out of scope
