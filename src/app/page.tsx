@@ -1,7 +1,7 @@
-export default function HomePage() {
-  return (
-    <main className="flex min-h-screen items-center justify-center">
-      <h1 className="text-2xl font-semibold text-foreground">Cuadre</h1>
-    </main>
-  );
+import { redirect } from "next/navigation";
+import { getSessionFromCookies } from "../server/auth/session";
+
+export default async function HomePage() {
+  const session = await getSessionFromCookies();
+  redirect(session ? "/groups" : "/login");
 }

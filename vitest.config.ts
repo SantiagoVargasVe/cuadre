@@ -1,18 +1,14 @@
+import react from "@vitejs/plugin-react";
 import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
-  // Vitest isn't a client bundle, so resolve `import "server-only"` the way
-  // Next's RSC compiler does on the server: to its no-op branch. Without
-  // this, every test that imports a server-only module throws the
-  // client-boundary error regardless of environment.
-  resolve: {
-    conditions: ["react-server"],
-  },
-  ssr: {
-    resolve: {
-      conditions: ["react-server"],
-    },
-  },
+  // @vitejs/plugin-react has been a devDependency since T001 but was never
+  // actually wired in here — nothing exercised JSX in a real component
+  // render until T014's first .test.tsx files, so `React is not defined`
+  // (esbuild's default JSX transform isn't the automatic runtime on its
+  // own) went unnoticed until now. Harmless for the "node" project below;
+  // its tests are all plain .ts, nothing for this plugin to transform.
+  plugins: [react()],
   test: {
     passWithNoTests: true,
     coverage: {
@@ -26,6 +22,22 @@ export default defineConfig({
     projects: [
       {
         extends: true,
+        // Vitest isn't a client bundle, so resolve `import "server-only"`
+        // the way Next's RSC compiler does on the server: to its no-op
+        // branch. Without this, every test that imports a server-only
+        // module throws the client-boundary error. Scoped to this project
+        // only — the "app" project below renders real components with
+        // react-dom/client via RTL, and that module throws outright under
+        // the react-server condition ("react-dom/client is not supported
+        // in React Server Components"), confirmed empirically.
+        resolve: {
+          conditions: ["react-server"],
+        },
+        ssr: {
+          resolve: {
+            conditions: ["react-server"],
+          },
+        },
         test: {
           name: "node",
           environment: "node",

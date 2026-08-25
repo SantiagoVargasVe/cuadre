@@ -2,7 +2,7 @@
 id: T014
 title: /login and /register pages
 epic: E2-auth
-status: todo
+status: done
 depends_on: [T012, T004]
 size: M
 ---
@@ -17,16 +17,16 @@ Read [design-system.md](../../docs/frontend/design-system.md) and
 
 ## Acceptance criteria
 
-- [ ] `/login` and `/register`, react-hook-form + Zod, schemas shared with the API
-- [ ] `/register` prefills `inviteCode` from `?code=` and keeps the field visible and editable
-- [ ] All copy through i18n keys, Spanish-first. **No hardcoded user-facing strings** — even with
+- [x] `/login` and `/register`, react-hook-form + Zod, schemas shared with the API
+- [x] `/register` prefills `inviteCode` from `?code=` and keeps the field visible and editable
+- [x] All copy through i18n keys, Spanish-first. **No hardcoded user-facing strings** — even with
       one locale, retrofitting is miserable
-- [ ] `/` redirects: logged in → `/groups`, otherwise → `/login`
-- [ ] Errors from the API render against the right field where possible; `409` on the invite code
+- [x] `/` redirects: logged in → `/groups`, otherwise → `/login`
+- [x] Errors from the API render against the right field where possible; `409` on the invite code
       reads as "invalid or already used" — matching the deliberate ambiguity from T011
-- [ ] Submit disabled while invalid or in flight
-- [ ] Works at 375px. Verified, not assumed
-- [ ] Tests: valid submit calls the endpoint with the right payload; a field error renders against
+- [x] Submit disabled while invalid or in flight
+- [x] Works at 375px. Verified, not assumed
+- [x] Tests: valid submit calls the endpoint with the right payload; a field error renders against
       its field; the `?code=` prefill works
 
 ## Out of scope
