@@ -1,4 +1,5 @@
 import "server-only";
+import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 import { UnauthorizedError } from "../errors";
 import { SESSION_COOKIE_NAME } from "./cookie";
@@ -36,4 +37,19 @@ export async function requireUserId(request: NextRequest): Promise<string> {
   const session = await getSession(request);
   if (!session) throw new UnauthorizedError();
   return session.userId;
+}
+
+/**
+ * Cookie-only variant for Server Components (the `/` redirect), which
+ * read via next/headers' cookies() rather than a NextRequest — there's no
+ * Authorization header to read at render time, so Bearer doesn't apply
+ * here the way it does for a Route Handler.
+ */
+export async function getSessionFromCookies(): Promise<Session | null> {
+  const store = await cookies();
+  const token = store.get(SESSION_COOKIE_NAME)?.value;
+  if (!token) return null;
+
+  const claims = await verifySessionToken(token);
+  return claims ? { userId: claims.userId } : null;
 }
