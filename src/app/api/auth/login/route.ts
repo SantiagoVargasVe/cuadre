@@ -2,23 +2,23 @@ import { NextResponse, type NextRequest } from "next/server";
 import { loginSchema } from "../../../../lib/schemas/auth";
 import { SESSION_COOKIE_NAME, sessionCookieOptions } from "../../../../server/auth/cookie";
 import { isOriginTrusted } from "../../../../server/auth/origin";
+import { ForbiddenError } from "../../../../server/errors";
+import { withErrorHandling } from "../../../../server/http/map-error";
 import { clientIp } from "../../../../server/rate-limit/client-ip";
 import { policies } from "../../../../server/rate-limit/policies";
-import { RateLimitExceededError, requireNotLimited } from "../../../../server/rate-limit";
-import { InvalidCredentialsError, login } from "../../../../server/services/auth";
+import { requireNotLimited } from "../../../../server/rate-limit";
+import { login } from "../../../../server/services/auth";
 
 /**
- * Thin per ADR-0003: Origin check, then rate limit **before** the Argon2
- * hash is computed — hashing first makes this a free CPU-exhaustion
- * primitive. Error shapes are hand-rolled here; T013 consolidates every
- * route behind one mapper.
+ * Origin check, then rate limit **before** the Argon2 hash is computed —
+ * hashing first makes this a free CPU-exhaustion primitive (ADR-0003,
+ * security.md). Anything thrown after this point — ForbiddenError,
+ * RateLimitError, InvalidCredentialsError — is turned into the wire shape
+ * by withErrorHandling; this route only builds the 200 response.
  */
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandling(async (request: NextRequest) => {
   if (!isOriginTrusted(request)) {
-    return NextResponse.json(
-      { error: { code: "ORIGIN_NOT_ALLOWED", message: "Origin not allowed" } },
-      { status: 403 },
-    );
+    throw new ForbiddenError("ORIGIN_NOT_ALLOWED", "Origin not allowed");
   }
 
   let json: unknown;
@@ -39,30 +39,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  try {
-    await requireNotLimited(policies.login, `login:${clientIp(request)}`);
-  } catch (error) {
-    if (error instanceof RateLimitExceededError) {
-      return NextResponse.json(
-        { error: { code: "RATE_LIMITED", message: "Too many requests" } },
-        { status: 429, headers: { "Retry-After": String(error.retryAfterSeconds) } },
-      );
-    }
-    throw error;
-  }
+  await requireNotLimited(policies.login, `login:${clientIp(request)}`);
 
-  try {
-    const { user, token } = await login(parsed.data.email, parsed.data.password);
-    const response = NextResponse.json({ user }, { status: 200 });
-    response.cookies.set(SESSION_COOKIE_NAME, token, sessionCookieOptions());
-    return response;
-  } catch (error) {
-    if (error instanceof InvalidCredentialsError) {
-      return NextResponse.json(
-        { error: { code: "INVALID_CREDENTIALS", message: "Invalid email or password" } },
-        { status: 401 },
-      );
-    }
-    throw error;
-  }
-}
+  const { user, token } = await login(parsed.data.email, parsed.data.password);
+  const response = NextResponse.json({ user }, { status: 200 });
+  response.cookies.set(SESSION_COOKIE_NAME, token, sessionCookieOptions());
+  return response;
+});

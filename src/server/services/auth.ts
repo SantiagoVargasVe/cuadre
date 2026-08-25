@@ -4,19 +4,20 @@ import { db, withTransaction } from "../db/client";
 import { users } from "../db/schema";
 import { hashPassword, verifyPassword } from "../auth/password";
 import { signSessionToken } from "../auth/jwt";
+import { ConflictError, UnauthorizedError } from "../errors";
 import { consumeInvite } from "./invites";
 
-export class InvalidCredentialsError extends Error {
+export class InvalidCredentialsError extends UnauthorizedError {
   constructor() {
-    super("Invalid email or password");
+    super("INVALID_CREDENTIALS", "Invalid email or password");
     this.name = "InvalidCredentialsError";
   }
 }
 
 /** The unique violation on users.email — never revealed via a pre-flight SELECT, just caught here. */
-export class EmailAlreadyRegisteredError extends Error {
+export class EmailAlreadyRegisteredError extends ConflictError {
   constructor() {
-    super("Email is already registered");
+    super("EMAIL_ALREADY_REGISTERED", "Email is already registered");
     this.name = "EmailAlreadyRegisteredError";
   }
 }

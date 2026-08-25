@@ -14,7 +14,8 @@ async function freshModules() {
   vi.stubEnv("FX_TRM_CROSSCHECK", "true");
   const jwt = await import("./jwt");
   const session = await import("./session");
-  return { jwt, session };
+  const errors = await import("../errors");
+  return { jwt, session, errors };
 }
 
 afterEach(() => {
@@ -74,9 +75,9 @@ describe("requireUserId", () => {
   });
 
   it("throws UnauthorizedError when there's no session", async () => {
-    const { session } = await freshModules();
+    const { session, errors } = await freshModules();
     const request = new NextRequest("http://localhost:3000/api/auth/me");
 
-    await expect(session.requireUserId(request)).rejects.toThrow(session.UnauthorizedError);
+    await expect(session.requireUserId(request)).rejects.toThrow(errors.UnauthorizedError);
   });
 });

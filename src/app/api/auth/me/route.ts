@@ -1,29 +1,20 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireUserId, UnauthorizedError } from "../../../../server/auth/session";
+import { requireUserId } from "../../../../server/auth/session";
+import { UnauthorizedError } from "../../../../server/errors";
+import { withErrorHandling } from "../../../../server/http/map-error";
 import { getUserById } from "../../../../server/services/auth";
 
 /** groups[] is always empty until T020/T025 give the app a groups table. */
-export async function GET(request: NextRequest) {
-  let userId: string;
-  try {
-    userId = await requireUserId(request);
-  } catch (error) {
-    if (error instanceof UnauthorizedError) {
-      return NextResponse.json(
-        { error: { code: "UNAUTHORIZED", message: "Authentication required" } },
-        { status: 401 },
-      );
-    }
-    throw error;
-  }
+export const GET = withErrorHandling(async (request: NextRequest) => {
+  const userId = await requireUserId(request);
 
   const user = await getUserById(userId);
   if (!user) {
-    return NextResponse.json(
-      { error: { code: "UNAUTHORIZED", message: "Authentication required" } },
-      { status: 401 },
-    );
+    // Session valid but the user row is gone — shouldn't happen (no
+    // deletion path exists yet), but "not found" here should still read
+    // to the caller as "not logged in", not as a 500.
+    throw new UnauthorizedError();
   }
 
   return NextResponse.json({ user, groups: [] });
-}
+});
