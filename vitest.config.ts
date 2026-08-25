@@ -1,6 +1,18 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  // Vitest isn't a client bundle, so resolve `import "server-only"` the way
+  // Next's RSC compiler does on the server: to its no-op branch. Without
+  // this, every test that imports a server-only module throws the
+  // client-boundary error regardless of environment.
+  resolve: {
+    conditions: ["react-server"],
+  },
+  ssr: {
+    resolve: {
+      conditions: ["react-server"],
+    },
+  },
   test: {
     passWithNoTests: true,
     coverage: {
