@@ -15,6 +15,16 @@ const eslintConfig = [
     ignores: [".next/**", "coverage/**", "node_modules/**", "next-env.d.ts"],
   },
   {
+    rules: {
+      // Leading underscore is how this repo marks a deliberately-unused
+      // binding, e.g. destructuring a key off an object only to omit it.
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+    },
+  },
+  {
     // The FE/BE boundary: src/app/ renders and validates, src/server/ owns the
     // DB. See docs/context/architecture.md § Internal boundary and ADR-0001.
     files: ["src/app/**/*.{ts,tsx}"],
