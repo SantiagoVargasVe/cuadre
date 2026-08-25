@@ -9,7 +9,7 @@ describe.skipIf(!hasTestDatabase)("rate-limit token bucket", () => {
 
   let consume: typeof import("./index").consume;
   let requireNotLimited: typeof import("./index").requireNotLimited;
-  let RateLimitExceededError: typeof import("./index").RateLimitExceededError;
+  let RateLimitError: typeof import("../errors").RateLimitError;
 
   beforeAll(async () => {
     // ./index imports the singleton db (src/server/db/client.ts), which
@@ -24,7 +24,8 @@ describe.skipIf(!hasTestDatabase)("rate-limit token bucket", () => {
     vi.stubEnv("FX_BASE_CURRENCY", "USD");
     vi.stubEnv("FX_TRM_CROSSCHECK", "true");
 
-    ({ consume, requireNotLimited, RateLimitExceededError } = await import("./index"));
+    ({ consume, requireNotLimited } = await import("./index"));
+    ({ RateLimitError } = await import("../errors"));
   });
 
   afterAll(() => vi.unstubAllEnvs());
@@ -76,12 +77,12 @@ describe.skipIf(!hasTestDatabase)("rate-limit token bucket", () => {
     expect((await consume(TINY_POLICY, keyB)).allowed).toBe(true);
   });
 
-  it("requireNotLimited throws RateLimitExceededError once the bucket is empty", async () => {
+  it("requireNotLimited throws RateLimitError once the bucket is empty", async () => {
     const key = `test:${crypto.randomUUID()}`;
     for (let i = 0; i < TINY_POLICY.capacity; i++) {
       await requireNotLimited(TINY_POLICY, key);
     }
 
-    await expect(requireNotLimited(TINY_POLICY, key)).rejects.toThrow(RateLimitExceededError);
+    await expect(requireNotLimited(TINY_POLICY, key)).rejects.toThrow(RateLimitError);
   });
 });

@@ -1,12 +1,13 @@
 import "server-only";
 import { and, eq, gt, isNull, or } from "drizzle-orm";
 import type { Transaction } from "../db/client";
+import { ConflictError } from "../errors";
 import { inviteCodes } from "../db/schema";
 
 /** Expired, already-consumed, and never-existed codes are deliberately indistinguishable (security.md). */
-export class InvalidInviteError extends Error {
+export class InvalidInviteError extends ConflictError {
   constructor() {
-    super("Invite code is invalid, expired, or already used");
+    super("INVALID_INVITE_CODE", "Invite code is invalid, expired, or already used");
     this.name = "InvalidInviteError";
   }
 }

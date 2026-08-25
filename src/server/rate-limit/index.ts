@@ -1,6 +1,7 @@
 import "server-only";
 import { sql } from "drizzle-orm";
 import { db } from "../db/client";
+import { RateLimitError } from "../errors";
 import type { RateLimitPolicy } from "./policies";
 
 /**
@@ -14,16 +15,6 @@ import type { RateLimitPolicy } from "./policies";
  * the next — twice the intended burst — and it synchronises clients into
  * herds at each boundary.
  */
-
-/** Thrown by requireNotLimited() when a bucket is empty. T013 folds this into the formal RateLimitError. */
-export class RateLimitExceededError extends Error {
-  readonly retryAfterSeconds: number;
-  constructor(retryAfterSeconds: number) {
-    super("Too many requests");
-    this.name = "RateLimitExceededError";
-    this.retryAfterSeconds = retryAfterSeconds;
-  }
-}
 
 export type RateLimitResult =
   | { allowed: true; remaining: number }
@@ -84,8 +75,8 @@ export async function consume(policy: RateLimitPolicy, key: string): Promise<Rat
   }
 }
 
-/** Consume a token or throw RateLimitExceededError. What route handlers call. */
+/** Consume a token or throw RateLimitError. What route handlers call. */
 export async function requireNotLimited(policy: RateLimitPolicy, key: string): Promise<void> {
   const result = await consume(policy, key);
-  if (!result.allowed) throw new RateLimitExceededError(result.retryAfterSeconds);
+  if (!result.allowed) throw new RateLimitError(result.retryAfterSeconds);
 }

@@ -1,15 +1,8 @@
 import "server-only";
 import type { NextRequest } from "next/server";
+import { UnauthorizedError } from "../errors";
 import { SESSION_COOKIE_NAME } from "./cookie";
 import { verifySessionToken } from "./jwt";
-
-/** Thrown by requireUserId() when there's no valid session. T013 folds this into the formal UnauthorizedError. */
-export class UnauthorizedError extends Error {
-  constructor() {
-    super("Authentication required");
-    this.name = "UnauthorizedError";
-  }
-}
 
 function bearerToken(request: NextRequest): string | null {
   const header = request.headers.get("authorization");
@@ -36,8 +29,8 @@ export async function getSession(request: NextRequest): Promise<Session | null> 
 }
 
 /**
- * Same as getSession, but throws when there's no session. Route handlers
- * that require auth call this first.
+ * Same as getSession, but throws UnauthorizedError when there's no
+ * session. Route handlers that require auth call this first.
  */
 export async function requireUserId(request: NextRequest): Promise<string> {
   const session = await getSession(request);
