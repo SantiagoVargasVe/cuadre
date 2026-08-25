@@ -133,3 +133,7 @@ When you finish a task, update its `status` frontmatter in the same commit as th
 - UI copy is Spanish-first via i18n keys. Never hardcode user-facing strings.
 - Dates on an expense are **calendar dates** (`date`, no time, no zone). "The dinner on the 14th"
   is not an instant, and a trip crossing timezones must not shift an expense to another day.
+- **No code formatter, deliberately.** ESLint only — there is no Prettier and no Biome, and CI
+  does not gate formatting. Decided 2026-08-25 to stay consistent with the sibling wishlist repo,
+  which runs the same way. Don't add one as drive-by tidying; if it's ever wanted it's a
+  repo-wide standard worth deciding on purpose, not a side effect of another task.
