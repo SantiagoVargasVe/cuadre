@@ -2,7 +2,7 @@
 id: T003
 title: Drizzle wiring, migration pipeline, and the real-Postgres test harness
 epic: E1-foundation
-status: todo
+status: done
 depends_on: [T002]
 size: M
 ---
@@ -19,18 +19,18 @@ Read [testing.md](../../docs/context/testing.md) § *How* and
 
 ## Acceptance criteria
 
-- [ ] `drizzle.config.ts` importing `config.schema.ts`, not `config.ts`
-- [ ] `src/server/db/client.ts` — a single pooled client, imported only by services
-- [ ] `db:generate`, `db:migrate`, `db:studio`
-- [ ] Migrations run at app startup **in production only**, via `src/instrumentation.ts`. Document
+- [x] `drizzle.config.ts` importing `config.schema.ts`, not `config.ts`
+- [x] `src/server/db/client.ts` — a single pooled client, imported only by services
+- [x] `db:generate`, `db:migrate`, `db:studio`
+- [x] Migrations run at app startup **in production only**, via `src/instrumentation.ts`. Document
       inline that this is safe at exactly one instance and races with replicas
-- [ ] A test harness that, per test file: connects to `DATABASE_URL_TEST`, runs migrations once,
+- [x] A test harness that, per test file: connects to `DATABASE_URL_TEST`, runs migrations once,
       and **truncates between tests** rather than recreating the database
-- [ ] Integration tests **skip** when `DATABASE_URL_TEST` is unset, so unit tests still run without
+- [x] Integration tests **skip** when `DATABASE_URL_TEST` is unset, so unit tests still run without
       Docker — and **fail** when it's unset in CI, because a silent skip there is
       indistinguishable from a pass. Assert this via `process.env.CI`
-- [ ] A `withTransaction` helper services use for multi-step writes
-- [ ] A trivial smoke migration + test proving the whole loop works end to end
+- [x] A `withTransaction` helper services use for multi-step writes
+- [x] A trivial smoke migration + test proving the whole loop works end to end
 
 ## Out of scope
 
