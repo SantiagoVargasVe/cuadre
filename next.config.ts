@@ -8,7 +8,8 @@ const nextConfig: NextConfig = {
   // tls, ...) and shouldn't be bundled by webpack at all — required at
   // runtime instead. See ADR notes in the sibling wishlist repo's
   // next.config.ts, which hit and solved this same problem first.
-  serverExternalPackages: ["drizzle-orm", "postgres"],
+  // @node-rs/argon2 is a native N-API module for the same reason.
+  serverExternalPackages: ["drizzle-orm", "postgres", "@node-rs/argon2"],
 
   // Next prepares an edge-compatible bundle of instrumentation.ts — "Next.js
   // calls register in all environments" per its own docs — and `next dev`
