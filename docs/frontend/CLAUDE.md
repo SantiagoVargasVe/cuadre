@@ -17,7 +17,7 @@ You probably don't need `docs/backend/`. If you're changing an endpoint's shape,
 
 | | |
 |---|---|
-| Components | **Base UI** (`@base-ui-components/react`) — unstyled primitives, we style with Tailwind |
+| Components | **Base UI** (`@base-ui/react`) — unstyled primitives, we style with Tailwind |
 | Styling | Tailwind v4, tokens in `src/app/globals.css` |
 | Forms | `react-hook-form` + `@hookform/resolvers/zod` |
 | Data | TanStack Query over a single `apiFetch` base client |
