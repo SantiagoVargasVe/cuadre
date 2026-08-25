@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { customType, index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { customType, index, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 /**
  * Case-insensitive text. Drizzle has no built-in citext, so it's a
@@ -52,3 +52,15 @@ export const inviteCodes = pgTable(
       .where(sql`${table.consumedAt} IS NULL`),
   ],
 );
+
+/**
+ * Token-bucket rate limiting, in Postgres rather than Redis — the volume
+ * doesn't justify another container. `key` is opaque and namespaced by the
+ * caller, e.g. `login:203.0.113.7`. `tokens` is numeric (not an integer) so
+ * refill is continuous. See src/server/rate-limit/ for the consuming logic.
+ */
+export const rateLimits = pgTable("rate_limits", {
+  key: text("key").primaryKey(),
+  tokens: numeric("tokens").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

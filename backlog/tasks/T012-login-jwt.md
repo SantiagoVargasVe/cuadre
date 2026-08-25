@@ -2,7 +2,7 @@
 id: T012
 title: Login, logout, me — JWT as cookie and bearer, with the Origin check
 epic: E2-auth
-status: todo
+status: done
 depends_on: [T010]
 size: M
 ---
@@ -18,21 +18,21 @@ of it is a requirement.
 
 ## Acceptance criteria
 
-- [ ] `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`
-- [ ] HS256 via `jose`, signed with `AUTH_SECRET`
-- [ ] Claims are **`sub`, `iat`, `exp` and nothing else.** No email, no display name, and
+- [x] `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`
+- [x] HS256 via `jose`, signed with `AUTH_SECRET`
+- [x] Claims are **`sub`, `iat`, `exp` and nothing else.** No email, no display name, and
       **no membership list** — membership changes must take effect immediately
-- [ ] Token accepted from the `cuadre_session` cookie **or** `Authorization: Bearer`. One
+- [x] Token accepted from the `cuadre_session` cookie **or** `Authorization: Bearer`. One
       `getSession()` reads either; nothing downstream knows which
-- [ ] Cookie is `httpOnly`, `Secure`, `SameSite=Lax`, `Path=/`
-- [ ] **Every state-changing request validates `Origin` against `APP_URL`.** No `Origin` and no
+- [x] Cookie is `httpOnly`, `Secure`, `SameSite=Lax`, `Path=/`
+- [x] **Every state-changing request validates `Origin` against `APP_URL`.** No `Origin` and no
       `Bearer` on a non-`GET` method is a rejection
-- [ ] **No `GET` mutates anything.** Add a note wherever this could regress
-- [ ] Do **not** add a CSRF token scheme on top. Three overlapping mechanisms nobody fully
+- [x] **No `GET` mutates anything.** Add a note wherever this could regress
+- [x] Do **not** add a CSRF token scheme on top. Three overlapping mechanisms nobody fully
       understands is worse than two that are enforced
-- [ ] Login is rate limited by IP before the hash is computed
-- [ ] Wrong password and unknown email are indistinguishable to the caller
-- [ ] Tests: both auth paths accepted; expired token rejected; token signed with a different
+- [x] Login is rate limited by IP before the hash is computed
+- [x] Wrong password and unknown email are indistinguishable to the caller
+- [x] Tests: both auth paths accepted; expired token rejected; token signed with a different
       secret rejected; **cross-origin `POST` with a valid cookie is rejected** — this is the
       control most likely to be quietly removed by someone debugging a local CORS problem, so it
       needs a test that names it
