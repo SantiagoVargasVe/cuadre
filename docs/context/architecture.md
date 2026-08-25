@@ -143,7 +143,7 @@ and sharing one couples two unrelated services in ways that complicate both.
 Adding a runtime dependency needs a line in the ADR or task explaining why. Current intended set:
 
 `next` · `react` · `drizzle-orm` · `postgres` · `zod` · `jose` (JWT) · `@node-rs/argon2` ·
-`nanoid` · `tailwindcss` · `@base-ui-components/react` · `@tanstack/react-query` ·
+`nanoid` · `tailwindcss` · `@base-ui/react` · `@tanstack/react-query` ·
 `react-hook-form` · `@hookform/resolvers`
 
 **No money library.** Amounts are `bigint` minor units and the arithmetic in

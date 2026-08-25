@@ -4,7 +4,9 @@
 
 ## Component library: Base UI
 
-[Base UI](https://base-ui.com) (`@base-ui-components/react`) — unstyled, accessible primitives.
+[Base UI](https://base-ui.com) (`@base-ui/react` — the package was renamed from
+`@base-ui-components/react`, which is now a deprecated alias frozen at `1.0.0-rc.0`) — unstyled,
+accessible primitives.
 We own every pixel; the library owns focus management, keyboard interaction, and ARIA.
 
 **Not shadcn, not Radix directly.** If a snippet you're adapting imports `@radix-ui/*`, port it to
