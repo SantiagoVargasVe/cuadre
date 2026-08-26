@@ -31,6 +31,12 @@ export function getCurrencyMeta(currency: string): CurrencyMeta {
   return meta;
 }
 
+/** The currencies this display layer knows how to render — for a currency
+ * picker. Mirrors `SUPPORTED_CURRENCIES` (currency.md § *Supported
+ * currencies*); the server is still the source of truth that validates a
+ * choice, this just keeps a picker from offering one it can't format. */
+export const KNOWN_CURRENCIES: readonly string[] = Object.keys(CURRENCY_META);
+
 /**
  * The locale's own separator glyphs, asked from `Intl` once rather than
  * hardcoded — `es-CO` uses `,` for decimals, but this is the one file
