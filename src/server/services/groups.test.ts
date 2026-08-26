@@ -12,6 +12,8 @@ describe.skipIf(!hasTestDatabase)("groups service", () => {
   let getGroupDetail: typeof import("./groups").getGroupDetail;
   let updateGroup: typeof import("./groups").updateGroup;
   let archiveGroup: typeof import("./groups").archiveGroup;
+  let listMyGroups: typeof import("./groups").listMyGroups;
+  let createExpense: typeof import("./expenses").createExpense;
   let UnsupportedCurrencyError: typeof import("./currencies").UnsupportedCurrencyError;
   let GroupArchivedError: typeof import("../auth/membership").GroupArchivedError;
   let NotAMemberError: typeof import("../auth/membership").NotAMemberError;
@@ -30,7 +32,10 @@ describe.skipIf(!hasTestDatabase)("groups service", () => {
     vi.stubEnv("FX_BASE_CURRENCY", "USD");
     vi.stubEnv("FX_TRM_CROSSCHECK", "true");
 
-    ({ createGroup, getGroupDetail, updateGroup, archiveGroup } = await import("./groups"));
+    ({ createGroup, getGroupDetail, updateGroup, archiveGroup, listMyGroups } = await import(
+      "./groups"
+    ));
+    ({ createExpense } = await import("./expenses"));
     ({ UnsupportedCurrencyError } = await import("./currencies"));
     ({ GroupArchivedError, NotAMemberError, NotGroupOwnerError } = await import(
       "../auth/membership"
@@ -93,6 +98,15 @@ describe.skipIf(!hasTestDatabase)("groups service", () => {
 
       expect(members).toEqual([{ userId: owner, displayName: "Ana", role: "owner" }]);
       expect(JSON.stringify(members)).not.toContain("@");
+    });
+
+    it("surfaces displayCurrency and simplifyDebts as their own settings object", async () => {
+      const owner = await seedUser();
+      const group = await createGroup(owner, { title: "Trip" });
+
+      const { settings } = await getGroupDetail(group.id, owner);
+
+      expect(settings).toEqual({ displayCurrency: null, simplifyDebts: false });
     });
   });
 
@@ -173,6 +187,57 @@ describe.skipIf(!hasTestDatabase)("groups service", () => {
       const second = await archiveGroup(group.id, owner);
 
       expect(second.archivedAt).toEqual(first.archivedAt);
+    });
+  });
+
+  describe("listMyGroups", () => {
+    it("returns one entry per group, each with its own net per currency", async () => {
+      const ana = await seedUser("Ana");
+      const beto = await seedUser("Beto");
+      const groupA = await createGroup(ana, { title: "Group A" });
+      await getTestDb().insert(groupMembers).values({ groupId: groupA.id, userId: beto, role: "member" });
+      await createExpense(groupA.id, ana, {
+        title: "Dinner",
+        date: "2026-08-24",
+        amount: "9000",
+        currency: "COP",
+        split: { strategy: "equal" },
+      });
+      const groupB = await createGroup(ana, { title: "Group B" });
+
+      const items = await listMyGroups(ana);
+
+      expect(items).toHaveLength(2);
+      const a = items.find((g) => g.id === groupA.id)!;
+      expect(a.memberCount).toBe(2);
+      expect(a.yourNet).toEqual([{ currency: "COP", net: "4500" }]);
+      const b = items.find((g) => g.id === groupB.id)!;
+      expect(b.memberCount).toBe(1);
+      expect(b.yourNet).toEqual([]);
+    });
+
+    it("flags an archived group instead of dropping it", async () => {
+      const ana = await seedUser();
+      const group = await createGroup(ana, { title: "Old trip" });
+      await archiveGroup(group.id, ana);
+
+      const items = await listMyGroups(ana);
+      expect(items).toEqual([expect.objectContaining({ id: group.id, archivedAt: expect.any(String) })]);
+    });
+
+    it("never includes a group the user isn't a current member of", async () => {
+      const ana = await seedUser();
+      const beto = await seedUser("Beto");
+      await createGroup(beto, { title: "Not yours" });
+
+      expect(await listMyGroups(ana)).toEqual([]);
+    });
+
+    it("gives independent, non-summed entries for a member with positions in three groups", async () => {
+      const ana = await seedUser();
+      for (let i = 0; i < 3; i++) await createGroup(ana, { title: `Trip ${i}` });
+
+      expect(await listMyGroups(ana)).toHaveLength(3);
     });
   });
 });
