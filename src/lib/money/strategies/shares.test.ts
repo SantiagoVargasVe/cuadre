@@ -21,4 +21,15 @@ describe("resolveSharesSplit", () => {
     ]);
     expect(() => resolveSharesSplit(weights, 100n, "seed")).toThrow(NonPositiveWeightError);
   });
+
+  it("drops a member whose resolved amount comes out to zero", () => {
+    const weights = new Map([
+      ["ana", 1n],
+      ["beto", 1n],
+      ["caro", 100n],
+    ]);
+    const result = resolveSharesSplit(weights, 2n, "seed");
+    expect([...result.values()].reduce((a, b) => a + b, 0n)).toBe(2n);
+    expect(result.size).toBeLessThan(3);
+  });
 });

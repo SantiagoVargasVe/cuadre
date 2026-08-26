@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { apportion } from "./apportion";
+import { apportion, apportionPositive } from "./apportion";
 import {
   EmptyApportionmentError,
   NonPositiveAmountError,
@@ -159,5 +159,31 @@ describe("apportion", () => {
     ]);
     const result = apportion(huge, weights, "seed");
     expect(sum(result.values())).toBe(huge);
+  });
+});
+
+describe("apportionPositive", () => {
+  it("drops members whose resolved share is zero, keeping the sum exact", () => {
+    const weights = new Map([
+      ["a", 1n],
+      ["b", 1n],
+      ["c", 1n],
+      ["d", 1n],
+      ["e", 1n],
+    ]);
+    const result = apportionPositive(2n, weights, "seed");
+    expect(result.size).toBe(2);
+    expect(sum(result.values())).toBe(2n);
+    expect([...result.values()].every((v) => v === 1n)).toBe(true);
+  });
+
+  it("keeps every member when nobody's share is zero", () => {
+    const weights = new Map([
+      ["ana", 1n],
+      ["beto", 1n],
+      ["caro", 1n],
+    ]);
+    const result = apportionPositive(9n, weights, "seed");
+    expect(result.size).toBe(3);
   });
 });

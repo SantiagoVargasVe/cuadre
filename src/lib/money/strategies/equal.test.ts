@@ -16,4 +16,10 @@ describe("resolveEqualSplit", () => {
   it("gives the sole member the whole total for a one-person subset", () => {
     expect(resolveEqualSplit(["ana"], 12345n, "seed")).toEqual(new Map([["ana", 12345n]]));
   });
+
+  it("drops a member entirely rather than giving them a zero share", () => {
+    const result = resolveEqualSplit(["a", "b", "c", "d", "e"], 2n, "seed");
+    expect(result.size).toBe(2);
+    expect([...result.values()].reduce((a, b) => a + b, 0n)).toBe(2n);
+  });
 });
