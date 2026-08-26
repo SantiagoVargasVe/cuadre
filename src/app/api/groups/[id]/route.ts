@@ -15,8 +15,8 @@ export const GET = withErrorHandling(async (request: NextRequest, context: Route
   const { id } = await context.params;
   const userId = await requireUserId(request);
 
-  const { group, members } = await getGroupDetail(id, userId);
-  return NextResponse.json({ group, members });
+  const { group, members, settings } = await getGroupDetail(id, userId);
+  return NextResponse.json({ group, members, settings });
 });
 
 /** Any current member may PATCH, including the title — security.md's "editing an
