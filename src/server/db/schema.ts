@@ -90,11 +90,11 @@ export const groupMemberRole = pgEnum("group_member_role", ["owner", "member"]);
  * `removedAt` retires them, because historical expenses reference this row
  * and it must survive.
  *
- * The explicit UNIQUE below duplicates the pk's own uniqueness on purpose:
- * T033's expense_payers/expense_splits reference this pair as a composite
- * FK, and Drizzle's composite-foreign-key builder binds to a named unique
- * constraint rather than inferring one from the table's primary key. Named
- * here so that FK has something concrete to point at.
+ * The explicit UNIQUE below duplicates the pk's own uniqueness — required by
+ * T020's own acceptance criteria, ahead of T033's expense_payers/expense_splits
+ * referencing this pair as a composite FK, so there's a named constraint to
+ * point at explicitly rather than relying on whichever one Postgres resolves
+ * the reference to.
  */
 export const groupMembers = pgTable(
   "group_members",

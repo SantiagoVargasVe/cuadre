@@ -6,6 +6,12 @@ CREATE TABLE "currencies" (
 	"name" text NOT NULL
 );
 --> statement-breakpoint
+-- The UNIQUE below is redundant with the PRIMARY KEY on the same two
+-- columns — both already give Postgres a unique index to enforce. It's
+-- required by T020's acceptance criteria regardless, so that T033's
+-- expense_payers/expense_splits composite FKs have an explicitly named
+-- constraint to reference rather than relying on whichever one Postgres
+-- picks for them. Do not "clean this up" as a duplicate.
 CREATE TABLE "group_members" (
 	"group_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
