@@ -50,6 +50,13 @@
       "when": 1787756507195,
       "tag": "0006_fx_rates",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787759041938,
+      "tag": "0007_group_fx_pins",
+      "breakpoints": true
     }
   ]
 }
