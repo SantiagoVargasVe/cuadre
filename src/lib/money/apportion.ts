@@ -79,3 +79,30 @@ export function apportion<Id extends string>(
   });
   return result;
 }
+
+/**
+ * Same as `apportion()`, but drops any member whose resolved share comes
+ * out to zero. A total smaller than the member count legitimately
+ * produces a zero share for some of them under the largest-remainder
+ * method (see apportion.test.ts's "total smaller than the member count"
+ * case) — correct as a general apportionment result, but a persisted
+ * `expense_splits`/`expense_payers` row is `CHECK (amount > 0)`: a member
+ * with a zero share should not be in the split at all, the same principle
+ * `apportion()` already applies to a zero-weight *input* (splitting.md
+ * §3). Callers that resolve amounts meant to be written to those tables
+ * (equal/shares/percentage) use this; a caller doing a purely internal
+ * sub-allocation that never gets persisted as its own row (pairwise
+ * attribution, T041) uses plain `apportion()` instead, since a zero there
+ * is harmless.
+ */
+export function apportionPositive<Id extends string>(
+  total: bigint,
+  weights: Map<Id, bigint>,
+  seed: string,
+): Map<Id, bigint> {
+  const result = apportion(total, weights, seed);
+  for (const [id, amount] of result) {
+    if (amount === 0n) result.delete(id);
+  }
+  return result;
+}

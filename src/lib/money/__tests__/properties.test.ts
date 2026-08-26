@@ -1,6 +1,10 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { computeBalances, type Ledger, type LedgerEntry } from "../balances";
+import {
+  computePairwise as realComputePairwise,
+  type PairwiseLedger,
+} from "../pairwise";
 import { type GeneratedExpense, type GeneratedLedger, genLedger } from "./generators";
 
 /**
@@ -132,9 +136,23 @@ interface PairwiseDebt {
   amount: bigint;
 }
 
-/** T041 implements src/lib/money/pairwise.ts. */
-function computePairwise(_ledger: GeneratedLedger): PairwiseDebt[] {
-  throw new Error("computePairwise is implemented by T041 — see the note above this stub");
+/**
+ * T041 implemented src/lib/money/pairwise.ts. Same reshaping pattern as
+ * computeNet above.
+ */
+function toPairwiseLedger(ledger: GeneratedLedger): PairwiseLedger {
+  return {
+    expenses: ledger.expenses.map((expense) => ({
+      currency: expense.currency,
+      payers: expense.payers,
+      splits: expense.splits,
+    })),
+    settlements: ledger.settlements,
+  };
+}
+
+function computePairwise(ledger: GeneratedLedger): PairwiseDebt[] {
+  return realComputePairwise(toPairwiseLedger(ledger));
 }
 
 interface SimplifiedPayment {
@@ -168,7 +186,7 @@ describe("balances (enabled by T040)", () => {
 });
 
 describe("pairwise attribution (enabled by T041)", () => {
-  it.skip("Σ pairwise(m) == net(m) for every member, every currency", () => {
+  it("Σ pairwise(m) == net(m) for every member, every currency", () => {
     fc.assert(
       fc.property(fc.gen(), (g) => {
         const ledger = genLedger(g);

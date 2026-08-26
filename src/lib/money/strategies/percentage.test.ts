@@ -52,4 +52,15 @@ describe("resolvePercentageSplit", () => {
     const result = resolvePercentageSplit(basisPoints, 100n, "seed");
     expect([...result.values()].reduce((a, b) => a + b, 0n)).toBe(100n);
   });
+
+  it("drops a member whose resolved amount comes out to zero on a tiny total", () => {
+    const basisPoints = new Map([
+      ["ana", 1n],
+      ["beto", 1n],
+      ["caro", 9998n],
+    ]);
+    const result = resolvePercentageSplit(basisPoints, 2n, "seed");
+    expect([...result.values()].reduce((a, b) => a + b, 0n)).toBe(2n);
+    expect(result.size).toBeLessThan(3);
+  });
 });

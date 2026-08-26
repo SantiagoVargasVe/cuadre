@@ -143,9 +143,13 @@ function genExpense(g: GeneratorValue, memberIds: readonly string[]): GeneratedE
   const strategy = g(fc.constantFrom, ...STRATEGIES);
 
   const splits = genSplits(g, strategy, memberIds, total, id);
-  // Random payer counts 1..n: any non-empty subset of the group, weighted
-  // arbitrarily — a real expense's payer amounts are equally free-form.
-  const payers = apportion(total, genPositiveWeights(g, genSubset(g, memberIds)), `${id}-payers`);
+  // Random payer counts 1..n: any non-empty subset of the group. Every
+  // payer amount must be positive — a real expense_payers row is
+  // CHECK(amount > 0) — so this uses the same "everyone gets ≥ 1, then
+  // apportion whatever's left" technique as exact/percentage above,
+  // bounding the subset the same way against a possibly-tiny total.
+  const payerIds = genSubsetBoundedBy(g, memberIds, total);
+  const payers = genPositiveAmountsSummingTo(g, payerIds, total, `${id}-payers`);
 
   return { id, currency, total, strategy, payers, splits };
 }
