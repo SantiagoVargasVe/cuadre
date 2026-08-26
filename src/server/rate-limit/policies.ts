@@ -20,4 +20,7 @@ export const policies = {
 
   /** The invite gate stops account creation; this stops the attempts. */
   register: { capacity: 5, windowSeconds: HOUR },
+
+  /** Unauthenticated and looks enumerable even at 16 chars of nanoid (security.md). */
+  inviteLookup: { capacity: 20, windowSeconds: 10 * MINUTE },
 } as const satisfies Record<string, RateLimitPolicy>;

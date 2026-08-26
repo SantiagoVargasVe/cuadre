@@ -49,4 +49,18 @@ export const es = {
       inviteCodeRequired: "El código de invitación es obligatorio.",
     },
   },
+  join: {
+    someone: "Alguien",
+    invitedToGroup: (inviter: string, group: string) => `${inviter} te invitó a ${group}`,
+    invitedGeneric: (inviter: string) => `${inviter} te invitó a Cuadre`,
+    invalidTitle: "Invitación no válida",
+    invalidBody: "Este enlace de invitación ya no es válido o expiró.",
+    loginLink: "Iniciar sesión",
+    joinButton: "Unirme al grupo",
+    joining: "Uniéndote…",
+    errors: {
+      ALREADY_A_MEMBER: "Ya eres miembro de este grupo.",
+      generic: "Ocurrió un error. Intenta de nuevo.",
+    },
+  },
 } as const;

@@ -38,7 +38,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     );
   }
 
-  await requireNotLimited(policies.register, `register:${clientIp(request)}`);
+  await requireNotLimited(policies.register, `register:${clientIp(request.headers)}`);
 
   const { user, token } = await register(parsed.data);
   const response = NextResponse.json({ user }, { status: 201 });

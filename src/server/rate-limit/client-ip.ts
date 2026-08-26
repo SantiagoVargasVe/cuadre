@@ -13,7 +13,13 @@ import "server-only";
  * `X-Forwarded-For` is deliberately NOT consulted — it's client-settable.
  * Requests with no recognised header share one bucket, the conservative
  * direction: over-limiting an unusual case beats an unlimited one.
+ *
+ * Takes a `Headers`-like value rather than a `Request` so a Server
+ * Component can call this with `next/headers`' `headers()` too — e.g.
+ * `/join/[code]` reads the invite lookup straight from the service instead
+ * of round-tripping through `GET /api/invites/:code`, and needs the same
+ * rate-limit bucket applied at that call site to not bypass it.
  */
-export function clientIp(request: Request): string {
-  return request.headers.get("cf-connecting-ip")?.trim() || "unknown";
+export function clientIp(headers: { get(name: string): string | null }): string {
+  return headers.get("cf-connecting-ip")?.trim() || "unknown";
 }
