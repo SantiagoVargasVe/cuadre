@@ -1,5 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import { computeBalances, type Ledger, type LedgerEntry } from "../balances";
 import { type GeneratedExpense, type GeneratedLedger, genLedger } from "./generators";
 
 /**
@@ -86,9 +87,42 @@ interface CurrencyNet {
   net: Map<string, bigint>;
 }
 
-/** T040 implements src/lib/money/balances.ts — net(m,c) = paid − owed + sent − received. */
-function computeNet(_ledger: GeneratedLedger): CurrencyNet[] {
-  throw new Error("computeNet is implemented by T040 — see the note above this stub");
+/**
+ * T040 implemented src/lib/money/balances.ts — net(m,c) = paid − owed +
+ * sent − received. This adapter only reshapes GeneratedLedger into
+ * computeBalances()'s flat-entry input and its Map-of-Maps output back
+ * into the CurrencyNet[] shape the pairwise/simplification stubs below
+ * already expect, so T041/T042 don't need to change anything when they
+ * enable their own properties.
+ */
+function toLedgerInput(ledger: GeneratedLedger): Ledger {
+  const paid: LedgerEntry[] = [];
+  const owed: LedgerEntry[] = [];
+  const sent: LedgerEntry[] = [];
+  const received: LedgerEntry[] = [];
+
+  for (const expense of ledger.expenses) {
+    for (const [memberId, amount] of expense.payers) {
+      paid.push({ currency: expense.currency, memberId, amount });
+    }
+    for (const [memberId, amount] of expense.splits) {
+      owed.push({ currency: expense.currency, memberId, amount });
+    }
+  }
+  for (const settlement of ledger.settlements) {
+    sent.push({ currency: settlement.currency, memberId: settlement.from, amount: settlement.amount });
+    received.push({ currency: settlement.currency, memberId: settlement.to, amount: settlement.amount });
+  }
+
+  return { paid, owed, sent, received };
+}
+
+function computeNet(ledger: GeneratedLedger): CurrencyNet[] {
+  const byCurrency = computeBalances(toLedgerInput(ledger));
+  return [...byCurrency].map(([currency, byMember]) => ({
+    currency,
+    net: new Map([...byMember].map(([memberId, balance]) => [memberId, balance.net])),
+  }));
 }
 
 interface PairwiseDebt {
@@ -120,7 +154,7 @@ function convertExpense(_expense: GeneratedExpense, _rateBp: bigint): GeneratedE
 }
 
 describe("balances (enabled by T040)", () => {
-  it.skip("Σ net over members == 0 for every currency", () => {
+  it("Σ net over members == 0 for every currency", () => {
     fc.assert(
       fc.property(fc.gen(), (g) => {
         const ledger = genLedger(g);

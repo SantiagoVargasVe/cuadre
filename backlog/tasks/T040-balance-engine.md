@@ -2,7 +2,7 @@
 id: T040
 title: Balance engine — net position per member, per currency
 epic: E5-balances
-status: todo
+status: done
 depends_on: [T033, T032]
 size: M
 ---
@@ -18,24 +18,24 @@ Read [splitting.md](../../docs/context/splitting.md) § 4 and
 
 ## Acceptance criteria
 
-- [ ] `computeBalances(ledger): Map<CurrencyCode, Map<MemberId, Balance>>` where `Balance` is
+- [x] `computeBalances(ledger): Map<CurrencyCode, Map<MemberId, Balance>>` where `Balance` is
       `{ paid, owed, sent, received, net }`, all `bigint`
-- [ ] `net = paid − owed + sent − received`. Positive means the group owes them
-- [ ] **Balances are computed per currency, independently.** Never summed across currencies. A
+- [x] `net = paid − owed + sent − received`. Positive means the group owes them
+- [x] **Balances are computed per currency, independently.** Never summed across currencies. A
       member can be up in COP and down in USD, and those are two separate positions
-- [ ] **`Σ net == 0` is asserted per currency.** If it fails, **throw** — do not return a
+- [x] **`Σ net == 0` is asserted per currency.** If it fails, **throw** — do not return a
       plausible-looking number. This assertion is the canary for every class of bug in this app
-- [ ] Deleted expenses and settlements excluded via `liveExpenses` / the settlement equivalent
-- [ ] Removed members still appear if they have historical rows; they simply cannot be transacted
+- [x] Deleted expenses and settlements excluded via `liveExpenses` / the settlement equivalent
+- [x] Removed members still appear if they have historical rows; they simply cannot be transacted
       with any more
-- [ ] The service issues **one query** for the group's live ledger rows, then computes in
+- [x] The service issues **one query** for the group's live ledger rows, then computes in
       `src/lib/money/`. No N+1 per member
-- [ ] **No cached balances table, no denormalized column.** A stored balance that can disagree with
+- [x] **No cached balances table, no denormalized column.** A stored balance that can disagree with
       the ledger is the exact failure this design avoids. Adding one needs evidence from a real
       group plus an ADR
-- [ ] Enable the `Σ net over members == 0` property in
+- [x] Enable the `Σ net over members == 0` property in
       [T032](T032-property-invariants.md)'s harness
-- [ ] Tests: a single expense split three ways; multi-payer; a settlement clearing a debt exactly;
+- [x] Tests: a single expense split three ways; multi-payer; a settlement clearing a debt exactly;
       a settlement overshooting and flipping the sign; a mixed-currency group producing two
       independent position sets
 

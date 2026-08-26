@@ -80,3 +80,19 @@ export class ExactAmountsDoNotBalanceError extends Error {
     this.difference = expected - actual;
   }
 }
+
+/**
+ * Σ net != 0 for a currency — the canary for every class of bug in this
+ * app (splitting.md §4). Never returned as a plausible-looking number;
+ * always thrown, so a corrupt ledger fails the read loudly.
+ */
+export class UnbalancedLedgerError extends Error {
+  readonly currency: string;
+  readonly netSum: bigint;
+  constructor(currency: string, netSum: bigint) {
+    super(`Ledger is corrupt: Σ net for ${currency} is ${netSum}, expected 0`);
+    this.name = "UnbalancedLedgerError";
+    this.currency = currency;
+    this.netSum = netSum;
+  }
+}
