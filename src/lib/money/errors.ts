@@ -110,3 +110,19 @@ export class InvalidRateError extends Error {
     this.input = input;
   }
 }
+
+/**
+ * `format.ts` has no `currencies` table to read (types.ts § intro), so its
+ * exponent/display-decimals metadata is a small static table mirroring the
+ * seed in migrations/0002. A currency missing from it is a config problem
+ * upstream (a new entry in `SUPPORTED_CURRENCIES` this table wasn't
+ * updated for) — never a reason to guess at how many decimals to show.
+ */
+export class UnknownCurrencyError extends Error {
+  readonly currency: string;
+  constructor(currency: string) {
+    super(`No display metadata for currency "${currency}"`);
+    this.name = "UnknownCurrencyError";
+    this.currency = currency;
+  }
+}

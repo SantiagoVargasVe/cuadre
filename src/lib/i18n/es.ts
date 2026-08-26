@@ -62,6 +62,10 @@ export const es = {
     balances: "Balances",
     settings: "Ajustes",
   },
+  money: {
+    convertedMarkerLabel: "Monto convertido",
+    convertedFrom: (original: string, date: string) => `Convertido de ${original} el ${date}`,
+  },
   common: {
     loading: "Cargando…",
     genericError: "Ocurrió un error. Intenta de nuevo.",
