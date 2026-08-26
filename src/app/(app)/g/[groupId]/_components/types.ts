@@ -48,9 +48,15 @@ export interface GroupMember {
   role: "owner" | "member";
 }
 
+export interface GroupSettings {
+  displayCurrency: string | null;
+  simplifyDebts: boolean;
+}
+
 export interface GroupDetailResult {
   group: { id: string; title: string; defaultCurrency: string };
   members: GroupMember[];
+  settings: GroupSettings;
 }
 
 /** Wire money (`{ amount: string }`) → `<Money>`'s `{ amount: bigint }` —
