@@ -292,6 +292,61 @@ export const expenseRevisions = pgTable(
 );
 
 /**
+ * A payment that actually happened — `from → to`, one amount, one
+ * currency, one date (ADR-0009). Deliberately **not** linked to an
+ * expense, a pair balance, or a plan edge: those are all derived and one
+ * of them changes shape depending on a toggle, so attaching a settlement
+ * to one would need a reconciliation step that this design avoids
+ * entirely. It affects `net()` the same way an expense does — see
+ * src/lib/money/balances.ts.
+ *
+ * No `version` column and no revisions table, unlike expenses: a
+ * settlement is a single flat fact (one amount, one date, one note), so
+ * there's nothing here that needs a diffable history the way a
+ * multi-payer/multi-split expense does.
+ */
+export const settlements = pgTable(
+  "settlements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    fromUserId: uuid("from_user_id").notNull(),
+    toUserId: uuid("to_user_id").notNull(),
+    amount: bigint("amount", { mode: "bigint" }).notNull(),
+    currency: char("currency", { length: 3 })
+      .notNull()
+      .references(() => currencies.code),
+    // Calendar date only, same reasoning as expenses.expense_date.
+    settledOn: date("settled_on", { mode: "string" }).notNull(),
+    note: text("note"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("settlements_amount_positive", sql`${table.amount} > 0`),
+    check("settlements_distinct_participants", sql`${table.fromUserId} <> ${table.toUserId}`),
+    // Both participants must be current members of this group — the same
+    // composite-FK trick expense_payers/expense_splits use, applied twice.
+    foreignKey({
+      columns: [table.groupId, table.fromUserId],
+      foreignColumns: [groupMembers.groupId, groupMembers.userId],
+    }),
+    foreignKey({
+      columns: [table.groupId, table.toUserId],
+      foreignColumns: [groupMembers.groupId, groupMembers.userId],
+    }),
+    // The group feed's only query.
+    index("settlements_group_id_settled_on_idx")
+      .on(table.groupId, table.settledOn.desc())
+      .where(sql`${table.deletedAt} IS NULL`),
+  ],
+);
+
+/**
  * Token-bucket rate limiting, in Postgres rather than Redis — the volume
  * doesn't justify another container. `key` is opaque and namespaced by the
  * caller, e.g. `login:203.0.113.7`. `tokens` is numeric (not an integer) so

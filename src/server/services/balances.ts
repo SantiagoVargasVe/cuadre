@@ -5,7 +5,7 @@ import { requireMembership } from "../auth/membership";
 import { db } from "../db/client";
 
 type LedgerRow = {
-  kind: "paid" | "owed";
+  kind: "paid" | "owed" | "sent" | "received";
   currency: string;
   member_id: string;
   amount: string;
@@ -13,9 +13,9 @@ type LedgerRow = {
 
 /**
  * One query for the group's live ledger rows (T040's own acceptance
- * criteria), tagged by kind so a single round trip covers both
- * expense_payers and expense_splits — extend this same UNION when T043
- * adds settlements, rather than adding separate queries.
+ * criteria), tagged by kind so a single round trip covers expense_payers,
+ * expense_splits, and — as of T043 — settlements, rather than adding
+ * separate queries per source.
  */
 async function loadLedgerRows(groupId: string): Promise<LedgerRow[]> {
   return db.execute<LedgerRow>(sql`
@@ -28,6 +28,14 @@ async function loadLedgerRows(groupId: string): Promise<LedgerRow[]> {
     FROM expense_splits es
     JOIN expenses e ON e.id = es.expense_id
     WHERE e.group_id = ${groupId} AND e.deleted_at IS NULL
+    UNION ALL
+    SELECT 'sent' AS kind, s.currency, s.from_user_id AS member_id, s.amount::text AS amount
+    FROM settlements s
+    WHERE s.group_id = ${groupId} AND s.deleted_at IS NULL
+    UNION ALL
+    SELECT 'received' AS kind, s.currency, s.to_user_id AS member_id, s.amount::text AS amount
+    FROM settlements s
+    WHERE s.group_id = ${groupId} AND s.deleted_at IS NULL
   `);
 }
 
@@ -48,13 +56,13 @@ export async function getGroupBalances(
 
   const paid: LedgerEntry[] = [];
   const owed: LedgerEntry[] = [];
+  const sent: LedgerEntry[] = [];
+  const received: LedgerEntry[] = [];
+  const byKind = { paid, owed, sent, received };
   for (const row of rows) {
     const entry = { currency: row.currency, memberId: row.member_id, amount: BigInt(row.amount) };
-    (row.kind === "paid" ? paid : owed).push(entry);
+    byKind[row.kind].push(entry);
   }
 
-  // sent/received are always empty until T043 adds settlements — the
-  // shape already accounts for them so that task only has to extend
-  // loadLedgerRows and this array, not computeBalances itself.
-  return computeBalances({ paid, owed, sent: [], received: [] });
+  return computeBalances({ paid, owed, sent, received });
 }

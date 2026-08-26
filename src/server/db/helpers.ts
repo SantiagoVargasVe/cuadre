@@ -1,7 +1,7 @@
 import "server-only";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "./client";
-import { expenses } from "./schema";
+import { expenses, settlements } from "./schema";
 
 /**
  * The group feed's only query (data-model.md § Query rules). Always read
@@ -15,4 +15,13 @@ export function liveExpenses(groupId: string) {
     .from(expenses)
     .where(and(eq(expenses.groupId, groupId), isNull(expenses.deletedAt)))
     .orderBy(desc(expenses.expenseDate));
+}
+
+/** Same reasoning as liveExpenses, for settlements (data-model.md § Query rules). */
+export function liveSettlements(groupId: string) {
+  return db
+    .select()
+    .from(settlements)
+    .where(and(eq(settlements.groupId, groupId), isNull(settlements.deletedAt)))
+    .orderBy(desc(settlements.settledOn));
 }
