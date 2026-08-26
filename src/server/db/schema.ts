@@ -385,6 +385,43 @@ export const fxRates = pgTable(
 );
 
 /**
+ * The rates a group actually converted at (ADR-0007) — one row per
+ * currency pair the group's display-currency conversion needed, storing
+ * the **derived cross rate directly** so read-time conversion is one
+ * multiplication and never re-derives anything. Changing
+ * `FX_BASE_CURRENCY` later can't move an already-pinned group, since
+ * nothing here references the base currency at all.
+ *
+ * **Nothing may ever update a row here except an explicit member
+ * re-`PUT` of the same display currency** — no job, no cache expiry, no
+ * "this looks stale" heuristic (ADR-0007, CLAUDE.md non-negotiable #5).
+ * That re-`PUT` case is the one and only legitimate `UPDATE`; every other
+ * write path must be a plain insert. Clearing `groups.display_currency`
+ * does not touch this table — the rows are kept so re-enabling the same
+ * conversion reproduces the same numbers.
+ */
+export const groupFxPins = pgTable(
+  "group_fx_pins",
+  {
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    fromCurrency: char("from_currency", { length: 3 })
+      .notNull()
+      .references(() => currencies.code),
+    toCurrency: char("to_currency", { length: 3 })
+      .notNull()
+      .references(() => currencies.code),
+    rate: numeric("rate", { precision: 20, scale: 10, mode: "string" }).notNull(),
+    asOf: date("as_of", { mode: "string" }).notNull(),
+    source: text("source").notNull(),
+    pinnedAt: timestamp("pinned_at", { withTimezone: true }).notNull().defaultNow(),
+    pinnedBy: uuid("pinned_by").references(() => users.id, { onDelete: "set null" }),
+  },
+  (table) => [primaryKey({ columns: [table.groupId, table.fromCurrency, table.toCurrency] })],
+);
+
+/**
  * Token-bucket rate limiting, in Postgres rather than Redis — the volume
  * doesn't justify another container. `key` is opaque and namespaced by the
  * caller, e.g. `login:203.0.113.7`. `tokens` is numeric (not an integer) so

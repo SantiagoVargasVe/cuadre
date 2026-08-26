@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { InvalidRateError } from "./errors";
-import { convertMinorUnits, deriveCrossRateScaled, parseRateScaled } from "./convert";
+import { convertMinorUnits, deriveCrossRateScaled, formatRateScaled, parseRateScaled } from "./convert";
 
 describe("parseRateScaled", () => {
   it("matches currency.md's own worked rate exactly", () => {
@@ -86,5 +86,25 @@ describe("deriveCrossRateScaled", () => {
     const bToA = deriveCrossRateScaled(parseRateScaled("1.0"), aToB);
     // 1 / 2.5 = 0.4 exactly.
     expect(bToA).toBe(4000000000n);
+  });
+});
+
+describe("formatRateScaled", () => {
+  it("is the exact inverse of parseRateScaled for a typical rate", () => {
+    const scaled = parseRateScaled("3042.806266");
+    expect(formatRateScaled(scaled)).toBe("3042.8062660000");
+    expect(parseRateScaled(formatRateScaled(scaled))).toBe(scaled);
+  });
+
+  it("formats a rate smaller than 1 without dropping leading zeros", () => {
+    expect(formatRateScaled(parseRateScaled("0.0002817172"))).toBe("0.0002817172");
+  });
+
+  it("formats a whole-number rate with an explicit .0000000000", () => {
+    expect(formatRateScaled(parseRateScaled("5"))).toBe("5.0000000000");
+  });
+
+  it("formats a scaled value smaller than the scale factor itself", () => {
+    expect(formatRateScaled(5n)).toBe("0.0000000005");
   });
 });

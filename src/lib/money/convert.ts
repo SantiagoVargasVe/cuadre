@@ -8,7 +8,7 @@ import { InvalidRateError } from "./errors";
  * (or compared against) a real ratio.
  */
 export const RATE_SCALE = 10;
-const RATE_SCALE_FACTOR = 10n ** BigInt(RATE_SCALE);
+export const RATE_SCALE_FACTOR = 10n ** BigInt(RATE_SCALE);
 
 const DECIMAL_RATE = /^(\d+)(?:\.(\d+))?$/;
 
@@ -34,6 +34,21 @@ export function parseRateScaled(rate: string): bigint {
   const [, intPart, fracPart = ""] = match;
   if (fracPart.length > RATE_SCALE) throw new InvalidRateError(rate);
   return BigInt(intPart! + fracPart.padEnd(RATE_SCALE, "0"));
+}
+
+/**
+ * The inverse of `parseRateScaled` — a `10^RATE_SCALE`-scaled `bigint`
+ * (e.g. a derived cross rate from `deriveCrossRateScaled`) back into a
+ * decimal string fit to store in a `numeric(20,10)` column. Digit-
+ * splitting again, not division-then-`toString`, for the same reason the
+ * parse direction avoids `Number`: the scaled value is already exact, and
+ * a float round-trip would be the one place that throws it away.
+ */
+export function formatRateScaled(scaled: bigint): string {
+  const digits = scaled.toString().padStart(RATE_SCALE + 1, "0");
+  const intPart = digits.slice(0, -RATE_SCALE);
+  const fracPart = digits.slice(-RATE_SCALE);
+  return `${intPart}.${fracPart}`;
 }
 
 function pow10(exponent: number): bigint {

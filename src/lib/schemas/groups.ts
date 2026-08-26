@@ -17,3 +17,6 @@ export const updateGroupSchema = z.object({
   simplifyDebts: z.boolean().optional(),
 });
 export type UpdateGroupInput = z.infer<typeof updateGroupSchema>;
+
+export const setDisplayCurrencySchema = z.object({ currency: currencyCode });
+export type SetDisplayCurrencyInput = z.infer<typeof setDisplayCurrencySchema>;
