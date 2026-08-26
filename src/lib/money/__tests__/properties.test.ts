@@ -1,6 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { computeBalances, type Ledger, type LedgerEntry } from "../balances";
+import { convertExpenseAmounts } from "../convert";
 import {
   computePairwise as realComputePairwise,
   type PairwiseLedger,
@@ -170,9 +171,24 @@ function simplify(currencyNet: CurrencyNet): SimplifiedPayment[] {
   return realSimplify(currencyNet.net);
 }
 
-/** T054 implements src/lib/money/convert.ts — re-apportions by the original amounts as weights. */
-function convertExpense(_expense: GeneratedExpense, _rateBp: bigint): GeneratedExpense {
-  throw new Error("convertExpense is implemented by T054 — see the note above this stub");
+/**
+ * T054 implemented `convertExpenseAmounts` in src/lib/money/convert.ts —
+ * re-apportions by the original amounts as weights. Every generated
+ * expense currency (COP, USD, EUR) is exponent 2 (currency.md § Supported
+ * currencies), so the exponent-asymmetry path is exercised separately in
+ * convert.test.ts's own unit tests, not here; this property is about the
+ * apportionment invariant surviving conversion at an arbitrary rate, not
+ * about exponent handling.
+ */
+function convertExpense(expense: GeneratedExpense, rateScaled: bigint): GeneratedExpense {
+  const converted = convertExpenseAmounts(
+    { total: expense.total, payers: expense.payers, splits: expense.splits },
+    rateScaled,
+    2,
+    2,
+    expense.id,
+  );
+  return { ...expense, ...converted };
 }
 
 describe("balances (enabled by T040)", () => {
@@ -282,14 +298,19 @@ describe("debt simplification (enabled by T042)", () => {
 });
 
 describe("currency conversion (enabled by T054)", () => {
-  it.skip("preserves Σ splits == total after re-apportioning at a pinned rate", () => {
+  it("preserves Σ splits == total and Σ payers == total after re-apportioning at a pinned rate", () => {
     fc.assert(
       fc.property(fc.gen(), (g) => {
         const ledger = genLedger(g);
-        const rateBp = g(fc.bigInt, { min: 1n, max: 1_000_000n });
+        // Spans far below and far above RATE_SCALE_FACTOR on purpose, the
+        // same reason genTotal spans tiny to huge: the low end is where a
+        // converted total can legitimately round all the way to zero, the
+        // high end stresses the same bigint arithmetic at scale.
+        const rateScaled = g(fc.bigInt, { min: 1n, max: 10n ** 15n });
         for (const expense of ledger.expenses) {
-          const converted = convertExpense(expense, rateBp);
+          const converted = convertExpense(expense, rateScaled);
           expect(sum(converted.splits.values())).toBe(converted.total);
+          expect(sum(converted.payers.values())).toBe(converted.total);
         }
       }),
       { numRuns: NUM_RUNS },

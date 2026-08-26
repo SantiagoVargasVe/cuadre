@@ -1,7 +1,23 @@
 import { eq } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { hasTestDatabase, setupTestDb, getTestDb } from "../../test/db";
 import { groupMembers, groups, users } from "../db/schema";
+import type { ProviderRates, RateProvider } from "../fx/providers/types";
+
+function fakeProvider(rates: Record<string, string>): RateProvider {
+  const now = new Date();
+  const asOf = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
+  return {
+    source: "open-er-api",
+    fetchRates: (baseCurrency: string): Promise<ProviderRates> =>
+      Promise.resolve({ baseCurrency, asOf, source: "open-er-api", rates }),
+  };
+}
+
+async function mockGetRateProvider(provider: RateProvider) {
+  const providers = await import("../fx/providers");
+  vi.spyOn(providers, "getRateProvider").mockReturnValue(provider);
+}
 
 const DATABASE_URL_TEST = process.env.DATABASE_URL_TEST;
 
@@ -164,10 +180,14 @@ describe.skipIf(!hasTestDatabase)("getBalancesView", () => {
 
   let createGroup: typeof import("./groups").createGroup;
   let createExpense: typeof import("./expenses").createExpense;
+  let updateExpense: typeof import("./expenses").updateExpense;
   let createSettlement: typeof import("./settlements").createSettlement;
   let updateGroup: typeof import("./groups").updateGroup;
   let getBalancesView: typeof import("./balances").getBalancesView;
   let NotAMemberError: typeof import("../auth/membership").NotAMemberError;
+  let setDisplayCurrency: typeof import("./fx").setDisplayCurrency;
+  let clearDisplayCurrency: typeof import("./fx").clearDisplayCurrency;
+  let RateUnavailableError: typeof import("./fx").RateUnavailableError;
 
   beforeAll(async () => {
     vi.stubEnv("APP_URL", "http://localhost:3000");
@@ -180,14 +200,16 @@ describe.skipIf(!hasTestDatabase)("getBalancesView", () => {
     vi.stubEnv("FX_TRM_CROSSCHECK", "true");
 
     ({ createGroup } = await import("./groups"));
-    ({ createExpense } = await import("./expenses"));
+    ({ createExpense, updateExpense } = await import("./expenses"));
     ({ createSettlement } = await import("./settlements"));
     ({ updateGroup } = await import("./groups"));
     ({ getBalancesView } = await import("./balances"));
     ({ NotAMemberError } = await import("../auth/membership"));
+    ({ setDisplayCurrency, clearDisplayCurrency, RateUnavailableError } = await import("./fx"));
   });
 
   afterAll(() => vi.unstubAllEnvs());
+  afterEach(() => vi.restoreAllMocks());
 
   async function seedGroup(memberCount: number) {
     const db = getTestDb();
@@ -307,5 +329,177 @@ describe.skipIf(!hasTestDatabase)("getBalancesView", () => {
   it("404s a non-member", async () => {
     const { groupId } = await seedGroup(1);
     await expect(getBalancesView(groupId, crypto.randomUUID(), {})).rejects.toThrow(NotAMemberError);
+  });
+
+  describe("with a display currency (T054)", () => {
+    it("a mixed COP/USD group converts to exactly one entry, summing to zero, carrying pin metadata", async () => {
+      await mockGetRateProvider(fakeProvider({ USD: "1", COP: "4000" }));
+      const { groupId, memberIds } = await seedGroup(2);
+      const [ana, beto] = memberIds as [string, string];
+      await createExpense(groupId, ana, {
+        title: "COP thing",
+        date: "2026-08-24",
+        amount: "40000",
+        currency: "COP",
+        split: { strategy: "equal" },
+      });
+      await createExpense(groupId, beto, {
+        title: "USD thing",
+        date: "2026-08-24",
+        amount: "1000",
+        currency: "USD",
+        split: { strategy: "equal" },
+      });
+      await setDisplayCurrency(groupId, ana, "USD");
+
+      const view = await getBalancesView(groupId, ana, {});
+      expect(view.displayCurrency).toBe("USD");
+      expect(view.byCurrency).toHaveLength(1);
+      const entry = view.byCurrency[0]!;
+      expect(entry.currency).toBe("USD");
+      const netSum = entry.members.reduce((sum, m) => sum + BigInt(m.net), 0n);
+      expect(netSum).toBe(0n);
+      expect(entry.pins).toEqual([
+        expect.objectContaining({ fromCurrency: "COP", toCurrency: "USD" }),
+      ]);
+    });
+
+    it("an exact split still balances after conversion", async () => {
+      await mockGetRateProvider(fakeProvider({ USD: "1", COP: "4000" }));
+      const { groupId, memberIds } = await seedGroup(2);
+      const [ana, beto] = memberIds as [string, string];
+      await createExpense(groupId, ana, {
+        title: "Uneven",
+        date: "2026-08-24",
+        amount: "10000",
+        currency: "COP",
+        split: { strategy: "exact", amounts: { [ana]: "3333", [beto]: "6667" } },
+      });
+      await setDisplayCurrency(groupId, ana, "USD");
+
+      const view = await getBalancesView(groupId, ana, {});
+      const netSum = view.byCurrency[0]!.members.reduce((sum, m) => sum + BigInt(m.net), 0n);
+      expect(netSum).toBe(0n);
+    });
+
+    it("clearing the display currency returns identical numbers to before it was set", async () => {
+      await mockGetRateProvider(fakeProvider({ USD: "1", COP: "4000" }));
+      const { groupId, memberIds } = await seedGroup(3);
+      await createExpense(groupId, memberIds[0]!, {
+        title: "Dinner",
+        date: "2026-08-24",
+        amount: "9000",
+        currency: "COP",
+        split: { strategy: "equal" },
+      });
+      const before = await getBalancesView(groupId, memberIds[0]!, {});
+
+      await setDisplayCurrency(groupId, memberIds[0]!, "USD");
+      await clearDisplayCurrency(groupId, memberIds[0]!);
+      const after = await getBalancesView(groupId, memberIds[0]!, {});
+
+      expect(after).toEqual(before);
+    });
+
+    it("converting and re-clearing repeatedly is stable", async () => {
+      await mockGetRateProvider(fakeProvider({ USD: "1", COP: "4000" }));
+      const { groupId, memberIds } = await seedGroup(2);
+      await createExpense(groupId, memberIds[0]!, {
+        title: "Dinner",
+        date: "2026-08-24",
+        amount: "9000",
+        currency: "COP",
+        split: { strategy: "equal" },
+      });
+      const before = await getBalancesView(groupId, memberIds[0]!, {});
+
+      for (let i = 0; i < 3; i++) {
+        await setDisplayCurrency(groupId, memberIds[0]!, "USD");
+        const converted = await getBalancesView(groupId, memberIds[0]!, {});
+        expect(converted.byCurrency).toHaveLength(1);
+        await clearDisplayCurrency(groupId, memberIds[0]!);
+        expect(await getBalancesView(groupId, memberIds[0]!, {})).toEqual(before);
+      }
+    });
+
+    it("converts a settlement's amount too, not just expenses", async () => {
+      await mockGetRateProvider(fakeProvider({ USD: "1", COP: "4000" }));
+      const { groupId, memberIds } = await seedGroup(2);
+      const [ana, beto] = memberIds as [string, string];
+      await createExpense(groupId, ana, {
+        title: "Dinner",
+        date: "2026-08-24",
+        amount: "40000",
+        currency: "COP",
+        split: { strategy: "equal" },
+      });
+      // A partial settlement — not a full clear — so the converted net
+      // isn't trivially zero regardless of whether the amount converted.
+      await createSettlement(groupId, beto, {
+        toUserId: ana,
+        amount: "10000",
+        currency: "COP",
+        settledOn: "2026-08-24",
+      });
+      await setDisplayCurrency(groupId, ana, "USD");
+
+      // 40000 COP -> $0.10 (5/5 split); 10000 COP settlement -> $0.03.
+      // ana: paid 10, owed 5, received 3 -> net 2. beto: owed 5, sent 3 -> net -2.
+      const view = await getBalancesView(groupId, ana, {});
+      const entry = view.byCurrency[0]!;
+      const netSum = entry.members.reduce((sum, m) => sum + BigInt(m.net), 0n);
+      expect(netSum).toBe(0n);
+      expect(entry.members.find((m) => m.userId === ana)!.net).toBe("2");
+      expect(entry.members.find((m) => m.userId === beto)!.net).toBe("-2");
+    });
+
+    it("throws RATE_UNAVAILABLE for a currency added after the group last pinned", async () => {
+      await mockGetRateProvider(fakeProvider({ USD: "1", COP: "4000" }));
+      const { groupId, memberIds } = await seedGroup(2);
+      await createExpense(groupId, memberIds[0]!, {
+        title: "COP thing",
+        date: "2026-08-24",
+        amount: "40000",
+        currency: "COP",
+        split: { strategy: "equal" },
+      });
+      await setDisplayCurrency(groupId, memberIds[0]!, "USD");
+
+      // A new currency shows up after the pin snapshot — no pin exists for it.
+      await createExpense(groupId, memberIds[0]!, {
+        title: "EUR thing",
+        date: "2026-08-25",
+        amount: "1000",
+        currency: "EUR",
+        split: { strategy: "equal" },
+      });
+
+      await expect(getBalancesView(groupId, memberIds[0]!, {})).rejects.toThrow(RateUnavailableError);
+    });
+
+    it("re-editing an expense to move it into the display currency stops converting it", async () => {
+      await mockGetRateProvider(fakeProvider({ USD: "1", COP: "4000" }));
+      const { groupId, memberIds } = await seedGroup(2);
+      const expense = await createExpense(groupId, memberIds[0]!, {
+        title: "Dinner",
+        date: "2026-08-24",
+        amount: "8000",
+        currency: "COP",
+        split: { strategy: "equal" },
+      });
+      await setDisplayCurrency(groupId, memberIds[0]!, "USD");
+
+      await updateExpense(expense.id, memberIds[0]!, {
+        title: "Dinner",
+        date: "2026-08-24",
+        amount: "20",
+        currency: "USD",
+        split: { strategy: "equal" },
+      });
+
+      const view = await getBalancesView(groupId, memberIds[0]!, {});
+      const netSum = view.byCurrency[0]!.members.reduce((sum, m) => sum + BigInt(m.net), 0n);
+      expect(netSum).toBe(0n);
+    });
   });
 });

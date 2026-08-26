@@ -1,11 +1,17 @@
 import "server-only";
 import { and, eq, isNull, sql } from "drizzle-orm";
-import { type Balance, type LedgerEntry, computeBalances } from "../../lib/money/balances";
-import { computePairwise, type PairwiseLedger } from "../../lib/money/pairwise";
+import { type Balance, type Ledger, type LedgerEntry, computeBalances } from "../../lib/money/balances";
+import {
+  computePairwise,
+  type PairwiseExpense,
+  type PairwiseLedger,
+  type PairwiseSettlement,
+} from "../../lib/money/pairwise";
 import { explainSimplifiedPlan, simplify } from "../../lib/money/simplify";
 import { requireMembership } from "../auth/membership";
 import { db } from "../db/client";
 import { expensePayers, expenses, expenseSplits, groups, settlements } from "../db/schema";
+import { convertAmounts, convertSettlementAmount, loadConversionContext, type Pin } from "./fx";
 
 type LedgerRow = {
   kind: "paid" | "owed" | "sent" | "received";
@@ -74,13 +80,24 @@ export async function getGroupBalances(
 }
 
 /**
+ * The same per-expense shape `PairwiseLedger` uses, plus the expense id —
+ * needed by T054's conversion step as the re-apportionment seed, but not
+ * by `computePairwise`, which only ever sees this through the narrower
+ * `PairwiseExpense` type it declares.
+ */
+interface PairwiseLedgerWithIds {
+  expenses: (PairwiseExpense & { id: string })[];
+  settlements: PairwiseSettlement[];
+}
+
+/**
  * T041's pairwise attribution needs to know which payer/split amounts
  * belong to the *same* expense — unlike `loadLedgerRows`'s flat, already
  * netted-by-member rows, this groups live expense_payers/expense_splits
  * by expense_id first. Two joined queries (never one per expense) plus a
  * third for settlements, which are already flat one-row-per-transfer.
  */
-async function loadPairwiseLedger(groupId: string): Promise<PairwiseLedger> {
+async function loadPairwiseLedger(groupId: string): Promise<PairwiseLedgerWithIds> {
   const liveExpense = and(eq(expenses.groupId, groupId), isNull(expenses.deletedAt));
   const [payerRows, splitRows, settlementRows] = await Promise.all([
     db
@@ -114,11 +131,11 @@ async function loadPairwiseLedger(groupId: string): Promise<PairwiseLedger> {
       .where(and(eq(settlements.groupId, groupId), isNull(settlements.deletedAt))),
   ]);
 
-  const byExpense = new Map<string, { currency: string; payers: Map<string, bigint>; splits: Map<string, bigint> }>();
+  const byExpense = new Map<string, PairwiseExpense & { id: string }>();
   function forExpense(expenseId: string, currency: string) {
     let entry = byExpense.get(expenseId);
     if (!entry) {
-      entry = { currency, payers: new Map(), splits: new Map() };
+      entry = { id: expenseId, currency, payers: new Map(), splits: new Map() };
       byExpense.set(expenseId, entry);
     }
     return entry;
@@ -151,6 +168,8 @@ export interface CurrencyBalances {
   members: BalanceMember[];
   plan: PlanEdgeView[];
   simplified: boolean;
+  /** Only present when this entry is a display-currency conversion (T054) — what it converted at. */
+  pins?: Pin[];
 }
 
 export interface BalancesView {
@@ -160,6 +179,97 @@ export interface BalancesView {
 
 function toPlanEdge(edge: { from: string; to: string; amount: bigint }): PlanEdgeView {
   return { from: edge.from, to: edge.to, amount: edge.amount.toString() };
+}
+
+function toCurrencyBalances(
+  currency: string,
+  byMember: Map<string, Balance>,
+  rawDebts: { from: string; to: string; currency: string; amount: bigint }[],
+  simplified: boolean,
+  pins?: Pin[],
+): CurrencyBalances {
+  const members = [...byMember].map(([memberId, balance]) => ({
+    userId: memberId,
+    paid: balance.paid.toString(),
+    owed: balance.owed.toString(),
+    net: balance.net.toString(),
+  }));
+  const rawForCurrency = rawDebts.filter((debt) => debt.currency === currency);
+
+  const plan: PlanEdgeView[] = simplified
+    ? explainSimplifiedPlan(
+        simplify(new Map([...byMember].map(([memberId, balance]) => [memberId, balance.net]))),
+        rawForCurrency,
+      ).map((edge) => ({ ...toPlanEdge(edge), explains: edge.explains.map(toPlanEdge) }))
+    : rawForCurrency.map(toPlanEdge);
+
+  return pins ? { currency, members, plan, simplified, pins } : { currency, members, plan, simplified };
+}
+
+function sumValues(map: Map<string, bigint>): bigint {
+  let total = 0n;
+  for (const value of map.values()) total += value;
+  return total;
+}
+
+/** Reshapes a (possibly converted) pairwise ledger into `computeBalances()`'s flat-entry input — the same pattern `computeGroupNet` uses for its own SQL-sourced rows. */
+function toLedgerEntries(ledger: PairwiseLedger): Ledger {
+  const paid: LedgerEntry[] = [];
+  const owed: LedgerEntry[] = [];
+  const sent: LedgerEntry[] = [];
+  const received: LedgerEntry[] = [];
+  for (const expense of ledger.expenses) {
+    for (const [memberId, amount] of expense.payers) paid.push({ currency: expense.currency, memberId, amount });
+    for (const [memberId, amount] of expense.splits) owed.push({ currency: expense.currency, memberId, amount });
+  }
+  for (const settlement of ledger.settlements) {
+    sent.push({ currency: settlement.currency, memberId: settlement.from, amount: settlement.amount });
+    received.push({ currency: settlement.currency, memberId: settlement.to, amount: settlement.amount });
+  }
+  return { paid, owed, sent, received };
+}
+
+/**
+ * The display-currency branch (T054): converts every expense's total and
+ * re-apportions payers/splits, and every settlement's amount, into
+ * `displayCurrency` (splitting.md § 6), then computes net and pairwise
+ * debts from that converted ledger exactly the way the unconverted path
+ * computes them from the raw one — `computeBalances`'s own `Σ net == 0`
+ * assertion fires again here, now in the display currency, for free.
+ * Always at most one entry, since every currency collapses into the same
+ * one; zero entries for a group with no activity at all, same as the
+ * unconverted path returns for an empty group.
+ */
+async function getConvertedBalances(
+  groupId: string,
+  displayCurrency: string,
+  simplified: boolean,
+): Promise<CurrencyBalances[]> {
+  const [rawLedger, ctx] = await Promise.all([
+    loadPairwiseLedger(groupId),
+    loadConversionContext(groupId, displayCurrency),
+  ]);
+
+  const convertedLedger: PairwiseLedger = {
+    expenses: rawLedger.expenses.map((expense) => {
+      const total = sumValues(expense.splits);
+      const { currency, payers, splits } = convertAmounts(ctx, expense.currency, expense.id, {
+        total,
+        payers: expense.payers,
+        splits: expense.splits,
+      });
+      return { currency, payers, splits };
+    }),
+    settlements: rawLedger.settlements.map((settlement) => ({
+      ...settlement,
+      ...convertSettlementAmount(ctx, settlement.currency, settlement.amount),
+    })),
+  };
+
+  const nets = computeBalances(toLedgerEntries(convertedLedger));
+  const rawDebts = computePairwise(convertedLedger);
+
+  return [...nets].map(([currency, byMember]) => toCurrencyBalances(currency, byMember, rawDebts, simplified, ctx.pins));
 }
 
 /**
@@ -181,31 +291,18 @@ export async function getBalancesView(
 ): Promise<BalancesView> {
   await requireMembership(groupId, userId);
   const [group] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
+  const simplified = options.simplify ?? group!.simplifyDebts;
+
+  if (group!.displayCurrency) {
+    const byCurrency = await getConvertedBalances(groupId, group!.displayCurrency, simplified);
+    return { displayCurrency: group!.displayCurrency, byCurrency };
+  }
 
   const [nets, pairwiseLedger] = await Promise.all([computeGroupNet(groupId), loadPairwiseLedger(groupId)]);
-  const simplified = options.simplify ?? group!.simplifyDebts;
   const rawDebts = computePairwise(pairwiseLedger);
+  const byCurrency: CurrencyBalances[] = [...nets].map(([currency, byMember]) =>
+    toCurrencyBalances(currency, byMember, rawDebts, simplified),
+  );
 
-  const byCurrency: CurrencyBalances[] = [...nets].map(([currency, byMember]) => {
-    const members = [...byMember].map(([memberId, balance]) => ({
-      userId: memberId,
-      paid: balance.paid.toString(),
-      owed: balance.owed.toString(),
-      net: balance.net.toString(),
-    }));
-    const rawForCurrency = rawDebts.filter((debt) => debt.currency === currency);
-
-    const plan: PlanEdgeView[] = simplified
-      ? explainSimplifiedPlan(
-          simplify(new Map([...byMember].map(([memberId, balance]) => [memberId, balance.net]))),
-          rawForCurrency,
-        ).map((edge) => ({ ...toPlanEdge(edge), explains: edge.explains.map(toPlanEdge) }))
-      : rawForCurrency.map(toPlanEdge);
-
-    return { currency, members, plan, simplified };
-  });
-
-  // displayCurrency is surfaced as-is; collapsing byCurrency into it via
-  // FX conversion is T054's job (out of scope here — see the task file).
-  return { displayCurrency: group!.displayCurrency, byCurrency };
+  return { displayCurrency: null, byCurrency };
 }

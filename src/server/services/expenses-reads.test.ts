@@ -1,8 +1,24 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { hasTestDatabase, setupTestDb, getTestDb } from "../../test/db";
 import { groupMembers, groups, users } from "../db/schema";
+import type { ProviderRates, RateProvider } from "../fx/providers/types";
 
 const DATABASE_URL_TEST = process.env.DATABASE_URL_TEST;
+
+function fakeProvider(rates: Record<string, string>): RateProvider {
+  const now = new Date();
+  const asOf = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
+  return {
+    source: "open-er-api",
+    fetchRates: (baseCurrency: string): Promise<ProviderRates> =>
+      Promise.resolve({ baseCurrency, asOf, source: "open-er-api", rates }),
+  };
+}
+
+async function mockGetRateProvider(provider: RateProvider) {
+  const providers = await import("../fx/providers");
+  vi.spyOn(providers, "getRateProvider").mockReturnValue(provider);
+}
 
 describe.skipIf(!hasTestDatabase)("listExpenses / getExpense", () => {
   setupTestDb();
@@ -13,6 +29,8 @@ describe.skipIf(!hasTestDatabase)("listExpenses / getExpense", () => {
   let listExpenses: typeof import("./expenses").listExpenses;
   let getExpense: typeof import("./expenses").getExpense;
   let NotAMemberError: typeof import("../auth/membership").NotAMemberError;
+  let setDisplayCurrency: typeof import("./fx").setDisplayCurrency;
+  let RateUnavailableError: typeof import("./fx").RateUnavailableError;
 
   beforeAll(async () => {
     vi.stubEnv("APP_URL", "http://localhost:3000");
@@ -27,9 +45,11 @@ describe.skipIf(!hasTestDatabase)("listExpenses / getExpense", () => {
     ({ createExpense, updateExpense, deleteExpense, listExpenses, getExpense } =
       await import("./expenses"));
     ({ NotAMemberError } = await import("../auth/membership"));
+    ({ setDisplayCurrency, RateUnavailableError } = await import("./fx"));
   });
 
   afterAll(() => vi.unstubAllEnvs());
+  afterEach(() => vi.restoreAllMocks());
 
   async function seedGroup(memberCount: number, displayNames: string[] = []) {
     const db = getTestDb();
@@ -175,6 +195,88 @@ describe.skipIf(!hasTestDatabase)("listExpenses / getExpense", () => {
       const created = await seedExpense(groupId, memberIds[0]!, "2026-08-24");
 
       await expect(getExpense(created.id, crypto.randomUUID())).rejects.toThrow(NotAMemberError);
+    });
+  });
+
+  describe("converted amounts (T054)", () => {
+    it("is null with no display currency set", async () => {
+      const { groupId, memberIds } = await seedGroup(1);
+      const created = await seedExpense(groupId, memberIds[0]!, "2026-08-24");
+
+      expect((await getExpense(created.id, memberIds[0]!)).converted).toBeNull();
+      const listed = (await listExpenses(groupId, memberIds[0]!, {})).items.find((i) => i.id === created.id);
+      expect(listed?.converted).toBeNull();
+    });
+
+    it("is null once the expense is already in the display currency", async () => {
+      await mockGetRateProvider(fakeProvider({ USD: "1", COP: "4000" }));
+      const { groupId, memberIds } = await seedGroup(1);
+      const created = await seedExpense(groupId, memberIds[0]!, "2026-08-24");
+      await setDisplayCurrency(groupId, memberIds[0]!, "COP");
+
+      expect((await getExpense(created.id, memberIds[0]!)).converted).toBeNull();
+    });
+
+    it("reports both the original and the converted amounts, summing to the converted total", async () => {
+      await mockGetRateProvider(fakeProvider({ USD: "1", COP: "4000" }));
+      const { groupId, memberIds } = await seedGroup(2, ["Ana", "Beto"]);
+      const created = await createExpense(groupId, memberIds[0]!, {
+        title: "Dinner",
+        date: "2026-08-24",
+        amount: "40000",
+        currency: "COP",
+        split: { strategy: "equal" },
+      });
+      await setDisplayCurrency(groupId, memberIds[0]!, "USD");
+
+      const detail = await getExpense(created.id, memberIds[0]!);
+      expect(detail.total).toEqual({ amount: "40000", currency: "COP" });
+      expect(detail.converted).not.toBeNull();
+      expect(detail.converted!.total).toEqual({ amount: "10", currency: "USD" });
+      const splitSum = detail.converted!.splits.reduce((sum, s) => sum + BigInt(s.amount), 0n);
+      const payerSum = detail.converted!.payers.reduce((sum, p) => sum + BigInt(p.amount), 0n);
+      expect(splitSum).toBe(10n);
+      expect(payerSum).toBe(10n);
+      expect(detail.converted!.splits.map((s) => s.displayName).sort()).toEqual(["Ana", "Beto"]);
+
+      const listed = (await listExpenses(groupId, memberIds[0]!, {})).items.find((i) => i.id === created.id);
+      expect(listed?.converted).toEqual(detail.converted);
+    });
+
+    it("an exact split's converted amounts still balance", async () => {
+      await mockGetRateProvider(fakeProvider({ USD: "1", COP: "4000" }));
+      const { groupId, memberIds } = await seedGroup(2);
+      const [ana, beto] = memberIds as [string, string];
+      const created = await createExpense(groupId, ana, {
+        title: "Uneven",
+        date: "2026-08-24",
+        amount: "10000",
+        currency: "COP",
+        split: { strategy: "exact", amounts: { [ana]: "3333", [beto]: "6667" } },
+      });
+      await setDisplayCurrency(groupId, ana, "USD");
+
+      const detail = await getExpense(created.id, ana);
+      const splitSum = detail.converted!.splits.reduce((sum, s) => sum + BigInt(s.amount), 0n);
+      expect(splitSum).toBe(BigInt(detail.converted!.total.amount));
+    });
+
+    it("throws RATE_UNAVAILABLE for a currency added after the group last pinned", async () => {
+      await mockGetRateProvider(fakeProvider({ USD: "1", COP: "4000" }));
+      const { groupId, memberIds } = await seedGroup(1);
+      await seedExpense(groupId, memberIds[0]!, "2026-08-24");
+      await setDisplayCurrency(groupId, memberIds[0]!, "USD");
+
+      const eurExpense = await createExpense(groupId, memberIds[0]!, {
+        title: "EUR thing",
+        date: "2026-08-25",
+        amount: "1000",
+        currency: "EUR",
+        split: { strategy: "equal" },
+      });
+
+      await expect(getExpense(eurExpense.id, memberIds[0]!)).rejects.toThrow(RateUnavailableError);
+      await expect(listExpenses(groupId, memberIds[0]!, {})).rejects.toThrow(RateUnavailableError);
     });
   });
 });

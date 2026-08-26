@@ -1,13 +1,21 @@
 import "server-only";
 import { and, eq, isNull } from "drizzle-orm";
 import { union } from "drizzle-orm/pg-core";
-import { deriveCrossRateScaled, formatRateScaled, parseRateScaled, RATE_SCALE_FACTOR } from "../../lib/money/convert";
+import {
+  type ConvertibleAmounts,
+  convertExpenseAmounts,
+  convertMinorUnits,
+  deriveCrossRateScaled,
+  formatRateScaled,
+  parseRateScaled,
+  RATE_SCALE_FACTOR,
+} from "../../lib/money/convert";
 import { assertGroupNotArchived, requireMembership } from "../auth/membership";
 import { getRateProvider } from "../fx/providers";
 import { findLatestRate, refreshCore, type RefreshResult } from "../fx/refresh-core";
 import { config } from "../config";
 import { db, withTransaction } from "../db/client";
-import { expenses, groupFxPins, groups, settlements } from "../db/schema";
+import { currencies, expenses, groupFxPins, groups, settlements } from "../db/schema";
 import { ValidationError } from "../errors";
 import { assertSupportedCurrency } from "./currencies";
 import type { Group } from "./groups";
@@ -269,4 +277,84 @@ export async function getDisplayCurrency(
   const [group] = await db.select({ displayCurrency: groups.displayCurrency }).from(groups).where(eq(groups.id, groupId)).limit(1);
   const pinRows = await db.select().from(groupFxPins).where(eq(groupFxPins.groupId, groupId));
   return { currency: group!.displayCurrency, pins: pinRows.map(toPin) };
+}
+
+/**
+ * Everything the read path (T054) needs to convert a group's activity
+ * into its display currency, fetched once per request rather than once
+ * per expense — `ratesByFromCurrency`/`exponentsByCurrency` are tiny maps
+ * a whole balances/expenses response shares. `currencies` has no
+ * `server-only` guard of its own, but this lives here (not
+ * `services/currencies.ts`) because it's inseparable from the pins query
+ * it's always fetched alongside.
+ */
+export interface ConversionContext {
+  displayCurrency: string;
+  ratesByFromCurrency: Map<string, bigint>;
+  exponentsByCurrency: Map<string, number>;
+  pins: Pin[];
+}
+
+export async function loadConversionContext(groupId: string, displayCurrency: string): Promise<ConversionContext> {
+  const [pinRows, currencyRows] = await Promise.all([
+    db
+      .select()
+      .from(groupFxPins)
+      .where(and(eq(groupFxPins.groupId, groupId), eq(groupFxPins.toCurrency, displayCurrency))),
+    db.select({ code: currencies.code, exponent: currencies.exponent }).from(currencies),
+  ]);
+
+  return {
+    displayCurrency,
+    ratesByFromCurrency: new Map(pinRows.map((row) => [row.fromCurrency, parseRateScaled(row.rate)])),
+    exponentsByCurrency: new Map(currencyRows.map((row) => [row.code, row.exponent])),
+    pins: pinRows.map(toPin),
+  };
+}
+
+function rateFor(ctx: ConversionContext, currency: string): bigint {
+  const rateScaled = ctx.ratesByFromCurrency.get(currency);
+  if (!rateScaled) throw new RateUnavailableError(currency, ctx.displayCurrency, todayUtcDate());
+  return rateScaled;
+}
+
+/**
+ * Converts one expense's total/payers/splits into `ctx.displayCurrency`
+ * (splitting.md § 6) — a pass-through when the expense is already in
+ * that currency, since there's nothing to convert. `seed` must be the
+ * expense id, so the re-apportionment lands the same way every time it's
+ * read (`convertExpenseAmounts`'s own contract).
+ *
+ * A currency present in the ledger with no matching pin — e.g. a member
+ * added an expense in a new currency after the group last pinned — is
+ * `RATE_UNAVAILABLE`, the same code the display-currency `PUT` uses for
+ * an unresolvable pair. Never silently shown unconverted or dropped.
+ */
+export function convertAmounts(
+  ctx: ConversionContext,
+  currency: string,
+  seed: string,
+  amounts: ConvertibleAmounts,
+): { currency: string } & ConvertibleAmounts {
+  if (currency === ctx.displayCurrency) return { currency, ...amounts };
+
+  const rateScaled = rateFor(ctx, currency);
+  const sourceExponent = ctx.exponentsByCurrency.get(currency)!;
+  const targetExponent = ctx.exponentsByCurrency.get(ctx.displayCurrency)!;
+  const converted = convertExpenseAmounts(amounts, rateScaled, sourceExponent, targetExponent, seed);
+  return { currency: ctx.displayCurrency, ...converted };
+}
+
+/** Settlements convert as a single amount — nothing to apportion (splitting.md § 6). */
+export function convertSettlementAmount(
+  ctx: ConversionContext,
+  currency: string,
+  amount: bigint,
+): { currency: string; amount: bigint } {
+  if (currency === ctx.displayCurrency) return { currency, amount };
+
+  const rateScaled = rateFor(ctx, currency);
+  const sourceExponent = ctx.exponentsByCurrency.get(currency)!;
+  const targetExponent = ctx.exponentsByCurrency.get(ctx.displayCurrency)!;
+  return { currency: ctx.displayCurrency, amount: convertMinorUnits(amount, rateScaled, sourceExponent, targetExponent) };
 }

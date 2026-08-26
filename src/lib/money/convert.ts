@@ -1,3 +1,4 @@
+import { apportionPositive } from "./apportion";
 import { InvalidRateError } from "./errors";
 
 /**
@@ -119,4 +120,58 @@ export function convertMinorUnits(
 export function deriveCrossRateScaled(numeratorScaled: bigint, denominatorScaled: bigint): bigint {
   const numerator = numeratorScaled * RATE_SCALE_FACTOR;
   return (numerator + denominatorScaled / 2n) / denominatorScaled;
+}
+
+export interface ConvertibleAmounts {
+  total: bigint;
+  payers: Map<string, bigint>;
+  splits: Map<string, bigint>;
+}
+
+/**
+ * The read-path conversion rule (splitting.md § 6, currency.md § How
+ * conversion actually works, ADR-0007): convert the expense **total**,
+ * then re-apportion payers and splits from the *converted* total using
+ * the *original* amounts as weights. This is what keeps `Σ splits ==
+ * total` true after conversion for every strategy including `exact`,
+ * where there's no strategy left to re-run — converting each row
+ * independently would not: three independently-converted rows routinely
+ * miss the converted total by a unit, and that unit is an unbalanced
+ * expense.
+ *
+ * Splits reuse `seed` (the expense id) exactly as the original split
+ * resolution did, so the same member absorbs the rounding remainder
+ * whether the amounts on screen are original or converted. Payers get a
+ * distinct, derived seed — unlike splits, payer amounts were never
+ * apportioned in the first place (creation takes them as given from
+ * `paidBy`), so there's no prior seed to stay consistent with; this just
+ * needs to be deterministic for a given expense.
+ *
+ * `apportionPositive`, not `apportion`: a converted payer/split share is
+ * exactly the kind of "member's resolved amount" apportionPositive's own
+ * doc comment describes — a zero share means that member shouldn't
+ * appear in the (converted) split at all, same as at creation time.
+ *
+ * A converted total that rounds all the way down to zero — a
+ * foreign-currency expense too small to register even one minor unit of
+ * the display currency, e.g. 1 COP centavo converted to USD — has
+ * nothing left to apportion (`apportion()` requires a positive total by
+ * construction). Resolved the same way a zero *share* already is:
+ * dropped, not an error. The expense simply contributes nothing to
+ * anyone's converted balance.
+ */
+export function convertExpenseAmounts(
+  amounts: ConvertibleAmounts,
+  rateScaled: bigint,
+  sourceExponent: number,
+  targetExponent: number,
+  seed: string,
+): ConvertibleAmounts {
+  const total = convertMinorUnits(amounts.total, rateScaled, sourceExponent, targetExponent);
+  if (total === 0n) return { total: 0n, payers: new Map(), splits: new Map() };
+  return {
+    total,
+    payers: apportionPositive(total, amounts.payers, `${seed}-converted-payers`),
+    splits: apportionPositive(total, amounts.splits, seed),
+  };
 }
