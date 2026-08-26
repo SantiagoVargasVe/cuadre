@@ -158,3 +158,154 @@ describe.skipIf(!hasTestDatabase)("getGroupBalances", () => {
     expect(balances.get("COP")!.get(memberIds[1]!)!.net).toBe(-1000n);
   });
 });
+
+describe.skipIf(!hasTestDatabase)("getBalancesView", () => {
+  setupTestDb();
+
+  let createGroup: typeof import("./groups").createGroup;
+  let createExpense: typeof import("./expenses").createExpense;
+  let createSettlement: typeof import("./settlements").createSettlement;
+  let updateGroup: typeof import("./groups").updateGroup;
+  let getBalancesView: typeof import("./balances").getBalancesView;
+  let NotAMemberError: typeof import("../auth/membership").NotAMemberError;
+
+  beforeAll(async () => {
+    vi.stubEnv("APP_URL", "http://localhost:3000");
+    vi.stubEnv("DATABASE_URL", DATABASE_URL_TEST ?? "");
+    vi.stubEnv("AUTH_SECRET", "a".repeat(48));
+    vi.stubEnv("SUPPORTED_CURRENCIES", "COP,USD,EUR");
+    vi.stubEnv("DEFAULT_CURRENCY", "COP");
+    vi.stubEnv("FX_PROVIDER", "open-er-api");
+    vi.stubEnv("FX_BASE_CURRENCY", "USD");
+    vi.stubEnv("FX_TRM_CROSSCHECK", "true");
+
+    ({ createGroup } = await import("./groups"));
+    ({ createExpense } = await import("./expenses"));
+    ({ createSettlement } = await import("./settlements"));
+    ({ updateGroup } = await import("./groups"));
+    ({ getBalancesView } = await import("./balances"));
+    ({ NotAMemberError } = await import("../auth/membership"));
+  });
+
+  afterAll(() => vi.unstubAllEnvs());
+
+  async function seedGroup(memberCount: number) {
+    const db = getTestDb();
+    const memberIds: string[] = [];
+    for (let i = 0; i < memberCount; i++) {
+      const [user] = await db
+        .insert(users)
+        .values({ email: `${crypto.randomUUID()}@example.com`, displayName: `M${i}`, passwordHash: "x" })
+        .returning();
+      memberIds.push(user!.id);
+    }
+    const group = await createGroup(memberIds[0]!, { title: "Trip" });
+    for (const userId of memberIds.slice(1)) {
+      await db.insert(groupMembers).values({ groupId: group.id, userId, role: "member" });
+    }
+    return { groupId: group.id, memberIds };
+  }
+
+  it("defaults simplify to the group's own setting", async () => {
+    const { groupId, memberIds } = await seedGroup(3);
+    await createExpense(groupId, memberIds[0]!, {
+      title: "Dinner",
+      date: "2026-08-24",
+      amount: "9000",
+      currency: "COP",
+      split: { strategy: "equal" },
+    });
+    await updateGroup(groupId, memberIds[0]!, { simplifyDebts: true });
+
+    const view = await getBalancesView(groupId, memberIds[0]!, {});
+    expect(view.byCurrency[0]!.simplified).toBe(true);
+  });
+
+  it("the ?simplify override changes the response but never persists", async () => {
+    const { groupId, memberIds } = await seedGroup(2);
+    await createExpense(groupId, memberIds[0]!, {
+      title: "Dinner",
+      date: "2026-08-24",
+      amount: "1000",
+      currency: "COP",
+      split: { strategy: "equal" },
+    });
+
+    const overridden = await getBalancesView(groupId, memberIds[0]!, { simplify: true });
+    expect(overridden.byCurrency[0]!.simplified).toBe(true);
+
+    // Not persisted: the very next call with no override falls back to the
+    // group's real (untouched, default-false) setting.
+    const after = await getBalancesView(groupId, memberIds[0]!, {});
+    expect(after.byCurrency[0]!.simplified).toBe(false);
+  });
+
+  it("a mixed-currency group returns one independent entry per currency, never a combined total", async () => {
+    const { groupId, memberIds } = await seedGroup(2);
+    await createExpense(groupId, memberIds[0]!, {
+      title: "COP thing",
+      date: "2026-08-24",
+      amount: "2000",
+      currency: "COP",
+      split: { strategy: "equal" },
+    });
+    await createExpense(groupId, memberIds[1]!, {
+      title: "USD thing",
+      date: "2026-08-24",
+      amount: "200",
+      currency: "USD",
+      split: { strategy: "equal" },
+    });
+
+    const view = await getBalancesView(groupId, memberIds[0]!, {});
+    expect(view.byCurrency.map((c) => c.currency).sort()).toEqual(["COP", "USD"]);
+    for (const entry of view.byCurrency) {
+      const netSum = entry.members.reduce((sum, m) => sum + BigInt(m.net), 0n);
+      expect(netSum).toBe(0n);
+    }
+  });
+
+  it("the raw (unsimplified) plan carries no explains key on any edge", async () => {
+    const { groupId, memberIds } = await seedGroup(3);
+    await createExpense(groupId, memberIds[0]!, {
+      title: "Dinner",
+      date: "2026-08-24",
+      amount: "9000",
+      currency: "COP",
+      split: { strategy: "equal" },
+    });
+
+    const view = await getBalancesView(groupId, memberIds[0]!, { simplify: false });
+    expect(view.byCurrency[0]!.plan.length).toBeGreaterThan(0);
+    for (const edge of view.byCurrency[0]!.plan) expect(edge.explains).toBeUndefined();
+  });
+
+  it("a simplified plan edge carries explains, and a settlement clears it to an empty plan", async () => {
+    const { groupId, memberIds } = await seedGroup(2);
+    const [ana, beto] = memberIds as [string, string];
+    await createExpense(groupId, ana, {
+      title: "Dinner",
+      date: "2026-08-24",
+      amount: "10000",
+      currency: "COP",
+      split: { strategy: "equal" },
+    });
+
+    const beforeSettle = await getBalancesView(groupId, ana, { simplify: true });
+    expect(beforeSettle.byCurrency[0]!.plan[0]!.explains).toBeDefined();
+
+    await createSettlement(groupId, beto, {
+      toUserId: ana,
+      amount: "5000",
+      currency: "COP",
+      settledOn: "2026-08-24",
+    });
+    const afterSettle = await getBalancesView(groupId, ana, { simplify: true });
+    expect(afterSettle.byCurrency[0]!.plan).toEqual([]);
+  });
+
+  it("404s a non-member", async () => {
+    const { groupId } = await seedGroup(1);
+    await expect(getBalancesView(groupId, crypto.randomUUID(), {})).rejects.toThrow(NotAMemberError);
+  });
+});
