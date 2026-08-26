@@ -43,6 +43,13 @@
       "when": 1787753284570,
       "tag": "0005_settlements",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787756507195,
+      "tag": "0006_fx_rates",
+      "breakpoints": true
     }
   ]
 }

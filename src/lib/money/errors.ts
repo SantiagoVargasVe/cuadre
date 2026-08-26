@@ -96,3 +96,17 @@ export class UnbalancedLedgerError extends Error {
     this.netSum = netSum;
   }
 }
+
+/**
+ * A rate string that isn't a plain non-negative decimal (currency.md §
+ * Storing rates) — never `parseFloat`'s problem to reject, since a rate
+ * is never coerced through `Number` at all.
+ */
+export class InvalidRateError extends Error {
+  readonly input: string;
+  constructor(input: string) {
+    super(`"${input}" is not a valid decimal rate string`);
+    this.name = "InvalidRateError";
+    this.input = input;
+  }
+}
