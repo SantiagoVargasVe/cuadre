@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { ApiError, apiFetch } from "../../../lib/api/client";
@@ -12,8 +12,18 @@ import { TextField } from "../../_ui/TextField";
 
 const t = es.auth.login;
 
+/** Only ever follow an internal path — `next` comes off the URL, so a
+ * value like `//evil.example.com` or `https://evil.example.com` must
+ * never be handed to router.push as-is. */
+function safeNext(next: string | null): string {
+  if (!next || !next.startsWith("/") || next.startsWith("//")) return "/groups";
+  return next;
+}
+
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = safeNext(searchParams.get("next"));
   const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
@@ -25,7 +35,7 @@ export function LoginForm() {
     setFormError(null);
     try {
       await apiFetch("/api/auth/login", { method: "POST", body: data });
-      router.push("/groups");
+      router.push(next);
     } catch (error) {
       const code = error instanceof ApiError ? error.code : undefined;
       setFormError(t.errors[code as keyof typeof t.errors] ?? t.errors.generic);

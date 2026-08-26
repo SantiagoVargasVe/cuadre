@@ -48,6 +48,7 @@ export default defineConfig({
             "src/server/**/*.test.ts",
             "src/lib/**/*.test.ts",
             "src/app/api/**/*.test.ts",
+            "src/*.test.ts",
           ],
           // Integration tests in this project share one physical database
           // (DATABASE_URL_TEST) and rely on truncate-between-tests for
