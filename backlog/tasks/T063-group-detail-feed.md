@@ -2,7 +2,7 @@
 id: T063
 title: /g/[groupId] — group detail and expense feed
 epic: E7-frontend
-status: todo
+status: done
 depends_on: [T060, T061, T036]
 size: M
 ---
@@ -17,20 +17,20 @@ Read [frontend/CLAUDE.md](../../docs/frontend/CLAUDE.md) § *Server vs client co
 
 ## Acceptance criteria
 
-- [ ] Server-rendered feed, paginated, ordered newest first
-- [ ] Each row: title, date, total, who paid, and **your** share — the number a member is actually
+- [x] Server-rendered feed, paginated, ordered newest first
+- [x] Each row: title, date, total, who paid, and **your** share — the number a member is actually
       looking for
-- [ ] An edited expense shows an "editado" marker with who and when (the data exists from T035)
-- [ ] **The add-expense affordance is a fixed bottom-right FAB on mobile.** It is the most-used
+- [x] An edited expense shows an "editado" marker with who and when (the data exists from T035)
+- [x] **The add-expense affordance is a fixed bottom-right FAB on mobile.** It is the most-used
       control in the app and it does not scroll away
-- [ ] Tapping a row opens the expense detail with the full split breakdown
-- [ ] When the group has a display currency, amounts are marked as converted with the original
+- [x] Tapping a row opens the expense detail with the full split breakdown
+- [x] When the group has a display currency, amounts are marked as converted with the original
       reachable
-- [ ] Empty state prompts the first expense
-- [ ] Infinite scroll or an explicit "load more" — either, but the cursor must not duplicate rows
+- [x] Empty state prompts the first expense
+- [x] Infinite scroll or an explicit "load more" — either, but the cursor must not duplicate rows
       on a day with several expenses
-- [ ] Verified at 375px, one-handed
-- [ ] Tests: the feed renders paginated results; the edited marker appears; your-share is computed
+- [x] Verified at 375px, one-handed
+- [x] Tests: the feed renders paginated results; the edited marker appears; your-share is computed
       from the server's resolved splits, never recomputed client-side
 
 ## Out of scope

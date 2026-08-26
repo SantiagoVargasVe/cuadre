@@ -1,3 +1,4 @@
+import { formatCalendarDate } from "../../lib/date/format";
 import { formatMoney } from "../../lib/money/format";
 import type { Money as MoneyValue } from "../../lib/money/types";
 import { cn } from "../../lib/cn";
@@ -5,19 +6,6 @@ import { es } from "../../lib/i18n/es";
 import { TooltipContent, TooltipRoot, TooltipTrigger } from "./Tooltip";
 
 const t = es.money;
-
-/** Calendar date only (no time, no zone) — pinned at UTC midnight so the
- * displayed day never shifts with the viewer's own timezone. */
-const PIN_DATE_FORMATTER = new Intl.DateTimeFormat("es-CO", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
-function formatPinnedDate(isoDate: string): string {
-  return PIN_DATE_FORMATTER.format(new Date(`${isoDate}T00:00:00Z`));
-}
 
 export interface MoneyProps {
   value: MoneyValue;
@@ -53,7 +41,7 @@ export function Money({ value, signed, converted, className }: MoneyProps) {
           *
         </TooltipTrigger>
         <TooltipContent>
-          {t.convertedFrom(formatMoney(converted.original), formatPinnedDate(converted.pinnedAt))}
+          {t.convertedFrom(formatMoney(converted.original), formatCalendarDate(converted.pinnedAt))}
         </TooltipContent>
       </TooltipRoot>
     </span>

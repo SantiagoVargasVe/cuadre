@@ -171,6 +171,37 @@ half-updated split against a stale total is not a thing anyone should have to re
 Any member may edit or delete any expense in their group. `updated_by` and the revision history
 are what make that safe, not permissions.
 
+### Reading a list or a single expense
+
+`GET .../expenses` (`items[]`) and `GET /api/expenses/:id` (`expense`) share one shape —
+`payers`/`splits` carry `displayName` alongside each `userId`, since the feed renders "who paid"
+without a second round trip:
+
+```json
+{
+  "id": "…", "title": "Cena en Cartagena", "date": "2026-08-24",
+  "total": { "amount": "30000000", "currency": "COP" },
+  "payers": [ { "userId": "…ana", "amount": "30000000", "displayName": "Ana" } ],
+  "splits": [
+    { "userId": "…ana",  "amount": "10000000", "displayName": "Ana" },
+    { "userId": "…beto", "amount": "10000000", "displayName": "Beto" },
+    { "userId": "…caro", "amount": "10000000", "displayName": "Caro" }
+  ],
+  "strategy": "equal",
+  "editedAt": null, "editedBy": null,
+  "converted": null
+}
+```
+
+`editedAt`/`editedBy` are `null` for a never-edited expense (`version === 1`); otherwise `editedAt`
+is the last edit's timestamp and `editedBy` is `{ userId, displayName }` — on **every** row, not
+just the single-expense detail, so the feed can show its own "editado" marker without a second
+fetch per row. `editedBy` can still be `null` on an edited expense if the editor's account no
+longer exists (`updated_by`'s FK is `ON DELETE SET NULL`) — "when" and "who" are independent.
+
+The single-expense detail (`GET /api/expenses/:id`, and the `PATCH`/`POST` responses) additionally
+carries `version`.
+
 ### Reading, with a display currency set
 
 `GET .../expenses` and `GET /api/expenses/:id` add a `converted` field next to `total`/`payers`/
