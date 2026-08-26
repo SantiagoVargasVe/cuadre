@@ -22,6 +22,26 @@ const eslintConfig = [
         "warn",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
+      // design-system.md § *Money display*: exactly one place calls
+      // Intl.NumberFormat on a money value, so the two verified es-CO
+      // gotchas (COP's default fraction digits, EUR's literal "EUR") are
+      // fixed once instead of being a trap every new component can fall
+      // into again. Lifted for src/lib/money/format.ts below.
+      "no-restricted-properties": [
+        "error",
+        {
+          object: "Intl",
+          property: "NumberFormat",
+          message:
+            "Only src/lib/money/format.ts may call Intl.NumberFormat — use formatMoney()/formatAmountInput() instead. See design-system.md § Money display.",
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/lib/money/format.ts"],
+    rules: {
+      "no-restricted-properties": "off",
     },
   },
   {
