@@ -5,6 +5,7 @@ import {
   computePairwise as realComputePairwise,
   type PairwiseLedger,
 } from "../pairwise";
+import { explainSimplifiedPlan, simplify as realSimplify } from "../simplify";
 import { type GeneratedExpense, type GeneratedLedger, genLedger } from "./generators";
 
 /**
@@ -161,9 +162,12 @@ interface SimplifiedPayment {
   amount: bigint;
 }
 
-/** T042 implements src/lib/money/simplify.ts — greedy largest-debtor/largest-creditor matching. */
-function simplify(_net: CurrencyNet): SimplifiedPayment[] {
-  throw new Error("simplify is implemented by T042 — see the note above this stub");
+/**
+ * T042 implemented src/lib/money/simplify.ts. Same reshaping pattern as
+ * computeNet/computePairwise above.
+ */
+function simplify(currencyNet: CurrencyNet): SimplifiedPayment[] {
+  return realSimplify(currencyNet.net);
 }
 
 /** T054 implements src/lib/money/convert.ts — re-apportions by the original amounts as weights. */
@@ -213,19 +217,24 @@ describe("pairwise attribution (enabled by T041)", () => {
 });
 
 describe("debt simplification (enabled by T042)", () => {
-  it.skip("preserves every member's net position", () => {
+  it("preserves every member's net position", () => {
     fc.assert(
       fc.property(fc.gen(), (g) => {
         const ledger = genLedger(g);
         for (const currencyNet of computeNet(ledger)) {
           const plan = simplify(currencyNet);
-          const resultingNet = new Map(currencyNet.net);
+          // Re-derive net *from the plan itself* (paid in − paid out) and
+          // compare against the net that went in — simplification only
+          // re-routes who pays whom, so the two must match exactly. This
+          // is not the same as applying the plan as real settlements on
+          // top of the existing net, which would drive everyone to zero.
+          const derivedNet = new Map([...currencyNet.net.keys()].map((id) => [id, 0n]));
           for (const { from, to, amount } of plan) {
-            resultingNet.set(from, (resultingNet.get(from) ?? 0n) + amount);
-            resultingNet.set(to, (resultingNet.get(to) ?? 0n) - amount);
+            derivedNet.set(from, (derivedNet.get(from) ?? 0n) - amount);
+            derivedNet.set(to, (derivedNet.get(to) ?? 0n) + amount);
           }
           for (const [member, originalNet] of currencyNet.net) {
-            expect(resultingNet.get(member)).toBe(originalNet);
+            expect(derivedNet.get(member) ?? 0n).toBe(originalNet);
           }
         }
       }),
@@ -233,13 +242,38 @@ describe("debt simplification (enabled by T042)", () => {
     );
   });
 
-  it.skip("emits at most n-1 payments for n members with a non-zero balance", () => {
+  it("emits at most n-1 payments for n members with a non-zero balance", () => {
     fc.assert(
       fc.property(fc.gen(), (g) => {
         const ledger = genLedger(g);
         for (const currencyNet of computeNet(ledger)) {
           const nonZero = [...currencyNet.net.values()].filter((n) => n !== 0n).length;
           expect(simplify(currencyNet).length).toBeLessThanOrEqual(Math.max(0, nonZero - 1));
+        }
+      }),
+      { numRuns: NUM_RUNS },
+    );
+  });
+
+  it("explainSimplifiedPlan never fabricates a debt or drops an edge", () => {
+    fc.assert(
+      fc.property(fc.gen(), (g) => {
+        const ledger = genLedger(g);
+        const allRaw = computePairwise(ledger);
+        for (const currencyNet of computeNet(ledger)) {
+          const plan = simplify(currencyNet);
+          const raw = allRaw.filter((d) => d.currency === currencyNet.currency);
+          const explained = explainSimplifiedPlan(plan, raw);
+
+          expect(explained.map(({ from, to, amount }) => ({ from, to, amount }))).toEqual(plan);
+          for (const edge of explained) {
+            for (const cited of edge.explains) {
+              expect(cited.amount > 0n).toBe(true);
+              expect(raw).toContainEqual(
+                expect.objectContaining({ from: cited.from, to: cited.to, currency: cited.currency }),
+              );
+            }
+          }
         }
       }),
       { numRuns: NUM_RUNS },
