@@ -1,6 +1,7 @@
+import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { hasTestDatabase, setupTestDb, getTestDb } from "../../test/db";
-import { inviteCodes, users } from "./schema";
+import { currencies, groupMembers, groups, inviteCodes, users } from "./schema";
 
 describe.skipIf(!hasTestDatabase)("users / invite_codes schema", () => {
   setupTestDb();
@@ -41,15 +42,116 @@ describe.skipIf(!hasTestDatabase)("users / invite_codes schema", () => {
     expect(invite?.consumedAt).toBeNull();
   });
 
-  it("stores a group_id even though there is no groups table yet", async () => {
+  it("rejects a group_id that doesn't reference a real group", async () => {
     const db = getTestDb();
     const groupId = "00000000-0000-0000-0000-000000000000";
 
+    await expect(
+      db.insert(inviteCodes).values({ code: "groupinvite1234", groupId }),
+    ).rejects.toThrow();
+  });
+});
+
+describe.skipIf(!hasTestDatabase)("currencies / groups / group_members schema", () => {
+  setupTestDb();
+
+  async function seedUser() {
+    const [user] = await getTestDb()
+      .insert(users)
+      .values({ email: `${crypto.randomUUID()}@example.com`, displayName: "Ana", passwordHash: "x" })
+      .returning();
+    return user!.id;
+  }
+
+  async function seedGroup(createdBy: string) {
+    const [group] = await getTestDb()
+      .insert(groups)
+      .values({ title: "Cartagena 2026", defaultCurrency: "COP", createdBy })
+      .returning();
+    return group!;
+  }
+
+  it("seeds COP, USD, EUR by migration", async () => {
+    const rows = await getTestDb().select().from(currencies);
+
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        { code: "COP", exponent: 2, displayDecimals: 0, name: "Colombian Peso" },
+        { code: "USD", exponent: 2, displayDecimals: 2, name: "US Dollar" },
+        { code: "EUR", exponent: 2, displayDecimals: 2, name: "Euro" },
+      ]),
+    );
+  });
+
+  it("creates a group with a null display currency and simplify_debts off by default", async () => {
+    const userId = await seedUser();
+
+    const group = await seedGroup(userId);
+
+    expect(group.defaultCurrency).toBe("COP");
+    expect(group.displayCurrency).toBeNull();
+    expect(group.simplifyDebts).toBe(false);
+    expect(group.archivedAt).toBeNull();
+  });
+
+  it("rejects a group with an unsupported default currency", async () => {
+    const userId = await seedUser();
+
+    await expect(
+      getTestDb().insert(groups).values({ title: "Trip", defaultCurrency: "XXX", createdBy: userId }),
+    ).rejects.toThrow();
+  });
+
+  it("adds the creator as a member and enforces the composite pk against duplicates", async () => {
+    const userId = await seedUser();
+    const group = await seedGroup(userId);
+
+    await getTestDb()
+      .insert(groupMembers)
+      .values({ groupId: group.id, userId, role: "owner" });
+
+    await expect(
+      getTestDb().insert(groupMembers).values({ groupId: group.id, userId, role: "member" }),
+    ).rejects.toThrow();
+  });
+
+  it("retires a member with removed_at instead of deleting the row", async () => {
+    const db = getTestDb();
+    const userId = await seedUser();
+    const group = await seedGroup(userId);
+    await db.insert(groupMembers).values({ groupId: group.id, userId, role: "owner" });
+
+    await db
+      .update(groupMembers)
+      .set({ removedAt: new Date() })
+      .where(eq(groupMembers.userId, userId));
+
+    const [row] = await db.select().from(groupMembers).where(eq(groupMembers.userId, userId));
+    expect(row?.removedAt).toBeInstanceOf(Date);
+  });
+
+  it("cascades group_members when the group is deleted", async () => {
+    const db = getTestDb();
+    const userId = await seedUser();
+    const group = await seedGroup(userId);
+    await db.insert(groupMembers).values({ groupId: group.id, userId, role: "owner" });
+
+    await db.delete(groups).where(eq(groups.id, group.id));
+
+    const rows = await db.select().from(groupMembers).where(eq(groupMembers.groupId, group.id));
+    expect(rows).toHaveLength(0);
+  });
+
+  it("stores a group invite code once the group it points to exists", async () => {
+    const db = getTestDb();
+    const userId = await seedUser();
+    const group = await seedGroup(userId);
+
     const [invite] = await db
       .insert(inviteCodes)
-      .values({ code: "groupinvite1234", groupId })
+      .values({ code: "group-invite-schema-test", groupId: group.id, createdBy: userId })
       .returning();
 
-    expect(invite?.groupId).toBe(groupId);
+    expect(invite?.groupId).toBe(group.id);
   });
 });

@@ -15,6 +15,13 @@
       "when": 1787699739770,
       "tag": "0001_careful_human_torch",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787702222305,
+      "tag": "0002_groups_currencies_members",
+      "breakpoints": true
     }
   ]
 }

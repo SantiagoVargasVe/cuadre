@@ -26,6 +26,15 @@ let client: postgres.Sql | undefined;
 let db: ReturnType<typeof drizzle<typeof schema>> | undefined;
 
 /**
+ * Reference data seeded by migration (currencies.ts § currencies), not a
+ * per-test fixture. Truncating it between tests would wipe rows nothing
+ * re-inserts, breaking every later test in the file that depends on a
+ * `currencies` FK (e.g. groups.default_currency) — confirmed empirically
+ * when T020 added the first such FK.
+ */
+const SEED_TABLES = new Set(["currencies"]);
+
+/**
  * Call at the top of an integration test file's `describe.skipIf(!hasTestDatabase)`
  * block:
  *
@@ -54,7 +63,8 @@ export function setupTestDb(): void {
     if (!db) return;
     const tableNames = Object.values(schema as Record<string, unknown>)
       .filter((value) => is(value, PgTable))
-      .map((table) => getTableConfig(table as PgTable).name);
+      .map((table) => getTableConfig(table as PgTable).name)
+      .filter((name) => !SEED_TABLES.has(name));
     if (tableNames.length === 0) return;
 
     const quoted = tableNames.map((name) => `"${name}"`).join(", ");

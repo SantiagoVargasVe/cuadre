@@ -1,7 +1,7 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import { db, withTransaction } from "../db/client";
-import { users } from "../db/schema";
+import { groupMembers, users } from "../db/schema";
 import { hashPassword, verifyPassword } from "../auth/password";
 import { signSessionToken } from "../auth/jwt";
 import { ConflictError, UnauthorizedError } from "../errors";
@@ -115,10 +115,7 @@ export async function register(input: RegisterInput): Promise<LoginResult> {
     const { groupId } = await consumeInvite(tx, input.inviteCode, created.id);
 
     if (groupId) {
-      // TODO(T020): insert the group_members row here once that table
-      // exists. Until then, a group-carrying code registers the user but
-      // does not add the membership — see T011's PR for the reasoning;
-      // T020 must close this gap as part of standing up group_members.
+      await tx.insert(groupMembers).values({ groupId, userId: created.id, role: "member" });
     }
 
     return created;
