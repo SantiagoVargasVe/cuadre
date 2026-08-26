@@ -1,9 +1,14 @@
 import { sql } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   char,
+  check,
   customType,
+  date,
+  foreignKey,
   index,
+  integer,
   numeric,
   pgEnum,
   pgTable,
@@ -145,6 +150,114 @@ export const inviteCodes = pgTable(
     index("invite_codes_unconsumed_idx")
       .on(table.consumedAt)
       .where(sql`${table.consumedAt} IS NULL`),
+  ],
+);
+
+/**
+ * Advisory only — the balance engine never reads this (ADR-0005). Stored
+ * so the edit form reopens in the mode the expense was created in.
+ */
+export const splitStrategy = pgEnum("split_strategy", [
+  "equal",
+  "equal_subset",
+  "shares",
+  "percentage",
+  "exact",
+  "loan",
+]);
+
+/**
+ * The ledger's parent row. **No `paid_by` column** (ADR-0005) — one payer
+ * is the common case of N, expressed by `expense_payers` like every other
+ * count. The balanced-expense constraint spanning this table plus its two
+ * children is enforced by a deferred constraint trigger, not here — see
+ * the hand-written SQL in this table's migration.
+ */
+export const expenses = pgTable(
+  "expenses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    // Calendar date only — no time, no zone. A trip crossing timezones
+    // must not shift "the dinner on the 14th" onto another day.
+    expenseDate: date("expense_date", { mode: "string" }).notNull(),
+    totalAmount: bigint("total_amount", { mode: "bigint" }).notNull(),
+    currency: char("currency", { length: 3 })
+      .notNull()
+      .references(() => currencies.code),
+    splitStrategy: splitStrategy("split_strategy").notNull(),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+    version: integer("version").notNull().default(1),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("expenses_total_amount_positive", sql`${table.totalAmount} > 0`),
+    // The group feed's only query.
+    index("expenses_group_id_expense_date_idx")
+      .on(table.groupId, table.expenseDate.desc())
+      .where(sql`${table.deletedAt} IS NULL`),
+  ],
+);
+
+/**
+ * `group_id` here is **denormalized on purpose** — it exists solely so
+ * `FOREIGN KEY (group_id, user_id) REFERENCES group_members (group_id,
+ * user_id)` can make "you cannot put a non-member on an expense" a
+ * database guarantee instead of a service-layer check someone forgets.
+ * Keep it in sync with the parent `expenses.group_id` inside the same
+ * transaction — do not normalize this column away.
+ */
+export const expensePayers = pgTable(
+  "expense_payers",
+  {
+    expenseId: uuid("expense_id")
+      .notNull()
+      .references(() => expenses.id, { onDelete: "cascade" }),
+    groupId: uuid("group_id").notNull(),
+    userId: uuid("user_id").notNull(),
+    amount: bigint("amount", { mode: "bigint" }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.expenseId, table.userId] }),
+    check("expense_payers_amount_positive", sql`${table.amount} > 0`),
+    foreignKey({
+      columns: [table.groupId, table.userId],
+      foreignColumns: [groupMembers.groupId, groupMembers.userId],
+    }),
+  ],
+);
+
+/**
+ * Same denormalized-`group_id` reasoning as `expense_payers`. `weight`
+ * keeps the raw input (shares, or basis points for `percentage`) so an
+ * edit can round-trip the mode the expense was created in — `amount` is
+ * always the resolved minor-unit value and the only thing the balance
+ * engine reads.
+ */
+export const expenseSplits = pgTable(
+  "expense_splits",
+  {
+    expenseId: uuid("expense_id")
+      .notNull()
+      .references(() => expenses.id, { onDelete: "cascade" }),
+    groupId: uuid("group_id").notNull(),
+    userId: uuid("user_id").notNull(),
+    amount: bigint("amount", { mode: "bigint" }).notNull(),
+    weight: bigint("weight", { mode: "bigint" }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.expenseId, table.userId] }),
+    check("expense_splits_amount_positive", sql`${table.amount} > 0`),
+    foreignKey({
+      columns: [table.groupId, table.userId],
+      foreignColumns: [groupMembers.groupId, groupMembers.userId],
+    }),
   ],
 );
 
