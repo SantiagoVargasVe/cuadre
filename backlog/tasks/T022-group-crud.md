@@ -2,7 +2,7 @@
 id: T022
 title: Group CRUD
 epic: E3-groups
-status: todo
+status: done
 depends_on: [T021]
 size: M
 ---
@@ -16,20 +16,20 @@ Read [api-contract.md](../../docs/context/api-contract.md) § *Groups*.
 
 ## Acceptance criteria
 
-- [ ] `POST /api/groups { title, description?, defaultCurrency? }` → `201`. The creator becomes
+- [x] `POST /api/groups { title, description?, defaultCurrency? }` → `201`. The creator becomes
       `owner` and a `group_members` row in the same transaction
-- [ ] `defaultCurrency` falls back to `DEFAULT_CURRENCY` and must be in `SUPPORTED_CURRENCIES`
-- [ ] `GET /api/groups/:id` → group, members, settings. Members are display names and ids —
+- [x] `defaultCurrency` falls back to `DEFAULT_CURRENCY` and must be in `SUPPORTED_CURRENCIES`
+- [x] `GET /api/groups/:id` → group, members, settings. Members are display names and ids —
       **never email addresses**
-- [ ] `PATCH /api/groups/:id { title?, description?, simplifyDebts? }`
-- [ ] **`simplifyDebts` is a plain boolean flip.** It writes nothing else, computes nothing, and
+- [x] `PATCH /api/groups/:id { title?, description?, simplifyDebts? }`
+- [x] **`simplifyDebts` is a plain boolean flip.** It writes nothing else, computes nothing, and
       triggers no recalculation — see
       [ADR-0006](../../docs/adr/0006-simplification-is-derived.md). If this handler grows a branch
       that touches balances, something has gone wrong
-- [ ] `POST /api/groups/:id/archive` — **owner only**. Archived groups are read-only
-- [ ] Title ≤ 200 chars, description ≤ 2000, enforced by Zod at the boundary
-- [ ] Every handler calls the guard **inside the service**, not in the route
-- [ ] Tests: non-member gets `404` on all four; member-not-owner gets `403` on archive; creating a
+- [x] `POST /api/groups/:id/archive` — **owner only**. Archived groups are read-only
+- [x] Title ≤ 200 chars, description ≤ 2000, enforced by Zod at the boundary
+- [x] Every handler calls the guard **inside the service**, not in the route
+- [x] Tests: non-member gets `404` on all four; member-not-owner gets `403` on archive; creating a
       group makes exactly one owner membership; an unsupported currency is `422`
 
 ## Out of scope

@@ -44,13 +44,18 @@ export function mapErrorToResponse(error: unknown): NextResponse {
  * itself — throw a DomainError (or let one bubble up from a service) and
  * this catches it. Route handlers stay "Zod parse → call service →
  * serialize. Nothing else." (backend/CLAUDE.md § Layering).
+ *
+ * Generic over any trailing arguments so it wraps both a static route's
+ * `(request)` handler and a dynamic route's `(request, { params })` —
+ * Next.js calls the exported GET/PATCH/etc. with whatever the file's own
+ * segment requires, and this has to forward all of it through unchanged.
  */
-export function withErrorHandling(
-  handler: (request: NextRequest) => Promise<NextResponse>,
-): (request: NextRequest) => Promise<NextResponse> {
-  return async (request) => {
+export function withErrorHandling<Args extends unknown[]>(
+  handler: (request: NextRequest, ...args: Args) => Promise<NextResponse>,
+): (request: NextRequest, ...args: Args) => Promise<NextResponse> {
+  return async (request, ...args) => {
     try {
-      return await handler(request);
+      return await handler(request, ...args);
     } catch (error) {
       return mapErrorToResponse(error);
     }

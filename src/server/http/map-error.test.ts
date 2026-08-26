@@ -92,4 +92,15 @@ describe("withErrorHandling", () => {
     const response = await handler(request);
     expect(response.status).toBe(404);
   });
+
+  it("forwards a dynamic route's extra context argument through to the handler", async () => {
+    const context = { params: Promise.resolve({ id: "group-1" }) };
+    const handler = withErrorHandling(async (_request, ctx: typeof context) => {
+      const { id } = await ctx.params;
+      return NextResponse.json({ id });
+    });
+
+    const response = await handler(request, context);
+    expect(await response.json()).toEqual({ id: "group-1" });
+  });
 });
