@@ -28,6 +28,7 @@ import {
   users,
 } from "../db/schema";
 import { assertSupportedCurrency } from "./currencies";
+import { convertAmounts, loadConversionContext, type ConversionContext } from "./fx";
 import { ValidationError } from "../errors";
 
 export class PayersDoNotBalanceError extends ValidationError {
@@ -439,6 +440,12 @@ export interface ExpensePartyWithName extends ExpenseParty {
   displayName: string;
 }
 
+export interface ConvertedAmounts {
+  total: { amount: string; currency: string };
+  payers: ExpensePartyWithName[];
+  splits: ExpensePartyWithName[];
+}
+
 export interface ExpenseSummary {
   id: string;
   title: string;
@@ -447,6 +454,8 @@ export interface ExpenseSummary {
   payers: ExpensePartyWithName[];
   splits: ExpensePartyWithName[];
   strategy: string;
+  /** Present only when the group has a display currency different from this expense's own (T054). */
+  converted: ConvertedAmounts | null;
 }
 
 export interface ExpenseDetail extends ExpenseSummary {
@@ -507,10 +516,57 @@ async function loadPartiesFor(
   return { payersByExpense: groupByExpenseId(payerRows), splitsByExpense: groupByExpenseId(splitRows) };
 }
 
+function toAmountMap(parties: ExpensePartyWithName[]): Map<string, bigint> {
+  return new Map(parties.map((party) => [party.userId, BigInt(party.amount)]));
+}
+
+function displayNameLookup(parties: ExpensePartyWithName[]): Map<string, string> {
+  return new Map(parties.map((party) => [party.userId, party.displayName]));
+}
+
+function toNamedParties(amounts: Map<string, bigint>, names: Map<string, string>): ExpensePartyWithName[] {
+  return [...amounts].map(([userId, amount]) => ({
+    userId,
+    amount: amount.toString(),
+    displayName: names.get(userId)!,
+  }));
+}
+
+/**
+ * The read-path conversion (T054, splitting.md § 6): converting each
+ * expense's total and re-apportioning payers/splits by their original
+ * amounts, so the feed can show both without ever risking an
+ * independently-converted row that misses the converted total by a unit.
+ * `null` when there's no display currency, or this expense is already in
+ * it — nothing to add to what `total`/`payers`/`splits` already show.
+ */
+function convertForFeed(
+  expense: typeof expenses.$inferSelect,
+  payers: ExpensePartyWithName[],
+  splits: ExpensePartyWithName[],
+  ctx: ConversionContext | null,
+): ConvertedAmounts | null {
+  if (!ctx || expense.currency === ctx.displayCurrency) return null;
+
+  const names = displayNameLookup([...payers, ...splits]);
+  const converted = convertAmounts(ctx, expense.currency, expense.id, {
+    total: expense.totalAmount,
+    payers: toAmountMap(payers),
+    splits: toAmountMap(splits),
+  });
+
+  return {
+    total: { amount: converted.total.toString(), currency: converted.currency },
+    payers: toNamedParties(converted.payers, names),
+    splits: toNamedParties(converted.splits, names),
+  };
+}
+
 function toSummary(
   expense: typeof expenses.$inferSelect,
   payers: ExpensePartyWithName[],
   splits: ExpensePartyWithName[],
+  ctx: ConversionContext | null,
 ): ExpenseSummary {
   return {
     id: expense.id,
@@ -520,6 +576,7 @@ function toSummary(
     payers,
     splits,
     strategy: expense.splitStrategy,
+    converted: convertForFeed(expense, payers, splits, ctx),
   };
 }
 
@@ -557,6 +614,12 @@ export interface ExpenseListResult {
   nextCursor: string | null;
 }
 
+/** `null` when the group has no display currency set — nothing to convert the feed into. */
+async function loadGroupConversionContext(groupId: string): Promise<ConversionContext | null> {
+  const [group] = await db.select({ displayCurrency: groups.displayCurrency }).from(groups).where(eq(groups.id, groupId)).limit(1);
+  return group?.displayCurrency ? loadConversionContext(groupId, group.displayCurrency) : null;
+}
+
 /**
  * The group feed's data (api-contract.md § Expenses). Ordered by
  * `expense_date DESC, id DESC` — the id tiebreak is what keeps pagination
@@ -590,9 +653,12 @@ export async function listExpenses(
   const hasMore = rows.length > limit;
   const page = hasMore ? rows.slice(0, limit) : rows;
 
-  const { payersByExpense, splitsByExpense } = await loadPartiesFor(page.map((row) => row.id));
+  const [{ payersByExpense, splitsByExpense }, ctx] = await Promise.all([
+    loadPartiesFor(page.map((row) => row.id)),
+    loadGroupConversionContext(groupId),
+  ]);
   const items = page.map((row) =>
-    toSummary(row, payersByExpense.get(row.id) ?? [], splitsByExpense.get(row.id) ?? []),
+    toSummary(row, payersByExpense.get(row.id) ?? [], splitsByExpense.get(row.id) ?? [], ctx),
   );
 
   const last = page.at(-1);
@@ -615,10 +681,13 @@ export async function getExpense(expenseId: string, userId: string): Promise<Exp
     .limit(1);
   await requireMembershipForRow(expense, userId);
 
-  const { payersByExpense, splitsByExpense } = await loadPartiesFor([expense!.id]);
+  const [{ payersByExpense, splitsByExpense }, ctx] = await Promise.all([
+    loadPartiesFor([expense!.id]),
+    loadGroupConversionContext(expense!.groupId),
+  ]);
 
   return {
-    ...toSummary(expense!, payersByExpense.get(expense!.id) ?? [], splitsByExpense.get(expense!.id) ?? []),
+    ...toSummary(expense!, payersByExpense.get(expense!.id) ?? [], splitsByExpense.get(expense!.id) ?? [], ctx),
     version: expense!.version,
     editedAt: expense!.version > 1 ? expense!.updatedAt.toISOString() : null,
   };

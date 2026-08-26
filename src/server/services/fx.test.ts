@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { hasTestDatabase, setupTestDb, getTestDb } from "../../test/db";
-import { fxRates } from "../db/schema";
+import { fxRates, groupFxPins, users } from "../db/schema";
 import type { ProviderRates, RateProvider } from "../fx/providers/types";
 
 const DATABASE_URL_TEST = process.env.DATABASE_URL_TEST;
@@ -124,5 +124,104 @@ describe.skipIf(!hasTestDatabase)("fx service", () => {
     vi.spyOn(await import("../fx/providers"), "getRateProvider").mockReturnValue(provider);
 
     await expect(ensureRate("COP")).rejects.toThrow(RateUnavailableError);
+  });
+});
+
+describe.skipIf(!hasTestDatabase)("loadConversionContext / convertAmounts / convertSettlementAmount", () => {
+  setupTestDb();
+
+  let loadConversionContext: typeof import("./fx").loadConversionContext;
+  let convertAmounts: typeof import("./fx").convertAmounts;
+  let convertSettlementAmount: typeof import("./fx").convertSettlementAmount;
+  let RateUnavailableError: typeof import("./fx").RateUnavailableError;
+  let createGroup: typeof import("./groups").createGroup;
+
+  beforeAll(async () => {
+    vi.stubEnv("APP_URL", "http://localhost:3000");
+    vi.stubEnv("DATABASE_URL", DATABASE_URL_TEST ?? "");
+    vi.stubEnv("AUTH_SECRET", "a".repeat(48));
+    vi.stubEnv("SUPPORTED_CURRENCIES", "COP,USD,EUR");
+    vi.stubEnv("DEFAULT_CURRENCY", "COP");
+    vi.stubEnv("FX_PROVIDER", "open-er-api");
+    vi.stubEnv("FX_BASE_CURRENCY", "USD");
+    vi.stubEnv("FX_TRM_CROSSCHECK", "false");
+
+    ({ loadConversionContext, convertAmounts, convertSettlementAmount, RateUnavailableError } = await import("./fx"));
+    ({ createGroup } = await import("./groups"));
+  });
+
+  afterAll(() => vi.unstubAllEnvs());
+
+  async function seedGroupWithPin(rate: string) {
+    const db = getTestDb();
+    const [owner] = await db
+      .insert(users)
+      .values({ email: `${crypto.randomUUID()}@example.com`, displayName: "Ana", passwordHash: "x" })
+      .returning();
+    const group = await createGroup(owner!.id, { title: "Trip" });
+    await db.insert(groupFxPins).values({
+      groupId: group.id,
+      fromCurrency: "COP",
+      toCurrency: "USD",
+      rate,
+      asOf: "2026-08-24",
+      source: "open-er-api",
+      pinnedBy: owner!.id,
+    });
+    return group.id;
+  }
+
+  it("loads the pins for the display currency and every currency's exponent", async () => {
+    const groupId = await seedGroupWithPin("0.00025");
+    const ctx = await loadConversionContext(groupId, "USD");
+
+    expect(ctx.ratesByFromCurrency.get("COP")).toBe(2500000n);
+    expect(ctx.exponentsByCurrency.get("COP")).toBe(2);
+    expect(ctx.exponentsByCurrency.get("USD")).toBe(2);
+    expect(ctx.pins).toEqual([
+      expect.objectContaining({ fromCurrency: "COP", toCurrency: "USD", rate: "0.0002500000" }),
+    ]);
+  });
+
+  it("convertAmounts passes an already-display-currency expense through unchanged", async () => {
+    const groupId = await seedGroupWithPin("0.00025");
+    const ctx = await loadConversionContext(groupId, "USD");
+    const amounts = { total: 100n, payers: new Map([["ana", 100n]]), splits: new Map([["ana", 100n]]) };
+
+    const result = convertAmounts(ctx, "USD", "expense-1", amounts);
+    expect(result).toEqual({ currency: "USD", ...amounts });
+  });
+
+  it("convertAmounts converts a foreign-currency expense using its pin", async () => {
+    const groupId = await seedGroupWithPin("0.00025");
+    const ctx = await loadConversionContext(groupId, "USD");
+
+    const result = convertAmounts(ctx, "COP", "expense-1", {
+      total: 30000n,
+      payers: new Map([["ana", 30000n]]),
+      splits: new Map([
+        ["ana", 15000n],
+        ["beto", 15000n],
+      ]),
+    });
+    expect(result.currency).toBe("USD");
+    expect(result.total).toBe(8n);
+  });
+
+  it("convertAmounts throws RATE_UNAVAILABLE for a currency with no pin, e.g. one added after the group last pinned", async () => {
+    const groupId = await seedGroupWithPin("0.00025");
+    const ctx = await loadConversionContext(groupId, "USD");
+
+    expect(() =>
+      convertAmounts(ctx, "EUR", "expense-1", { total: 100n, payers: new Map([["ana", 100n]]), splits: new Map([["ana", 100n]]) }),
+    ).toThrow(RateUnavailableError);
+  });
+
+  it("convertSettlementAmount converts a single amount, no apportionment involved", async () => {
+    const groupId = await seedGroupWithPin("0.00025");
+    const ctx = await loadConversionContext(groupId, "USD");
+
+    expect(convertSettlementAmount(ctx, "COP", 30000n)).toEqual({ currency: "USD", amount: 8n });
+    expect(convertSettlementAmount(ctx, "USD", 30000n)).toEqual({ currency: "USD", amount: 30000n });
   });
 });

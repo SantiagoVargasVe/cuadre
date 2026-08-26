@@ -171,6 +171,25 @@ half-updated split against a stale total is not a thing anyone should have to re
 Any member may edit or delete any expense in their group. `updated_by` and the revision history
 are what make that safe, not permissions.
 
+### Reading, with a display currency set
+
+`GET .../expenses` and `GET /api/expenses/:id` add a `converted` field next to `total`/`payers`/
+`splits`, so the UI can show both the original amounts and what they come to in the group's
+display currency:
+
+```json
+{ "total": { "amount": "30000000", "currency": "COP" }, "payers": [ … ], "splits": [ … ],
+  "converted": {
+    "total": { "amount": "75", "currency": "USD" },
+    "payers": [ { "userId": "…ana", "amount": "75", "displayName": "Ana" } ],
+    "splits": [ … ]
+  } }
+```
+
+`converted` is `null` when there's no display currency, or the expense is already in it — nothing
+to add to what `total`/`payers`/`splits` already show. `RATE_UNAVAILABLE` (`422`) for the same
+reason as the balances endpoint: a currency present with no matching pin.
+
 ---
 
 ## Balances
@@ -209,6 +228,11 @@ for preview only** — it never writes. Flipping the toggle for real is
 - `Σ net` inside each entry is always `0`. The server asserts it before responding.
 - When `simplified: true`, each plan edge may also carry `explains[]` — the raw pairwise debts it
   replaced — so the UI can answer "why am I paying someone I never bought anything with".
+- When the group has a display currency, the single entry also carries `pins` — the same
+  `{ fromCurrency, toCurrency, rate, asOf, source }` rows `PUT /display-currency` returns — so the
+  UI can label what it converted at. Absent when there's no display currency.
+- `RATE_UNAVAILABLE` (`422`) if a currency present in the group's activity has no matching pin —
+  e.g. a member added an expense in a currency after the group last pinned. Never shown unconverted.
 
 ---
 

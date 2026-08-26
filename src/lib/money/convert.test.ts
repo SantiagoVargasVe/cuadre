@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { InvalidRateError } from "./errors";
-import { convertMinorUnits, deriveCrossRateScaled, formatRateScaled, parseRateScaled } from "./convert";
+import {
+  convertExpenseAmounts,
+  convertMinorUnits,
+  deriveCrossRateScaled,
+  formatRateScaled,
+  parseRateScaled,
+} from "./convert";
+
+function sum(map: Map<string, bigint>): bigint {
+  let total = 0n;
+  for (const value of map.values()) total += value;
+  return total;
+}
 
 describe("parseRateScaled", () => {
   it("matches currency.md's own worked rate exactly", () => {
@@ -106,5 +118,126 @@ describe("formatRateScaled", () => {
 
   it("formats a scaled value smaller than the scale factor itself", () => {
     expect(formatRateScaled(5n)).toBe("0.0000000005");
+  });
+});
+
+describe("convertExpenseAmounts", () => {
+  it("converts the total, then re-apportions splits and payers by their original amounts, exp2 -> exp2", () => {
+    const rateScaled = parseRateScaled("0.00025"); // ~USD per 1 COP
+    const result = convertExpenseAmounts(
+      {
+        total: 30000n,
+        payers: new Map([["ana", 30000n]]),
+        splits: new Map([
+          ["ana", 10000n],
+          ["beto", 10000n],
+          ["caro", 10000n],
+        ]),
+      },
+      rateScaled,
+      2,
+      2,
+      "expense-1",
+    );
+
+    expect(result.total).toBe(8n); // 30000 * 0.00025 = 7.5, half-up
+    expect(sum(result.splits)).toBe(result.total);
+    expect(sum(result.payers)).toBe(result.total);
+  });
+
+  it("re-apportions splits using the same seed as the original split, so the same member absorbs the remainder", () => {
+    const splits = new Map([
+      ["ana", 10000n],
+      ["beto", 10000n],
+      ["caro", 10000n],
+    ]);
+    const rateScaled = parseRateScaled("0.00025");
+    const result = convertExpenseAmounts(
+      { total: 30000n, payers: new Map([["ana", 30000n]]), splits },
+      rateScaled,
+      2,
+      2,
+      "expense-1",
+    );
+    // The original equal split (via resolveEqualSplit, seeded "expense-1")
+    // would hand its own remainder to whichever member that seed rotates
+    // to; re-apportioning at a different total with the *same* seed must
+    // reproduce the identical rotation, not a fresh one.
+    const again = convertExpenseAmounts(
+      { total: 30000n, payers: new Map([["ana", 30000n]]), splits },
+      rateScaled,
+      2,
+      2,
+      "expense-1",
+    );
+    expect(result.splits).toEqual(again.splits);
+  });
+
+  it("handles exponent asymmetry (exp0 -> exp2), not just same-exponent currencies", () => {
+    const rateScaled = parseRateScaled("1.0");
+    const result = convertExpenseAmounts(
+      {
+        total: 3n,
+        payers: new Map([["ana", 3n]]),
+        splits: new Map([
+          ["ana", 1n],
+          ["beto", 2n],
+        ]),
+      },
+      rateScaled,
+      0,
+      2,
+      "expense-exp",
+    );
+    expect(result.total).toBe(300n);
+    expect(sum(result.splits)).toBe(300n);
+    expect(sum(result.payers)).toBe(300n);
+  });
+
+  it("a converted total that rounds to zero drops every payer and split instead of throwing", () => {
+    const rateScaled = parseRateScaled("0.00025");
+    const result = convertExpenseAmounts(
+      { total: 1n, payers: new Map([["ana", 1n]]), splits: new Map([["ana", 1n]]) },
+      rateScaled,
+      2,
+      2,
+      "expense-tiny",
+    );
+    expect(result.total).toBe(0n);
+    expect(result.payers.size).toBe(0);
+    expect(result.splits.size).toBe(0);
+  });
+
+  it("a single payer or split member always gets the whole converted total", () => {
+    const rateScaled = parseRateScaled("3042.806266");
+    const result = convertExpenseAmounts(
+      { total: 2000n, payers: new Map([["ana", 2000n]]), splits: new Map([["ana", 2000n]]) },
+      rateScaled,
+      2,
+      2,
+      "expense-solo",
+    );
+    expect(result.payers.get("ana")).toBe(result.total);
+    expect(result.splits.get("ana")).toBe(result.total);
+  });
+
+  it("is a pure function of its inputs — same call, same result", () => {
+    const rateScaled = parseRateScaled("3042.806266");
+    const amounts = {
+      total: 777n,
+      payers: new Map([
+        ["ana", 300n],
+        ["beto", 477n],
+      ]),
+      splits: new Map([
+        ["ana", 100n],
+        ["beto", 677n],
+      ]),
+    };
+    const first = convertExpenseAmounts(amounts, rateScaled, 2, 0, "expense-2");
+    const second = convertExpenseAmounts(amounts, rateScaled, 2, 0, "expense-2");
+    expect(first).toEqual(second);
+    expect(sum(first.splits)).toBe(first.total);
+    expect(sum(first.payers)).toBe(first.total);
   });
 });
