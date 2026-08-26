@@ -40,6 +40,19 @@ export interface ExpenseListResult {
   nextCursor: string | null;
 }
 
+/** Mirrors `GroupMemberSummary`/`GroupDetail` (server/services/groups.ts) —
+ * the wire shape from `GET /api/groups/:id`. */
+export interface GroupMember {
+  userId: string;
+  displayName: string;
+  role: "owner" | "member";
+}
+
+export interface GroupDetailResult {
+  group: { id: string; title: string; defaultCurrency: string };
+  members: GroupMember[];
+}
+
 /** Wire money (`{ amount: string }`) → `<Money>`'s `{ amount: bigint }` —
  * the one conversion point for rows/details built from this feed's data. */
 export function wireToMoney(wire: { amount: string; currency: string }): {
