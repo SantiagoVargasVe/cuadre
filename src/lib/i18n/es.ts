@@ -71,6 +71,30 @@ export const es = {
     genericError: "Ocurrió un error. Intenta de nuevo.",
     comingSoon: "Próximamente.",
   },
+  groups: {
+    heading: "Tus grupos",
+    createButton: "Crear grupo",
+    memberCount: (n: number) => (n === 1 ? "1 miembro" : `${n} miembros`),
+    settled: "En ceros",
+    archivedSectionTitle: "Archivados",
+    empty: {
+      title: "Aún no tienes grupos",
+      body: "Crea uno para empezar a llevar la cuenta, o pide que te compartan un enlace de invitación a uno ya existente.",
+    },
+    createDialog: {
+      title: "Crear grupo",
+      titleLabel: "Título",
+      descriptionLabel: "Descripción",
+      descriptionHint: "Opcional.",
+      currencyLabel: "Moneda por defecto",
+      submit: "Crear",
+      submitting: "Creando…",
+      cancel: "Cancelar",
+      errors: {
+        generic: "Ocurrió un error. Intenta de nuevo.",
+      },
+    },
+  },
   join: {
     someone: "Alguien",
     invitedToGroup: (inviter: string, group: string) => `${inviter} te invitó a ${group}`,

@@ -2,7 +2,7 @@
 id: T062
 title: /groups — your groups and your net position
 epic: E7-frontend
-status: todo
+status: done
 depends_on: [T060, T061, T025]
 size: S
 ---
@@ -16,16 +16,16 @@ Read [frontend/CLAUDE.md](../../docs/frontend/CLAUDE.md) § *Multi-currency disp
 
 ## Acceptance criteria
 
-- [ ] Server-rendered list from `GET /api/groups`
-- [ ] Each card: title, member count, and **your net position per currency**
-- [ ] **Never sum across currencies**, never show a combined total, and don't let the layout imply
+- [x] Server-rendered list from `GET /api/groups`
+- [x] Each card: title, member count, and **your net position per currency**
+- [x] **Never sum across currencies**, never show a combined total, and don't let the layout imply
       one. Two currencies are two lines
-- [ ] Credit/debit state carries a **sign or a word alongside the colour**, never colour alone
-- [ ] Empty state offers creating a group and explains that joining happens through an invite link
-- [ ] Archived groups are visually separated, not silently dropped
-- [ ] Create-group flow: title, description, default currency
-- [ ] Verified at 375px
-- [ ] Tests: a member with COP and USD positions renders two lines and no total; the empty state
+- [x] Credit/debit state carries a **sign or a word alongside the colour**, never colour alone
+- [x] Empty state offers creating a group and explains that joining happens through an invite link
+- [x] Archived groups are visually separated, not silently dropped
+- [x] Create-group flow: title, description, default currency
+- [x] Verified at 375px
+- [x] Tests: a member with COP and USD positions renders two lines and no total; the empty state
       renders; creating a group navigates to it
 
 ## Out of scope
