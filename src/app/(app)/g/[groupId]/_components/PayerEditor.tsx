@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { formatMoney, parseAmountInput } from "../../../../../lib/money/format";
+import { formatAmountInputValue, formatMoney, parseAmountInput } from "../../../../../lib/money/format";
 import { es } from "../../../../../lib/i18n/es";
 import { Checkbox } from "../../../../_ui/Checkbox";
 import { MoneyField } from "../../../../_ui/MoneyField";
@@ -81,7 +81,7 @@ export function PayerEditor({ members, myUserId, currency, totalAmount, value, o
                   // becomes 01, not 1.
                   defaultValue={(() => {
                     const amount = value?.find((p) => p.userId === member.userId)?.amount;
-                    return amount ? amount.toString() : "";
+                    return amount ? formatAmountInputValue(amount, currency) : "";
                   })()}
                   onChange={(event) => setAmount(member.userId, parseAmountInput(event.target.value, currency))}
                 />

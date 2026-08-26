@@ -149,6 +149,27 @@ export function formatAmountInput(raw: string, currency: string): string {
 }
 
 /**
+ * The other inverse of `parseAmountInput`: a `bigint` of minor units →
+ * the grouped major-unit string a `<MoneyField>` expects as its
+ * `defaultValue`. Needed anywhere a field is prefilled with a *computed*
+ * amount (an apportioned default, a previously-typed value restored on
+ * remount) rather than built up from the user's own keystrokes — passing
+ * the raw minor-unit digits there would show e.g. `5000000` instead of
+ * `50.000` for fifty thousand pesos.
+ */
+export function formatAmountInputValue(amount: bigint, currency: string): string {
+  const meta = getCurrencyMeta(currency);
+  const divisor = 10n ** BigInt(meta.exponent);
+  const majorPart = amount / divisor;
+  const groupedInteger = majorPart.toString().replace(/\B(?=(\d{3})+(?!\d))/g, GROUPING_SEPARATOR);
+  if (meta.displayDecimals === 0) return groupedInteger;
+
+  const minorRemainder = amount % divisor;
+  const fraction = minorRemainder.toString().padStart(meta.exponent, "0").slice(0, meta.displayDecimals);
+  return `${groupedInteger}${DECIMAL_SEPARATOR}${fraction}`;
+}
+
+/**
  * The inverse conversion, run once at the form boundary (design-system.md
  * § *Forms*): a `<MoneyField>`'s displayed string → a `bigint` of minor
  * units at `currency`'s ISO exponent. Missing or partial fraction digits
