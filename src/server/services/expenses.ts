@@ -446,6 +446,11 @@ export interface ConvertedAmounts {
   splits: ExpensePartyWithName[];
 }
 
+export interface EditedBy {
+  userId: string;
+  displayName: string;
+}
+
 export interface ExpenseSummary {
   id: string;
   title: string;
@@ -456,11 +461,15 @@ export interface ExpenseSummary {
   strategy: string;
   /** Present only when the group has a display currency different from this expense's own (T054). */
   converted: ConvertedAmounts | null;
+  /** `null` for a never-edited expense (`version === 1`) — on the feed row
+   * as well as the detail view (T063: "an edited expense shows an
+   * 'editado' marker with who and when"). */
+  editedAt: string | null;
+  editedBy: EditedBy | null;
 }
 
 export interface ExpenseDetail extends ExpenseSummary {
   version: number;
-  editedAt: string | null;
 }
 
 interface PartyRow {
@@ -562,12 +571,37 @@ function convertForFeed(
   };
 }
 
+/**
+ * Names for whoever last edited any expense on this page, in one query
+ * regardless of how many expenses there are (same reasoning as
+ * `loadPartiesFor`). A never-edited expense's `updatedBy` is `null` and
+ * never reaches this query.
+ */
+async function loadEditedByNames(
+  rows: (typeof expenses.$inferSelect)[],
+): Promise<Map<string, string>> {
+  const editorIds = [...new Set(rows.filter((row) => row.version > 1 && row.updatedBy).map((row) => row.updatedBy!))];
+  if (editorIds.length === 0) return new Map();
+
+  const editors = await db
+    .select({ id: users.id, displayName: users.displayName })
+    .from(users)
+    .where(inArray(users.id, editorIds));
+  return new Map(editors.map((editor) => [editor.id, editor.displayName]));
+}
+
 function toSummary(
   expense: typeof expenses.$inferSelect,
   payers: ExpensePartyWithName[],
   splits: ExpensePartyWithName[],
   ctx: ConversionContext | null,
+  editedByNames: Map<string, string>,
 ): ExpenseSummary {
+  const wasEdited = expense.version > 1;
+  // `updatedBy` can be null even for an edited expense — its FK is
+  // `ON DELETE SET NULL` (schema.ts) — so "when" and "who" are decided
+  // independently rather than one gating the other.
+  const editorName = expense.updatedBy ? editedByNames.get(expense.updatedBy) : undefined;
   return {
     id: expense.id,
     title: expense.title,
@@ -577,6 +611,8 @@ function toSummary(
     splits,
     strategy: expense.splitStrategy,
     converted: convertForFeed(expense, payers, splits, ctx),
+    editedAt: wasEdited ? expense.updatedAt.toISOString() : null,
+    editedBy: editorName ? { userId: expense.updatedBy!, displayName: editorName } : null,
   };
 }
 
@@ -653,12 +689,13 @@ export async function listExpenses(
   const hasMore = rows.length > limit;
   const page = hasMore ? rows.slice(0, limit) : rows;
 
-  const [{ payersByExpense, splitsByExpense }, ctx] = await Promise.all([
+  const [{ payersByExpense, splitsByExpense }, ctx, editedByNames] = await Promise.all([
     loadPartiesFor(page.map((row) => row.id)),
     loadGroupConversionContext(groupId),
+    loadEditedByNames(page),
   ]);
   const items = page.map((row) =>
-    toSummary(row, payersByExpense.get(row.id) ?? [], splitsByExpense.get(row.id) ?? [], ctx),
+    toSummary(row, payersByExpense.get(row.id) ?? [], splitsByExpense.get(row.id) ?? [], ctx, editedByNames),
   );
 
   const last = page.at(-1);
@@ -681,14 +718,20 @@ export async function getExpense(expenseId: string, userId: string): Promise<Exp
     .limit(1);
   await requireMembershipForRow(expense, userId);
 
-  const [{ payersByExpense, splitsByExpense }, ctx] = await Promise.all([
+  const [{ payersByExpense, splitsByExpense }, ctx, editedByNames] = await Promise.all([
     loadPartiesFor([expense!.id]),
     loadGroupConversionContext(expense!.groupId),
+    loadEditedByNames([expense!]),
   ]);
 
   return {
-    ...toSummary(expense!, payersByExpense.get(expense!.id) ?? [], splitsByExpense.get(expense!.id) ?? [], ctx),
+    ...toSummary(
+      expense!,
+      payersByExpense.get(expense!.id) ?? [],
+      splitsByExpense.get(expense!.id) ?? [],
+      ctx,
+      editedByNames,
+    ),
     version: expense!.version,
-    editedAt: expense!.version > 1 ? expense!.updatedAt.toISOString() : null,
   };
 }

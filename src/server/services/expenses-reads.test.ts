@@ -153,6 +153,33 @@ describe.skipIf(!hasTestDatabase)("listExpenses / getExpense", () => {
       const { groupId } = await seedGroup(1);
       await expect(listExpenses(groupId, crypto.randomUUID(), {})).rejects.toThrow(NotAMemberError);
     });
+
+    it("carries editedAt and editedBy on a feed row for an edited expense", async () => {
+      const { groupId, memberIds } = await seedGroup(2, ["Ana", "Beto"]);
+      const created = await seedExpense(groupId, memberIds[0]!, "2026-08-24");
+      await updateExpense(created.id, memberIds[1]!, {
+        title: "Renamed",
+        date: "2026-08-24",
+        amount: "1000",
+        currency: "COP",
+        split: { strategy: "equal" },
+      });
+
+      const result = await listExpenses(groupId, memberIds[0]!, {});
+      const item = result.items.find((i) => i.id === created.id);
+      expect(item?.editedAt).not.toBeNull();
+      expect(item?.editedBy).toEqual({ userId: memberIds[1], displayName: "Beto" });
+    });
+
+    it("leaves editedAt and editedBy null on a feed row for a never-edited expense", async () => {
+      const { groupId, memberIds } = await seedGroup(1);
+      const created = await seedExpense(groupId, memberIds[0]!, "2026-08-24");
+
+      const result = await listExpenses(groupId, memberIds[0]!, {});
+      const item = result.items.find((i) => i.id === created.id);
+      expect(item?.editedAt).toBeNull();
+      expect(item?.editedBy).toBeNull();
+    });
   });
 
   describe("getExpense", () => {
@@ -180,6 +207,24 @@ describe.skipIf(!hasTestDatabase)("listExpenses / getExpense", () => {
       const detail = await getExpense(created.id, memberIds[0]!);
       expect(detail.version).toBe(2);
       expect(detail.editedAt).not.toBeNull();
+    });
+
+    it("names who last edited it", async () => {
+      const { groupId, memberIds } = await seedGroup(2, ["Ana", "Beto"]);
+      const created = await seedExpense(groupId, memberIds[0]!, "2026-08-24");
+
+      expect((await getExpense(created.id, memberIds[0]!)).editedBy).toBeNull();
+
+      await updateExpense(created.id, memberIds[1]!, {
+        title: "Renamed",
+        date: "2026-08-24",
+        amount: "1000",
+        currency: "COP",
+        split: { strategy: "equal" },
+      });
+
+      const detail = await getExpense(created.id, memberIds[0]!);
+      expect(detail.editedBy).toEqual({ userId: memberIds[1], displayName: "Beto" });
     });
 
     it("treats a soft-deleted expense as not found", async () => {
