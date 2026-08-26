@@ -23,4 +23,7 @@ export const policies = {
 
   /** Unauthenticated and looks enumerable even at 16 chars of nanoid (security.md). */
   inviteLookup: { capacity: 20, windowSeconds: 10 * MINUTE },
+
+  /** One caller (the systemd timer) with the one correct token; a generous burst still catches a misbehaving retry loop. */
+  fxRefresh: { capacity: 5, windowSeconds: HOUR },
 } as const satisfies Record<string, RateLimitPolicy>;
