@@ -7,7 +7,7 @@ import { Button } from "../../../../_ui/Button";
 import { AddExpenseFab } from "./AddExpenseFab";
 import { EmptyState } from "./EmptyState";
 import { ExpenseRow } from "./ExpenseRow";
-import type { ExpenseListResult, ExpenseSummary } from "./types";
+import type { ExpenseListResult, ExpenseSummary, GroupMember } from "./types";
 
 const t = es.expenseFeed;
 
@@ -16,15 +16,24 @@ export interface ExpenseFeedProps {
   myUserId: string;
   initialItems: ExpenseSummary[];
   initialCursor: string | null;
+  members: GroupMember[];
+  defaultCurrency: string;
 }
 
 /**
  * The first page is server-rendered (frontend/CLAUDE.md § *Data loading*:
  * "renders from GET /api/groups/:id plus the tab's own endpoint") — this
- * component just owns "load more" from there on, the one piece of real
- * interactivity a read-heavy feed needs.
+ * component just owns "load more" and prepending a freshly-created expense,
+ * the real interactivity a read-heavy feed needs.
  */
-export function ExpenseFeed({ groupId, myUserId, initialItems, initialCursor }: ExpenseFeedProps) {
+export function ExpenseFeed({
+  groupId,
+  myUserId,
+  initialItems,
+  initialCursor,
+  members,
+  defaultCurrency,
+}: ExpenseFeedProps) {
   const [items, setItems] = React.useState(initialItems);
   const [cursor, setCursor] = React.useState(initialCursor);
   const [loading, setLoading] = React.useState(false);
@@ -46,6 +55,10 @@ export function ExpenseFeed({ groupId, myUserId, initialItems, initialCursor }: 
     }
   }
 
+  function handleCreated(expense: ExpenseSummary) {
+    setItems((current) => [expense, ...current]);
+  }
+
   return (
     <div className="flex flex-col gap-3 pb-20">
       {items.length === 0 ? (
@@ -62,7 +75,13 @@ export function ExpenseFeed({ groupId, myUserId, initialItems, initialCursor }: 
           )}
         </>
       )}
-      <AddExpenseFab />
+      <AddExpenseFab
+        groupId={groupId}
+        members={members}
+        defaultCurrency={defaultCurrency}
+        myUserId={myUserId}
+        onCreated={handleCreated}
+      />
     </div>
   );
 }

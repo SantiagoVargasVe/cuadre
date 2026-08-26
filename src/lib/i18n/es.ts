@@ -95,6 +95,24 @@ export const es = {
       },
     },
   },
+  expenseForm: {
+    titleLabel: "Título",
+    amountLabel: "Monto",
+    dateLabel: "Fecha",
+    currencyLabel: "Moneda",
+    paidByYou: "Pagado por: tú",
+    paidBySummary: (names: string[]) => `Pagado por: ${names.join(", ")}`,
+    splitEqualAll: "Dividido: entre todos",
+    payersHeading: "¿Quién pagó?",
+    remainderOwed: (formatted: string) => `Faltan ${formatted}`,
+    remainderExtra: (formatted: string) => `Sobran ${formatted}`,
+    remainderBalanced: "Balanceado",
+    submit: "Guardar",
+    submitting: "Guardando…",
+    errors: {
+      generic: "Ocurrió un error. Intenta de nuevo.",
+    },
+  },
   expenseFeed: {
     empty: {
       title: "Aún no hay gastos",

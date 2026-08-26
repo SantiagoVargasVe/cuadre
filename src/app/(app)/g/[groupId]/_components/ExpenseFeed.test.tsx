@@ -2,7 +2,9 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ExpenseFeed } from "./ExpenseFeed";
-import type { ExpenseSummary } from "./types";
+import type { ExpenseSummary, GroupMember } from "./types";
+
+const members: GroupMember[] = [{ userId: "ana", displayName: "Ana", role: "owner" }];
 
 function expense(id: string, title: string): ExpenseSummary {
   return {
@@ -32,7 +34,16 @@ afterEach(() => {
 
 describe("ExpenseFeed", () => {
   it("renders the empty state when there are no expenses", () => {
-    render(<ExpenseFeed groupId="g1" myUserId="ana" initialItems={[]} initialCursor={null} />);
+    render(
+      <ExpenseFeed
+        groupId="g1"
+        myUserId="ana"
+        initialItems={[]}
+        initialCursor={null}
+        members={members}
+        defaultCurrency="COP"
+      />,
+    );
     expect(screen.getByText("Aún no hay gastos")).toBeInTheDocument();
   });
 
@@ -46,6 +57,8 @@ describe("ExpenseFeed", () => {
         myUserId="ana"
         initialItems={[expense("e1", "Cena")]}
         initialCursor={null}
+        members={members}
+        defaultCurrency="COP"
       />,
     );
 
@@ -60,6 +73,8 @@ describe("ExpenseFeed", () => {
         myUserId="ana"
         initialItems={[expense("e1", "Cena")]}
         initialCursor={null}
+        members={members}
+        defaultCurrency="COP"
       />,
     );
     expect(screen.queryByRole("button", { name: "Cargar más" })).not.toBeInTheDocument();
@@ -78,6 +93,8 @@ describe("ExpenseFeed", () => {
         myUserId="ana"
         initialItems={[expense("e1", "Cena")]}
         initialCursor="cursor-1"
+        members={members}
+        defaultCurrency="COP"
       />,
     );
 
