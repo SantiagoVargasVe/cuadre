@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { SplitInput } from "../../lib/schemas/expenses";
 import {
   ExactAmountsDoNotBalanceError,
@@ -25,6 +25,7 @@ import {
   expenseSplits,
   groupMembers,
   groups,
+  users,
 } from "../db/schema";
 import { assertSupportedCurrency } from "./currencies";
 import { ValidationError } from "../errors";
@@ -432,4 +433,193 @@ export async function deleteExpense(expenseId: string, userId: string): Promise<
       changedBy: userId,
     });
   });
+}
+
+export interface ExpensePartyWithName extends ExpenseParty {
+  displayName: string;
+}
+
+export interface ExpenseSummary {
+  id: string;
+  title: string;
+  date: string;
+  total: { amount: string; currency: string };
+  payers: ExpensePartyWithName[];
+  splits: ExpensePartyWithName[];
+  strategy: string;
+}
+
+export interface ExpenseDetail extends ExpenseSummary {
+  version: number;
+  editedAt: string | null;
+}
+
+interface PartyRow {
+  expenseId: string;
+  userId: string;
+  amount: bigint;
+  displayName: string;
+}
+
+function groupByExpenseId(rows: PartyRow[]): Map<string, ExpensePartyWithName[]> {
+  const map = new Map<string, ExpensePartyWithName[]>();
+  for (const row of rows) {
+    const list = map.get(row.expenseId) ?? [];
+    list.push({ userId: row.userId, displayName: row.displayName, amount: row.amount.toString() });
+    map.set(row.expenseId, list);
+  }
+  return map;
+}
+
+/**
+ * Payers and splits for a page of expense ids in exactly two queries,
+ * regardless of how many expenses or how many parties each has — never
+ * one query per expense (testing.md, architecture.md § no N+1 per member).
+ */
+async function loadPartiesFor(
+  expenseIds: string[],
+): Promise<{ payersByExpense: Map<string, ExpensePartyWithName[]>; splitsByExpense: Map<string, ExpensePartyWithName[]> }> {
+  if (expenseIds.length === 0) return { payersByExpense: new Map(), splitsByExpense: new Map() };
+
+  const [payerRows, splitRows] = await Promise.all([
+    db
+      .select({
+        expenseId: expensePayers.expenseId,
+        userId: expensePayers.userId,
+        amount: expensePayers.amount,
+        displayName: users.displayName,
+      })
+      .from(expensePayers)
+      .innerJoin(users, eq(users.id, expensePayers.userId))
+      .where(inArray(expensePayers.expenseId, expenseIds)),
+    db
+      .select({
+        expenseId: expenseSplits.expenseId,
+        userId: expenseSplits.userId,
+        amount: expenseSplits.amount,
+        displayName: users.displayName,
+      })
+      .from(expenseSplits)
+      .innerJoin(users, eq(users.id, expenseSplits.userId))
+      .where(inArray(expenseSplits.expenseId, expenseIds)),
+  ]);
+
+  return { payersByExpense: groupByExpenseId(payerRows), splitsByExpense: groupByExpenseId(splitRows) };
+}
+
+function toSummary(
+  expense: typeof expenses.$inferSelect,
+  payers: ExpensePartyWithName[],
+  splits: ExpensePartyWithName[],
+): ExpenseSummary {
+  return {
+    id: expense.id,
+    title: expense.title,
+    date: expense.expenseDate,
+    total: { amount: expense.totalAmount.toString(), currency: expense.currency },
+    payers,
+    splits,
+    strategy: expense.splitStrategy,
+  };
+}
+
+const CURSOR_SEPARATOR = "|";
+
+function encodeCursor(date: string, id: string): string {
+  return Buffer.from(`${date}${CURSOR_SEPARATOR}${id}`, "utf8").toString("base64url");
+}
+
+/** Malformed cursors are treated as "no cursor" — a tampered value isn't worth a 400 here. */
+function decodeCursor(cursor: string): { date: string; id: string } | null {
+  try {
+    const [date, id] = Buffer.from(cursor, "base64url").toString("utf8").split(CURSOR_SEPARATOR);
+    return date && id ? { date, id } : null;
+  } catch {
+    return null;
+  }
+}
+
+const DEFAULT_PAGE_SIZE = 50;
+const MAX_PAGE_SIZE = 200;
+
+function clampLimit(limit: number | undefined): number {
+  if (!limit || !Number.isFinite(limit) || limit < 1) return DEFAULT_PAGE_SIZE;
+  return Math.min(limit, MAX_PAGE_SIZE);
+}
+
+export interface ListExpensesOptions {
+  cursor?: string;
+  limit?: number;
+}
+
+export interface ExpenseListResult {
+  items: ExpenseSummary[];
+  nextCursor: string | null;
+}
+
+/**
+ * The group feed's data (api-contract.md § Expenses). Ordered by
+ * `expense_date DESC, id DESC` — the id tiebreak is what keeps pagination
+ * stable on a day with several expenses; sorting by date alone would let a
+ * page boundary fall inside a tied group and duplicate or drop rows.
+ */
+export async function listExpenses(
+  groupId: string,
+  userId: string,
+  options: ListExpensesOptions,
+): Promise<ExpenseListResult> {
+  await requireMembership(groupId, userId);
+
+  const limit = clampLimit(options.limit);
+  const cursor = options.cursor ? decodeCursor(options.cursor) : null;
+
+  const conditions = [eq(expenses.groupId, groupId), isNull(expenses.deletedAt)];
+  if (cursor) {
+    conditions.push(
+      sql`(${expenses.expenseDate}, ${expenses.id}) < (${cursor.date}::date, ${cursor.id}::uuid)`,
+    );
+  }
+
+  const rows = await db
+    .select()
+    .from(expenses)
+    .where(and(...conditions))
+    .orderBy(desc(expenses.expenseDate), desc(expenses.id))
+    .limit(limit + 1);
+
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+
+  const { payersByExpense, splitsByExpense } = await loadPartiesFor(page.map((row) => row.id));
+  const items = page.map((row) =>
+    toSummary(row, payersByExpense.get(row.id) ?? [], splitsByExpense.get(row.id) ?? []),
+  );
+
+  const last = page.at(-1);
+  const nextCursor = hasMore && last ? encodeCursor(last.expenseDate, last.id) : null;
+
+  return { items, nextCursor };
+}
+
+/**
+ * The id-addressed case — no group id in the URL, so membership is
+ * checked against the row's own group_id (security.md § the trap). A
+ * soft-deleted expense reads as not-found, the same as one that never
+ * existed; there's no "view a deleted expense" affordance in v1.
+ */
+export async function getExpense(expenseId: string, userId: string): Promise<ExpenseDetail> {
+  const [expense] = await db
+    .select()
+    .from(expenses)
+    .where(and(eq(expenses.id, expenseId), isNull(expenses.deletedAt)))
+    .limit(1);
+  await requireMembershipForRow(expense, userId);
+
+  const { payersByExpense, splitsByExpense } = await loadPartiesFor([expense!.id]);
+
+  return {
+    ...toSummary(expense!, payersByExpense.get(expense!.id) ?? [], splitsByExpense.get(expense!.id) ?? []),
+    version: expense!.version,
+    editedAt: expense!.version > 1 ? expense!.updatedAt.toISOString() : null,
+  };
 }
