@@ -12,7 +12,11 @@ import { resolveExactSplit } from "../../lib/money/strategies/exact";
 import { resolveLoanSplit } from "../../lib/money/strategies/loan";
 import { resolvePercentageSplit } from "../../lib/money/strategies/percentage";
 import { resolveSharesSplit } from "../../lib/money/strategies/shares";
-import { assertGroupNotArchived, requireMembership } from "../auth/membership";
+import {
+  assertGroupNotArchived,
+  requireMembership,
+  requireMembershipForRow,
+} from "../auth/membership";
 import { db, withTransaction } from "../db/client";
 import {
   expensePayers,
@@ -167,6 +171,23 @@ function toParties(map: Map<string, bigint>): ExpenseParty[] {
   return [...map].map(([userId, amount]) => ({ userId, amount: amount.toString() }));
 }
 
+function toResult(
+  expense: typeof expenses.$inferSelect,
+  payers: Map<string, bigint>,
+  splits: Map<string, bigint>,
+  editedAt: string | null,
+): ExpenseResult {
+  return {
+    id: expense.id,
+    total: { amount: expense.totalAmount.toString(), currency: expense.currency },
+    payers: toParties(payers),
+    splits: toParties(splits),
+    strategy: expense.splitStrategy,
+    version: expense.version,
+    editedAt,
+  };
+}
+
 function buildSnapshot(expense: typeof expenses.$inferSelect, payers: Map<string, bigint>, splits: Map<string, bigint>) {
   return {
     title: expense.title,
@@ -179,25 +200,31 @@ function buildSnapshot(expense: typeof expenses.$inferSelect, payers: Map<string
   };
 }
 
+interface ResolvedWrite {
+  totalAmount: bigint;
+  payers: Map<string, bigint>;
+  splits: Map<string, bigint>;
+  splitWeights?: Map<string, bigint>;
+}
+
 /**
  * The client sends intent, the server computes the numbers (backend/CLAUDE.md
  * § Writing an expense) — even for `exact`, where the client supplies
  * amounts, they're validated against the total, never adjusted to fit.
- * `Σ payers == total == Σ splits` is asserted before the transaction opens
- * so a rejection names the exact difference; the deferred constraint
- * trigger (T033) re-validates it again at commit as the last line of
- * defense.
+ * `Σ payers == total == Σ splits` is asserted here, before any transaction
+ * opens, so a rejection names the exact difference; the deferred
+ * constraint trigger (T033) re-validates it again at commit as the last
+ * line of defense. Shared by create and update — an edit re-resolves
+ * exactly the same way a create does, just against the existing expense's
+ * id as the seed instead of a freshly generated one.
  */
-export async function createExpense(
+async function resolveExpenseWrite(
   groupId: string,
-  userId: string,
+  actingUserId: string,
   input: CreateExpenseInput,
-): Promise<ExpenseResult> {
-  await requireMembership(groupId, userId);
-  const [group] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
-  assertGroupNotArchived(group!);
+  expenseId: string,
+): Promise<ResolvedWrite> {
   assertSupportedCurrency(input.currency);
-
   const totalAmount = parseMinorUnits(input.amount);
   assertPositive(totalAmount);
 
@@ -210,11 +237,9 @@ export async function createExpense(
     const payersSum = sumValues(payers);
     if (payersSum !== totalAmount) throw new PayersDoNotBalanceError(totalAmount, payersSum);
   } else {
-    payers = new Map([[userId, totalAmount]]);
+    payers = new Map([[actingUserId, totalAmount]]);
   }
 
-  // Generated now, not after resolving the split — it's the apportionment seed.
-  const expenseId = randomUUID();
   const memberIds = await currentMemberIds(groupId);
   const { amounts: splits, weights: splitWeights } = resolveSplit(
     input.split,
@@ -227,6 +252,27 @@ export async function createExpense(
   const involved = new Set([...payers.keys(), ...splits.keys()]);
   const nonMembers = [...involved].filter((id) => !memberSet.has(id));
   if (nonMembers.length > 0) throw new NotAGroupMemberOnExpenseError(nonMembers);
+
+  return { totalAmount, payers, splits, splitWeights };
+}
+
+export async function createExpense(
+  groupId: string,
+  userId: string,
+  input: CreateExpenseInput,
+): Promise<ExpenseResult> {
+  await requireMembership(groupId, userId);
+  const [group] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
+  assertGroupNotArchived(group!);
+
+  // Generated now, not after resolving the split — it's the apportionment seed.
+  const expenseId = randomUUID();
+  const { totalAmount, payers, splits, splitWeights } = await resolveExpenseWrite(
+    groupId,
+    userId,
+    input,
+    expenseId,
+  );
 
   return withTransaction(async (tx) => {
     const [expense] = await tx
@@ -264,14 +310,126 @@ export async function createExpense(
       changedBy: userId,
     });
 
-    return {
-      id: expense!.id,
-      total: { amount: totalAmount.toString(), currency: input.currency },
-      payers: toParties(payers),
-      splits: toParties(splits),
-      strategy: input.split.strategy,
-      version: expense!.version,
-      editedAt: null,
-    };
+    return toResult(expense!, payers, splits, null);
+  });
+}
+
+/**
+ * Replaces the whole expense — payers and splits included — and bumps
+ * `version`. There is no partial split patch: resolving a half-updated
+ * split against a stale total is a state nobody should have to reason
+ * about. Any current member may edit any expense in their group,
+ * including one they didn't create — the revision history is what makes
+ * that safe, not permissions (security.md § Known accepted risks).
+ *
+ * The route carries no group id, so this is the id-addressed case
+ * security.md calls out as the one that gets forgotten: load the row,
+ * read *its* group_id, then check membership against that —
+ * requireMembershipForRow does exactly this.
+ */
+export async function updateExpense(
+  expenseId: string,
+  userId: string,
+  input: CreateExpenseInput,
+): Promise<ExpenseResult> {
+  const [existing] = await db.select().from(expenses).where(eq(expenses.id, expenseId)).limit(1);
+  await requireMembershipForRow(existing, userId);
+  const [group] = await db.select().from(groups).where(eq(groups.id, existing!.groupId)).limit(1);
+  assertGroupNotArchived(group!);
+
+  // Same expense id as the seed — an unrelated edit (e.g. just the title)
+  // must not reshuffle which member absorbed the remainder (splitting.md §3.1).
+  const { totalAmount, payers, splits, splitWeights } = await resolveExpenseWrite(
+    existing!.groupId,
+    userId,
+    input,
+    expenseId,
+  );
+
+  return withTransaction(async (tx) => {
+    const version = existing!.version + 1;
+    const [updated] = await tx
+      .update(expenses)
+      .set({
+        title: input.title,
+        expenseDate: input.date,
+        totalAmount,
+        currency: input.currency,
+        splitStrategy: input.split.strategy,
+        updatedBy: userId,
+        version,
+        updatedAt: new Date(),
+      })
+      .where(eq(expenses.id, expenseId))
+      .returning();
+
+    // No partial split patch — replace both child sets entirely.
+    await tx.delete(expensePayers).where(eq(expensePayers.expenseId, expenseId));
+    await tx.delete(expenseSplits).where(eq(expenseSplits.expenseId, expenseId));
+    await tx.insert(expensePayers).values(
+      [...payers].map(([uid, amount]) => ({
+        expenseId,
+        groupId: existing!.groupId,
+        userId: uid,
+        amount,
+      })),
+    );
+    await tx.insert(expenseSplits).values(
+      [...splits].map(([uid, amount]) => ({
+        expenseId,
+        groupId: existing!.groupId,
+        userId: uid,
+        amount,
+        weight: splitWeights?.get(uid),
+      })),
+    );
+    await tx.insert(expenseRevisions).values({
+      expenseId,
+      version,
+      action: "updated",
+      snapshot: buildSnapshot(updated!, payers, splits),
+      changedBy: userId,
+    });
+
+    return toResult(updated!, payers, splits, updated!.updatedAt.toISOString());
+  });
+}
+
+function toMap(rows: { userId: string; amount: bigint }[]): Map<string, bigint> {
+  return new Map(rows.map((row) => [row.userId, row.amount]));
+}
+
+/**
+ * Soft delete: sets `deleted_at` and writes a `deleted` revision. Nothing
+ * is hard-deleted — the payer/split rows survive so the revision snapshot
+ * (and any later history view) can still show what the ledger said.
+ * `liveExpenses` (T033) is what makes this vanish from balances.
+ */
+export async function deleteExpense(expenseId: string, userId: string): Promise<void> {
+  const [existing] = await db.select().from(expenses).where(eq(expenses.id, expenseId)).limit(1);
+  await requireMembershipForRow(existing, userId);
+  const [group] = await db.select().from(groups).where(eq(groups.id, existing!.groupId)).limit(1);
+  assertGroupNotArchived(group!);
+
+  const [payerRows, splitRows] = await Promise.all([
+    db.select().from(expensePayers).where(eq(expensePayers.expenseId, expenseId)),
+    db.select().from(expenseSplits).where(eq(expenseSplits.expenseId, expenseId)),
+  ]);
+
+  await withTransaction(async (tx) => {
+    const version = existing!.version + 1;
+    const [updated] = await tx
+      .update(expenses)
+      .set({ deletedAt: new Date(), updatedBy: userId, updatedAt: new Date(), version })
+      .where(eq(expenses.id, expenseId))
+      .returning();
+
+    await tx.insert(expenseRevisions).values({
+      expenseId,
+      version,
+      action: "deleted",
+      snapshot: buildSnapshot(updated!, toMap(payerRows), toMap(splitRows)),
+      changedBy: userId,
+    });
   });
 }
