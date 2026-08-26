@@ -242,5 +242,31 @@ describe.skipIf(!hasTestDatabase)("invites service", () => {
       const [row] = await getTestDb().select().from(inviteCodes).where(eq(inviteCodes.code, "already-member"));
       expect(row?.consumedAt).toBeNull();
     });
+
+    it("reactivates a removed member's row instead of rejecting the composite pk conflict", async () => {
+      const owner = await seedUser();
+      const group = await seedGroup(owner);
+      const returning = await seedUser("Beto");
+      await getTestDb().insert(groupMembers).values({
+        groupId: group.id,
+        userId: returning,
+        role: "owner",
+        removedAt: new Date("2020-01-01"),
+      });
+      await getTestDb()
+        .insert(inviteCodes)
+        .values({ code: "rejoin", groupId: group.id, createdBy: owner });
+
+      await acceptInvite("rejoin", returning);
+
+      const [membership] = await getTestDb()
+        .select()
+        .from(groupMembers)
+        .where(eq(groupMembers.userId, returning));
+      expect(membership?.removedAt).toBeNull();
+      // Back to a plain member, not silently restored as owner.
+      expect(membership?.role).toBe("member");
+      expect(membership?.joinedAt.getFullYear()).toBeGreaterThan(2020);
+    });
   });
 });

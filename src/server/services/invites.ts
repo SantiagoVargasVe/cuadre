@@ -1,10 +1,9 @@
 import "server-only";
-import { and, eq, gt, isNull, or } from "drizzle-orm";
+import { and, eq, gt, isNull, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { config } from "../config";
 import { assertGroupNotArchived, requireMembership } from "../auth/membership";
 import { db, withTransaction, type Transaction } from "../db/client";
-import { isUniqueViolation } from "../db/pg-errors";
 import { groupMembers, groups, inviteCodes, users } from "../db/schema";
 import { ConflictError, ValidationError } from "../errors";
 import type { Group } from "./groups";
@@ -126,22 +125,33 @@ export async function lookupInvite(code: string): Promise<InviteLookup> {
  * services/auth.ts `register()` instead. Same conditional-update
  * consumption as that path: zero rows means InvalidInviteError (409).
  *
- * If the membership insert then hits the unique constraint (already a
- * member), the whole transaction — including the invite consumption —
- * rolls back, so a code doesn't get burned by someone who gained nothing
- * from it.
+ * The composite pk on `group_members` means a returning member (one this
+ * group previously removed) hits the same row a fresh join would insert —
+ * so this **reactivates** it (`removed_at` cleared, a fresh `joined_at`,
+ * back to plain `member` even if they were `owner` before) rather than
+ * failing, via `ON CONFLICT ... DO UPDATE ... WHERE removed_at IS NOT
+ * NULL` (T024). A conflict against a row that's still *active* leaves that
+ * `WHERE` unmatched — Postgres does nothing, `RETURNING` yields no row,
+ * and that's the real "already a member" case. Either way, hitting
+ * `AlreadyAMemberError` rolls back the whole transaction — including the
+ * invite consumption — so a code doesn't get burned by someone who gained
+ * nothing from it.
  */
 export async function acceptInvite(code: string, userId: string): Promise<Group> {
   return withTransaction(async (tx) => {
     const { groupId } = await consumeInvite(tx, code, userId);
     if (!groupId) throw new NotAGroupInviteError();
 
-    try {
-      await tx.insert(groupMembers).values({ groupId, userId, role: "member" });
-    } catch (error) {
-      if (isUniqueViolation(error)) throw new AlreadyAMemberError();
-      throw error;
-    }
+    const [membership] = await tx
+      .insert(groupMembers)
+      .values({ groupId, userId, role: "member" })
+      .onConflictDoUpdate({
+        target: [groupMembers.groupId, groupMembers.userId],
+        set: { removedAt: null, role: "member", joinedAt: new Date() },
+        setWhere: sql`${groupMembers.removedAt} IS NOT NULL`,
+      })
+      .returning();
+    if (!membership) throw new AlreadyAMemberError();
 
     const [group] = await tx.select().from(groups).where(eq(groups.id, groupId)).limit(1);
     return group!;
