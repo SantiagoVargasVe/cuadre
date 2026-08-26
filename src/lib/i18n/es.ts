@@ -49,6 +49,24 @@ export const es = {
       inviteCodeRequired: "El código de invitación es obligatorio.",
     },
   },
+  nav: {
+    appName: "Cuadre",
+    groupsLink: "Grupos",
+    logout: "Cerrar sesión",
+    loggingOut: "Cerrando sesión…",
+    themeToLight: "Cambiar a tema claro",
+    themeToDark: "Cambiar a tema oscuro",
+  },
+  groupTabs: {
+    expenses: "Gastos",
+    balances: "Balances",
+    settings: "Ajustes",
+  },
+  common: {
+    loading: "Cargando…",
+    genericError: "Ocurrió un error. Intenta de nuevo.",
+    comingSoon: "Próximamente.",
+  },
   join: {
     someone: "Alguien",
     invitedToGroup: (inviter: string, group: string) => `${inviter} te invitó a ${group}`,
