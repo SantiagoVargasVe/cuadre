@@ -159,6 +159,29 @@ export const es = {
       body: "Próximamente.",
     },
   },
+  balances: {
+    simplifyLabel: "Simplificar deudas",
+    paidLabel: "Pagó",
+    shareLabel: "Su parte",
+    netIsOwed: (formatted: string) => `Le deben ${formatted}`,
+    netOwes: (formatted: string) => `Debe ${formatted}`,
+    netSettled: "En ceros",
+    planHeading: "Plan de pago",
+    youOwe: (name: string, formatted: string) => `Le debes a ${name} ${formatted}`,
+    owesYou: (name: string, formatted: string) => `${name} te debe ${formatted}`,
+    owesOther: (fromName: string, toName: string, formatted: string) =>
+      `${fromName} le debe a ${toName} ${formatted}`,
+    explainTitle: "¿Por qué este pago?",
+    explainReplaces: "Esto reemplaza:",
+    settledBlock: "Nadie debe nada en esta moneda.",
+    zeroState: {
+      title: "Todo en ceros",
+      body: "No hay gastos todavía en este grupo.",
+    },
+    convertedMarkerLabel: "Tasas de conversión",
+    pinLine: (from: string, to: string, date: string, source: string) =>
+      `${from} → ${to}: tasa del ${date} (${source})`,
+  },
   join: {
     someone: "Alguien",
     invitedToGroup: (inviter: string, group: string) => `${inviter} te invitó a ${group}`,
