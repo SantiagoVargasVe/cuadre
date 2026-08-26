@@ -58,6 +58,7 @@ function extractRawRate(rawBody: string, currencyCode: string): string | undefin
 }
 
 export const openErApiProvider: RateProvider = {
+  source: SOURCE,
   async fetchRates(baseCurrency, quoteCurrencies) {
     const response = await fetchWithRetry(`https://open.er-api.com/v6/latest/${baseCurrency}`);
     const rawBody = await response.text();

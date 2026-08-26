@@ -12,6 +12,9 @@ const client = postgres(config.DATABASE_URL);
 
 export const db = drizzle(client, { schema });
 
+/** Type-only — safe to import from code that must stay `server-only`-free (e.g. scripts/). */
+export type Db = typeof db;
+
 export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /**

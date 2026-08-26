@@ -19,5 +19,7 @@ export interface ProviderRates {
  * back can trust every currency it asked for is present.
  */
 export interface RateProvider {
+  /** The exact `source` string this provider stamps on every rate it returns — read this rather than assuming it matches `config.FX_PROVIDER`'s spelling. */
+  readonly source: string;
   fetchRates(baseCurrency: string, quoteCurrencies: readonly string[]): Promise<ProviderRates>;
 }
