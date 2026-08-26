@@ -4,14 +4,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 import { useForm } from "react-hook-form";
-import { ApiError, apiFetch } from "../../../../../lib/api/client";
+import { ApiError } from "../../../../../lib/api/client";
 import { es } from "../../../../../lib/i18n/es";
 import { parseAmountInput } from "../../../../../lib/money/format";
+import type { SplitInput } from "../../../../../lib/schemas/expenses";
 import { Button } from "../../../../_ui/Button";
 import { TextField } from "../../../../_ui/TextField";
 import { AmountCurrencyFields } from "./AmountCurrencyFields";
 import { expenseFormSchema, todayIso, type ExpenseFormValues } from "./expenseFormSchema";
 import { PayerEditor, type Payer } from "./PayerEditor";
+import { SplitEditor } from "./split-editor/SplitEditor";
+import { submitExpense } from "./submitExpense";
 import type { ExpenseSummary, GroupMember } from "./types";
 
 const t = es.expenseForm;
@@ -26,13 +29,21 @@ export interface ExpenseFormProps {
 
 /** "Title, amount, save" — that path requires no other interaction
  * (frontend/CLAUDE.md § *The expense form*). Payers default to you alone
- * and the split to `equal` among everyone; T065 owns the real split
- * editor, this form only ships `equal`. */
+ * and the split to `equal` among everyone. */
 export function ExpenseForm({ groupId, members, defaultCurrency, myUserId, onCreated }: ExpenseFormProps) {
   const queryClient = useQueryClient();
   const amountRef = React.useRef<HTMLInputElement>(null);
   const [payers, setPayers] = React.useState<Payer[] | null>(null);
+  const [split, setSplit] = React.useState<SplitInput>({ strategy: "equal" });
+  const [splitValid, setSplitValid] = React.useState(true);
   const [formError, setFormError] = React.useState<string | null>(null);
+  // A brand-new expense has no id yet — the server mints one at insert
+  // time and uses it as the apportionment seed (splitting.md § 3.1). This
+  // is only ever a *preview* seed: the live per-member amounts shown here
+  // are guaranteed correct in total, but which member absorbs a leftover
+  // minor unit on a tie can differ from what the server ultimately
+  // stores, since the two seeds are never the same value for a create.
+  const [previewSeed] = React.useState(() => crypto.randomUUID());
 
   const {
     register,
@@ -53,32 +64,12 @@ export function ExpenseForm({ groupId, members, defaultCurrency, myUserId, onCre
   const totalAmount = amountRaw ? parseAmountInput(amountRaw, currency) : 0n;
   const payersBalanced =
     !payers || payers.length <= 1 || payers.reduce((sum, p) => sum + p.amount, 0n) === totalAmount;
-  const canSubmit = isValid && payersBalanced && totalAmount > 0n && !isSubmitting;
+  const canSubmit = isValid && payersBalanced && splitValid && totalAmount > 0n && !isSubmitting;
 
   async function onSubmit(data: ExpenseFormValues) {
     setFormError(null);
-    const amount = parseAmountInput(data.amountRaw, data.currency);
     try {
-      const created = await apiFetch<{ id: string }>(`/api/groups/${groupId}/expenses`, {
-        method: "POST",
-        body: {
-          title: data.title,
-          date: data.date,
-          amount: amount.toString(),
-          currency: data.currency,
-          ...(payers
-            ? { paidBy: payers.map((p) => ({ userId: p.userId, amount: p.amount.toString() })) }
-            : {}),
-          split: { strategy: "equal" },
-        },
-      });
-      // The list and detail endpoints share a shape (api-contract.md §
-      // *Reading a list or a single expense*) — fetching the confirmed
-      // record back, rather than reconstructing one from the POST
-      // response and this form's own state, is what keeps this "never
-      // optimistic": the row that lands in the feed is exactly what the
-      // server resolved, never a guess.
-      const expense = await apiFetch<ExpenseSummary>(`/api/expenses/${created.id}`);
+      const expense = await submitExpense(groupId, data, payers, split);
       queryClient.invalidateQueries({ queryKey: ["group", groupId, "expenses"] });
       queryClient.invalidateQueries({ queryKey: ["group", groupId, "balances"] });
       onCreated(expense);
@@ -100,7 +91,16 @@ export function ExpenseForm({ groupId, members, defaultCurrency, myUserId, onCre
         value={payers}
         onChange={setPayers}
       />
-      <p className="text-sm text-muted-foreground">{t.splitEqualAll}</p>
+      <SplitEditor
+        members={members}
+        totalAmount={totalAmount}
+        currency={currency}
+        seed={previewSeed}
+        onChange={(nextSplit, valid) => {
+          setSplit(nextSplit);
+          setSplitValid(valid);
+        }}
+      />
       {formError && (
         <p role="alert" className="text-sm text-destructive">
           {formError}

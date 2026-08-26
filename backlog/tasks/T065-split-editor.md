@@ -2,7 +2,7 @@
 id: T065
 title: The split editor — all six strategies
 epic: E7-frontend
-status: todo
+status: done
 depends_on: [T064, T031]
 size: L
 ---
@@ -18,28 +18,28 @@ Read [splitting.md](../../docs/context/splitting.md) § 3 and
 
 ## Acceptance criteria
 
-- [ ] One shared shell plus **one small component per strategy, each in its own file with its own
+- [x] One shared shell plus **one small component per strategy, each in its own file with its own
       test.** The shell owns the live total and the save gate; each strategy owns its inputs
-- [ ] The six strategies per the API contract:
+- [x] The six strategies per the API contract:
       - `equal` / `equal_subset` — member checkboxes; all checked means `equal`
       - `shares` — a stepper per member
       - `percentage` — a percent field per member, **held as basis points**, integers
       - `exact` — a `<MoneyField>` per member
       - `loan` — pick one beneficiary
-- [ ] **A running remainder is always visible** — "Faltan $ 4.200" / "Sobran $ 1.100" — live, not a
+- [x] **A running remainder is always visible** — "Faltan $ 4.200" / "Sobran $ 1.100" — live, not a
       validation error on submit
-- [ ] **Save is disabled until the split balances exactly.** The API rejects it anyway; the point
+- [x] **Save is disabled until the split balances exactly.** The API rejects it anyway; the point
       is the user never gets that far
-- [ ] **Resolved per-member amounts are always shown, including for `equal`.** Someone splitting
+- [x] **Resolved per-member amounts are always shown, including for `equal`.** Someone splitting
       `100.000` three ways sees `33.333 / 33.334 / 33.333` before saving, not a stray peso later
-- [ ] The preview uses **`src/lib/money/apportion` — the same function the server resolves with**,
+- [x] The preview uses **`src/lib/money/apportion` — the same function the server resolves with**,
       seeded with the same expense id where one exists. The preview must be byte-identical to what
       gets stored
-- [ ] Switching strategies **keeps the member selection** and re-derives amounts. Losing a
+- [x] Switching strategies **keeps the member selection** and re-derives amounts. Losing a
       seven-person selection because someone tapped "percentage" is unforgivable
-- [ ] Percentages never round-trip through a float
-- [ ] Every amount has an accessible label naming whose it is
-- [ ] Tests, one per strategy: the produced payload matches the API contract; the live remainder is
+- [x] Percentages never round-trip through a float
+- [x] Every amount has an accessible label naming whose it is
+- [x] Tests, one per strategy: the produced payload matches the API contract; the live remainder is
       correct mid-edit; the preview matches the server's resolution for the `100.000` three-way
       case; switching strategies preserves selection
 

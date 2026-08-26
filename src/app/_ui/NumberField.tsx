@@ -4,11 +4,17 @@ import { cn } from "../../lib/cn";
 
 export const NumberFieldRoot = BaseNumberField.Root;
 
+export interface NumberFieldProps extends React.ComponentProps<typeof BaseNumberField.Group> {
+  /** Applied to the actual `<input>`, not the wrapping group — a plain
+   * `aria-label` on the group doesn't reach it (verified: Base UI's Group
+   * doesn't forward arbitrary ARIA attributes to its Input), and every
+   * amount needs a label naming *whose* it is (frontend/CLAUDE.md §
+   * Accessibility). */
+  "aria-label"?: string;
+}
+
 /** The shares stepper. For money amounts, use <MoneyField> (T061) instead — never this. */
-export function NumberField({
-  className,
-  ...props
-}: React.ComponentProps<typeof BaseNumberField.Group>) {
+export function NumberField({ className, "aria-label": ariaLabel, ...props }: NumberFieldProps) {
   return (
     <BaseNumberField.Group
       className={cn(
@@ -26,6 +32,7 @@ export function NumberField({
         <MinusIcon />
       </BaseNumberField.Decrement>
       <BaseNumberField.Input
+        aria-label={ariaLabel}
         className={cn(
           "h-full w-full flex-1 bg-transparent text-center text-sm tabular-nums outline-none",
         )}

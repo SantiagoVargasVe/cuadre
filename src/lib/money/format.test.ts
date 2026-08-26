@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { UnknownCurrencyError } from "./errors";
-import { formatAmountInput, formatMoney, parseAmountInput } from "./format";
+import { formatAmountInput, formatAmountInputValue, formatMoney, parseAmountInput } from "./format";
 
 /** Intl's `es-CO` currency literal between the symbol and the number is a
  * non-breaking space (U+00A0), not U+0020 — asserted here so a plain
@@ -134,5 +134,25 @@ describe("parseAmountInput", () => {
     const original = { amount: 15000000n, currency: "COP" };
     const typed = formatAmountInput("150000", original.currency);
     expect(parseAmountInput(typed, original.currency)).toBe(original.amount);
+  });
+});
+
+describe("formatAmountInputValue", () => {
+  it("groups a computed COP amount with no fraction, e.g. an apportioned default", () => {
+    expect(formatAmountInputValue(5000000n, "COP")).toBe("50.000");
+  });
+
+  it("formats a USD amount with cents", () => {
+    expect(formatAmountInputValue(8645n, "USD")).toBe("86,45");
+  });
+
+  it("pads a sub-10-cent USD remainder to two digits", () => {
+    expect(formatAmountInputValue(8605n, "USD")).toBe("86,05");
+  });
+
+  it("is the exact inverse of parseAmountInput for a value the user typed", () => {
+    const typed = "150.000";
+    const minorUnits = parseAmountInput(typed, "COP");
+    expect(formatAmountInputValue(minorUnits, "COP")).toBe(typed);
   });
 });
