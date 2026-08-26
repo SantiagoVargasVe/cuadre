@@ -347,6 +347,44 @@ export const settlements = pgTable(
 );
 
 /**
+ * One fetched (or derived) rate, quote units per 1 base unit, on one date,
+ * from one source (currency.md § Storing rates). **Append-only** — a
+ * pinned group (`group_fx_pins`, T053) may reference a past day's rate by
+ * value, so nothing here may ever be updated or deleted once written.
+ * Enforced in the fetch/refresh service (T051/T052), not by a DB trigger;
+ * this comment and the composite pk (which makes a same-day re-fetch an
+ * upsert-shaped no-op rather than a second row) are the only guards at
+ * this layer.
+ *
+ * No surrogate `id` — the natural key *is* the uniqueness constraint the
+ * acceptance criteria asks for, and nothing references a row by id
+ * (`group_fx_pins` stores its own copy of the rate directly, never a
+ * foreign key here).
+ *
+ * `rate` is `numeric(20,10)` — read as a **string** and parsed to a scaled
+ * `bigint` by digit-shifting (src/lib/money/convert.ts), never
+ * `parseFloat`. See ADR-0004's reasoning applied to rates instead of money.
+ */
+export const fxRates = pgTable(
+  "fx_rates",
+  {
+    baseCurrency: char("base_currency", { length: 3 })
+      .notNull()
+      .references(() => currencies.code),
+    quoteCurrency: char("quote_currency", { length: 3 })
+      .notNull()
+      .references(() => currencies.code),
+    rate: numeric("rate", { precision: 20, scale: 10, mode: "string" }).notNull(),
+    asOf: date("as_of", { mode: "string" }).notNull(),
+    source: text("source").notNull(),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.baseCurrency, table.quoteCurrency, table.asOf, table.source] }),
+  ],
+);
+
+/**
  * Token-bucket rate limiting, in Postgres rather than Redis — the volume
  * doesn't justify another container. `key` is opaque and namespaced by the
  * caller, e.g. `login:203.0.113.7`. `tokens` is numeric (not an integer) so
