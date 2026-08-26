@@ -12,7 +12,12 @@ import { TextField } from "../../_ui/TextField";
 
 const t = es.auth.register;
 
-export function RegisterForm() {
+export interface RegisterFormProps {
+  /** Set by /join/[code] (a path segment, not the ?code= query string this form also reads). */
+  defaultInviteCode?: string;
+}
+
+export function RegisterForm({ defaultInviteCode }: RegisterFormProps = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [formError, setFormError] = useState<string | null>(null);
@@ -24,7 +29,7 @@ export function RegisterForm() {
   } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
     mode: "onChange",
-    defaultValues: { inviteCode: searchParams.get("code") ?? "" },
+    defaultValues: { inviteCode: defaultInviteCode ?? searchParams.get("code") ?? "" },
   });
 
   async function onSubmit(data: RegisterInput) {
