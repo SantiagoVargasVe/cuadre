@@ -41,4 +41,28 @@ describe.skipIf(!hasTestDatabase)("register — DB errors other than a unique vi
 
     expect(error).not.toBeInstanceOf(EmailAlreadyRegisteredError);
   });
+
+  it("adds a group membership when the invite carries a group_id", async () => {
+    const { eq } = await import("drizzle-orm");
+    const { groupMembers, groups, inviteCodes } = await import("../db/schema");
+    const [group] = await getTestDb()
+      .insert(groups)
+      .values({ title: "Cartagena 2026", defaultCurrency: "COP" })
+      .returning();
+    await getTestDb().insert(inviteCodes).values({ code: "group-invite", groupId: group!.id });
+
+    const result = await register({
+      email: "beto@example.com",
+      displayName: "Beto",
+      password: "correct horse battery staple",
+      inviteCode: "group-invite",
+    });
+
+    const [membership] = await getTestDb()
+      .select()
+      .from(groupMembers)
+      .where(eq(groupMembers.userId, result.user.id));
+    expect(membership?.groupId).toBe(group!.id);
+    expect(membership?.role).toBe("member");
+  });
 });

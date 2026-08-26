@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { hasTestDatabase, setupTestDb, getTestDb } from "../../test/db";
-import { inviteCodes, users } from "../db/schema";
+import { groups, inviteCodes, users } from "../db/schema";
 import { consumeInvite, InvalidInviteError } from "./invites";
 
 describe.skipIf(!hasTestDatabase)("consumeInvite", () => {
@@ -12,6 +12,14 @@ describe.skipIf(!hasTestDatabase)("consumeInvite", () => {
       .values({ email: `${crypto.randomUUID()}@example.com`, displayName: "Ana", passwordHash: "x" })
       .returning();
     return user!.id;
+  }
+
+  async function seedGroup(createdBy: string) {
+    const [group] = await getTestDb()
+      .insert(groups)
+      .values({ title: "Cartagena 2026", defaultCurrency: "COP", createdBy })
+      .returning();
+    return group!.id;
   }
 
   it("consumes an unconsumed, unexpired code and returns its groupId", async () => {
@@ -38,9 +46,9 @@ describe.skipIf(!hasTestDatabase)("consumeInvite", () => {
 
   it("returns the groupId when the code carries one", async () => {
     const db = getTestDb();
-    const groupId = "00000000-0000-0000-0000-000000000042";
-    await db.insert(inviteCodes).values({ code: "group-invite-1", groupId });
     const userId = await seedUser();
+    const groupId = await seedGroup(userId);
+    await db.insert(inviteCodes).values({ code: "group-invite-1", groupId });
 
     const result = await db.transaction((tx) => consumeInvite(tx, "group-invite-1", userId));
 
