@@ -2,7 +2,7 @@
 id: T032
 title: Property-based invariant harness
 epic: E4-money
-status: todo
+status: done
 depends_on: [T031]
 size: M
 ---
@@ -21,13 +21,13 @@ Read [testing.md](../../docs/context/testing.md) § *Property-based tests* and
 
 ## Acceptance criteria
 
-- [ ] A generator producing random valid ledgers: 2–15 members, random expenses with random
+- [x] A generator producing random valid ledgers: 2–15 members, random expenses with random
       strategies, random payer counts (1..n), random totals across a wide magnitude range, random
       currencies, random settlements
-- [ ] Totals in the generator span from `1n` to well past `Number.MAX_SAFE_INTEGER` — the
+- [x] Totals in the generator span from `1n` to well past `Number.MAX_SAFE_INTEGER` — the
       small-total cases are where apportionment breaks and the large ones are where a stray
       `Number` coercion shows up
-- [ ] Properties asserted, per [splitting.md](../../docs/context/splitting.md) § 8:
+- [x] Properties asserted, per [splitting.md](../../docs/context/splitting.md) § 8:
       - `Σ splits == total` for every expense
       - `Σ payers == total` for every expense
       - `Σ net over members == 0` for every currency
@@ -35,13 +35,13 @@ Read [testing.md](../../docs/context/testing.md) § *Property-based tests* and
       - `simplify(b)` preserves every net position in `b`
       - `|simplify(b)| ≤ n − 1`
       - conversion preserves `Σ splits == total`
-- [ ] Properties for balances, pairwise, simplification and conversion are written now and marked
+- [x] Properties for balances, pairwise, simplification and conversion are written now and marked
       pending; **T040, T041, T042 and T054 each enable theirs as part of their own acceptance
       criteria.** A pending property is a contract, not a TODO
-- [ ] Failures print the generating seed so a run is reproducible. A property failure nobody can
+- [x] Failures print the generating seed so a run is reproducible. A property failure nobody can
       re-run is a property failure nobody fixes
-- [ ] Runs in CI within a sane time budget — tune the case count, don't delete properties
-- [ ] `src/lib/money/**` coverage gate at 95% is enforced and passing
+- [x] Runs in CI within a sane time budget — tune the case count, don't delete properties
+- [x] `src/lib/money/**` coverage gate at 95% is enforced and passing
 
 ## Out of scope
 
