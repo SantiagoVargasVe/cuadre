@@ -9,6 +9,7 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   numeric,
   pgEnum,
   pgTable,
@@ -259,6 +260,35 @@ export const expenseSplits = pgTable(
       foreignColumns: [groupMembers.groupId, groupMembers.userId],
     }),
   ],
+);
+
+export const expenseRevisionAction = pgEnum("expense_revision_action", [
+  "created",
+  "updated",
+  "deleted",
+]);
+
+/**
+ * A full snapshot of the expense and its payer/split rows at each change —
+ * shared-money history is the product; "this said I owed 40.000 yesterday"
+ * has to be answerable (data-model.md). Written in the same transaction as
+ * the change it records, never after. MVP writes these and exposes
+ * "edited" + who + when; the full diff viewer is E9.
+ */
+export const expenseRevisions = pgTable(
+  "expense_revisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    expenseId: uuid("expense_id")
+      .notNull()
+      .references(() => expenses.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    action: expenseRevisionAction("action").notNull(),
+    snapshot: jsonb("snapshot").notNull(),
+    changedBy: uuid("changed_by").references(() => users.id, { onDelete: "set null" }),
+    changedAt: timestamp("changed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique("expense_revisions_expense_id_version_unique").on(table.expenseId, table.version)],
 );
 
 /**

@@ -12,7 +12,7 @@ describe.skipIf(!hasTestDatabase)("groups service", () => {
   let getGroupDetail: typeof import("./groups").getGroupDetail;
   let updateGroup: typeof import("./groups").updateGroup;
   let archiveGroup: typeof import("./groups").archiveGroup;
-  let UnsupportedCurrencyError: typeof import("./groups").UnsupportedCurrencyError;
+  let UnsupportedCurrencyError: typeof import("./currencies").UnsupportedCurrencyError;
   let GroupArchivedError: typeof import("../auth/membership").GroupArchivedError;
   let NotAMemberError: typeof import("../auth/membership").NotAMemberError;
   let NotGroupOwnerError: typeof import("../auth/membership").NotGroupOwnerError;
@@ -30,8 +30,8 @@ describe.skipIf(!hasTestDatabase)("groups service", () => {
     vi.stubEnv("FX_BASE_CURRENCY", "USD");
     vi.stubEnv("FX_TRM_CROSSCHECK", "true");
 
-    ({ createGroup, getGroupDetail, updateGroup, archiveGroup, UnsupportedCurrencyError } =
-      await import("./groups"));
+    ({ createGroup, getGroupDetail, updateGroup, archiveGroup } = await import("./groups"));
+    ({ UnsupportedCurrencyError } = await import("./currencies"));
     ({ GroupArchivedError, NotAMemberError, NotGroupOwnerError } = await import(
       "../auth/membership"
     ));

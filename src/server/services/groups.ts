@@ -4,21 +4,7 @@ import { config } from "../config";
 import { db, withTransaction } from "../db/client";
 import { groupMembers, groups, users } from "../db/schema";
 import { assertGroupNotArchived, requireMembership, requireOwner } from "../auth/membership";
-import { ValidationError } from "../errors";
-
-/** `defaultCurrency` isn't one of the three the app is configured to support. */
-export class UnsupportedCurrencyError extends ValidationError {
-  constructor(currency: string) {
-    super("CURRENCY_NOT_SUPPORTED", `Currency ${currency} is not supported`, { currency });
-    this.name = "UnsupportedCurrencyError";
-  }
-}
-
-function assertSupportedCurrency(code: string): void {
-  if (!(config.SUPPORTED_CURRENCIES as readonly string[]).includes(code)) {
-    throw new UnsupportedCurrencyError(code);
-  }
-}
+import { assertSupportedCurrency } from "./currencies";
 
 export type Group = typeof groups.$inferSelect;
 
