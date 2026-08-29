@@ -1,0 +1,78 @@
+# Production stack for a self-hosted deployment.
+#
+# Pulls a prebuilt image from GHCR rather than building on the host — CI builds
+# it on amd64 runners (ADR-0010), keeping build load off a box already running
+# other services.
+#
+# Exposure: NO ports are published to the LAN and there is NO router
+# port-forward. A `cloudflared` container (owned by another compose file) joins
+# the `cuadre_default` network as an `external` network and the app's hostname
+# is registered as a public hostname on the existing tunnel, pointing at
+# http://cuadre-app:3000. See T075.
+#
+# Deploy:  docker compose pull && docker compose up -d
+# A systemd timer runs exactly that every 5 minutes — see infra/deploy/.
+#
+# ── Back up data/postgres/ ────────────────────────────────────────────────
+# It is the ONLY copy of data that cannot be reconstructed. A wishlist item can
+# be re-added from its URL; a trip's ledger has no external source. This repo
+# does not implement backups — the operator must. See infra/deploy/README.md.
+
+services:
+  app:
+    image: ghcr.io/santiagovargasve/cuadre:latest
+    container_name: cuadre-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    # This block is an ALLOWLIST. A key sitting in .env does NOT reach the
+    # container unless it is named here. `docker compose up -d` also will not
+    # recreate a running container for a change to an .env *value* alone —
+    # that needs `--force-recreate` (infra/deploy/README.md).
+    environment:
+      NODE_ENV: production
+      # Cuadre's schema requires the `postgres://` scheme, not `postgresql://`.
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      AUTH_SECRET: ${AUTH_SECRET}
+      APP_URL: ${APP_URL}
+      SUPPORTED_CURRENCIES: ${SUPPORTED_CURRENCIES}
+      DEFAULT_CURRENCY: ${DEFAULT_CURRENCY}
+      FX_PROVIDER: ${FX_PROVIDER}
+      FX_BASE_CURRENCY: ${FX_BASE_CURRENCY}
+      FX_TRM_CROSSCHECK: ${FX_TRM_CROSSCHECK}
+      # Optional. Unset disables POST /api/admin/fx/refresh entirely; set it to
+      # arm the FX refresh timer (T074). `:-` so an operator who hasn't set one
+      # doesn't need the key in .env at all.
+      FX_REFRESH_TOKEN: ${FX_REFRESH_TOKEN:-}
+    networks:
+      - default
+
+  db:
+    image: postgres:17-alpine
+    container_name: cuadre-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      # Bind mount, unlike dev's named volume: production wants the data on a
+      # known host path an operator can find, snapshot, and back up without
+      # asking Docker where it lives.
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - default
+
+networks:
+  default:
+    name: cuadre_default
+
+# Schema migrations run at app startup from src/instrumentation.ts, so there is
+# no separate migrate step. Safe with a single instance; with replicas this
+# would race and belong in a one-shot release job.
