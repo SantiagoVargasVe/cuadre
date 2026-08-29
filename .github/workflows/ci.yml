@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# This repo is public. The quality job must never require a secret, so a pull
+# request from a fork can run it safely. Building and publishing the image is a
+# separate, main-only workflow (T072) — see
+# docs/adr/0010-deploy-via-ghcr-and-pull-timer.md.
+permissions:
+  contents: read
+
+# One in-flight run per ref. A new push to a PR branch cancels the previous
+# run; on `main` this is the documented trade-off in ADR-0010 — don't merge two
+# PRs within a minute of each other or the second cancels the first's run and
+# that commit never gets an image.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: lint · typecheck · test · build
+    runs-on: ubuntu-latest
+
+    # Integration tests run against a real Postgres, never a mocked Drizzle —
+    # the deferred balance trigger, the composite membership FK and the
+    # conditional invite consumption are all enforced by the database, and a
+    # mock accepts every one of them (docs/context/testing.md § How).
+    #
+    # POSTGRES_DB is cuadre_test directly, so the database the tests address
+    # exists without infra/postgres-init/ — that script is only for a shared
+    # dev volume.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: cuadre
+          POSTGRES_PASSWORD: cuadre
+          POSTGRES_DB: cuadre_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Pinned, and matching infra/Dockerfile's node:22-alpine runtime.
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm run typecheck
+
+      # Coverage thresholds (src/lib/money/** 95%, src/server/services/** 80%)
+      # are declared in vitest.config.ts and enforced by --coverage here, the
+      # same as `npm run test:ci` does locally.
+      #
+      # DATABASE_URL_TEST is set, so the integration suite runs for real. If it
+      # were unset, src/test/db.ts throws at import time under CI rather than
+      # skipping — a silent skip here is indistinguishable from a pass
+      # (docs/context/testing.md § CI). GitHub sets CI=true for us.
+      - run: npm test -- --coverage
+        env:
+          DATABASE_URL_TEST: postgres://cuadre:cuadre@localhost:5432/cuadre_test
+
+      # No env deliberately. Config validation is lazy (src/server/config.ts),
+      # so the build needs no secrets, real or placeholder. If this step starts
+      # failing on a missing variable, something began reading config at import
+      # time — fix that rather than adding fake values here.
+      - run: npm run build
