@@ -287,8 +287,11 @@ just move the net.
 ```
 PUT    /api/groups/:id/display-currency   { currency }  → 200 { group, pins[] }
 DELETE /api/groups/:id/display-currency                 → 200 { group }
-GET    /api/groups/:id/display-currency                 → 200 { currency, pins[] }
+GET    /api/groups/:id/display-currency                 → 200 { currency, pins[], source }
 ```
+
+`GET`'s `source` is the FX provider a conversion would pin from — the Ajustes tab names it,
+alongside today's date, in the convert confirmation *before* the write.
 
 `PUT` snapshots the rates for every currency present in the group and writes `group_fx_pins`. The
 response returns the pins — rate, `asOf`, and `source` — because the UI has to be able to show
