@@ -2,7 +2,7 @@
 id: T073
 title: Production compose and the deploy pull timer
 epic: E8-deploy
-status: todo
+status: done
 depends_on: [T072]
 size: M
 ---
@@ -17,23 +17,23 @@ Read [ADR-0010](../../docs/adr/0010-deploy-via-ghcr-and-pull-timer.md) and
 
 ## Acceptance criteria
 
-- [ ] `infra/docker-compose.prod.yml`: the app pinned to the GHCR image, plus `postgres:17-alpine`
-- [ ] `restart: unless-stopped` on both, so the stack returns after a reboot
-- [ ] `data/postgres/` bind-mounted. **No port published for the app or the database** — the tunnel
-      is the only way in
-- [ ] Every needed variable is named in the compose `environment:` block. **It is an allowlist** —
-      a key existing in `.env` does not mean it reaches the container
-- [ ] `infra/deploy/` holds the systemd service + timer (5 min): `docker compose pull && up -d`
-- [ ] `infra/deploy/README.md` documenting, at minimum:
-      - **Rollback: stop the timer first**, then pin a `sha-<commit>` tag — otherwise the next tick
-        pulls `latest` straight back over the pin
-      - `docker compose up -d` will **not** recreate a container for `.env`-content-only changes;
-        that needs `--force-recreate`
-      - `journalctl -u <unit>` shows what the last deploy did
-- [ ] **A backup note, prominently.** `data/postgres/` is the only copy of data that cannot be
-      reconstructed — a trip's ledger has no external source, unlike a wishlist item and its URL.
-      This repo doesn't implement backups; the operator must
-- [ ] No secrets committed anywhere in `infra/`
+- [x] `infra/docker-compose.prod.yml`: `app` pinned to `ghcr.io/santiagovargasve/cuadre:latest`,
+      plus `postgres:17-alpine`
+- [x] `restart: unless-stopped` on both
+- [x] `./data/postgres` bind-mounted. **No `ports:` on either service** — the tunnel is the only
+      way in (`docker compose config` confirms no published port)
+- [x] `environment:` is an explicit allowlist — every schema var named, `DATABASE_URL` composed
+      with the `postgres://` scheme the schema requires; a comment says a key in `.env` not named
+      here never reaches the container
+- [x] `infra/deploy/cuadre-deploy.{service,timer}` — oneshot `docker compose pull --quiet` then
+      `up -d`, `OnUnitActiveSec=5min`, `Persistent=true`, `RandomizedDelaySec=30s`
+- [x] `infra/deploy/README.md` documents: **rollback — stop the timer first**, then pin
+      `sha-<commit>`; `.env`-value-only changes need `up -d --force-recreate`;
+      `journalctl -u cuadre-deploy.service -n 50` shows the last deploy
+- [x] **Backups** — its own prominent section: `data/postgres/` is the only non-reconstructable
+      copy; this repo implements none; the operator must, and must test a restore
+- [x] No secrets anywhere in `infra/` — README's closing section states it; `.env` is host-only,
+      `chmod 600`
 
 ## Out of scope
 
