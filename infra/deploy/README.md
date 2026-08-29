@@ -91,10 +91,47 @@ and makes no attempt to be self-healing about it. **The operator must back up `d
 (a periodic `pg_dump` from the `cuadre-db` container, or a filesystem snapshot with the container
 stopped or `pg_start_backup`-aware). Verify a restore at least once.
 
-## Related units
+## FX refresh timer
 
-- `cuadre-fx.{service,timer}` (T074) — the daily FX rate refresh. A separate unit on purpose; a
-  missed run is **not** an outage, because the conversion path fetches on demand as a fallback.
+`cuadre-fx.{service,timer}` fetches COP/USD/EUR rates once a day — a **separate** unit from the
+deploy timer, so the two can be reasoned about and disabled independently
+([ADR-0008](../../docs/adr/0008-fx-provider-and-daily-refresh.md) § *The refresh*).
+
+**A missed run is not an outage.** If a conversion needs a rate that isn't there, the app fetches
+it on demand (T052's lazy fallback). The timer just keeps the common case warm.
+
+### Install
+
+```bash
+# the token — same value as FX_REFRESH_TOKEN in .env — one line, root-only
+sudo install -d -m 0700 /etc/cuadre
+printf '%s\n' 'YOUR_FX_REFRESH_TOKEN' | sudo tee /etc/cuadre/fx-refresh.token >/dev/null
+sudo chmod 600 /etc/cuadre/fx-refresh.token
+
+sudo install -m 0755 cuadre-fx-refresh /usr/local/bin/cuadre-fx-refresh
+sudo cp cuadre-fx.service cuadre-fx.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now cuadre-fx.timer
+```
+
+`cuadre-fx-refresh` reads the token from that file and **pipes it to the app over stdin** — it is
+never a command-line argument, so it never lands in `ps` or the journal. The call goes to
+`http://localhost:3000` *inside the app container*, so it doesn't depend on the tunnel being up.
+If `WorkingDirectory`/paths differ, set `CUADRE_COMPOSE_DIR` / `CUADRE_FX_TOKEN_FILE` in the
+service.
+
+### Operating it
+
+```bash
+systemctl list-timers cuadre-fx.timer         # when it next fires (~02:00 UTC + up to 20 min)
+journalctl -u cuadre-fx.service -n 20         # last run — logs `fx refresh ok: {inserted,asOf,source}`
+sudo systemctl start cuadre-fx.service        # run it now
+/usr/local/bin/cuadre-fx-refresh             # run it now, outside systemd
+```
+
+The endpoint is **idempotent** on `(base, quote, as_of, source)`: the first run of the day logs
+`"inserted": 3` (or however many pairs), a second run the same day logs `"inserted": 0`. A
+failure exits non-zero and the reason is on stderr in the journal.
 
 ## Why a timer, not a webhook or a runner
 

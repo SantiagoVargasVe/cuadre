@@ -2,7 +2,7 @@
 id: T074
 title: FX refresh systemd timer
 epic: E8-deploy
-status: todo
+status: done
 depends_on: [T052, T073]
 size: S
 ---
@@ -16,19 +16,27 @@ Read [ADR-0008](../../docs/adr/0008-fx-provider-and-daily-refresh.md) § *The re
 
 ## Acceptance criteria
 
-- [ ] A systemd service + timer calling `POST /api/admin/fx/refresh` with the bearer token
-- [ ] **Daily at ~02:00 UTC with a randomized delay** — after the provider publishes
-      (~00:00–00:30 UTC), and not at the top of the hour with everything else
-- [ ] `Persistent=true`, so a run missed while the box was off fires on the next boot
-- [ ] The token is read from a file with restrictive permissions, **never** passed as a command-line
-      argument where it lands in the process list
-- [ ] It calls the app over the container network or localhost, not through the public hostname —
-      an internal job shouldn't depend on the tunnel being up
-- [ ] Failures are visible in `journalctl`, and the endpoint's `{ inserted, asOf, source }` response
-      is logged so a journal entry says something useful
-- [ ] `infra/deploy/README.md` documents that **a missed run is not an outage** — the lazy fallback
-      in T052 fetches on demand
-- [ ] Verified end to end: run it manually, confirm rows land, confirm a second run is a no-op
+- [x] `cuadre-fx.service` (oneshot) + `cuadre-fx.timer`, driving `cuadre-fx-refresh` which
+      `POST`s `/api/admin/fx/refresh` with the bearer token
+- [x] `OnCalendar=*-*-* 02:00:00 UTC` + `RandomizedDelaySec=20min` — after the provider publishes,
+      off the top of the hour
+- [x] `Persistent=true`
+- [x] Token read from `/etc/cuadre/fx-refresh.token` (`chmod 600`) and **piped to the app over
+      stdin** — never an argv element, so never in `ps` or the journal. (curl/wget can't take a
+      header from a file without putting it on the command line; a stdin pipe to `node` can.)
+- [x] Calls `http://localhost:3000` **inside the app container** via `docker compose exec`, not
+      the public hostname — independent of the tunnel
+- [x] Failures exit non-zero with the reason on stderr → `journalctl -u cuadre-fx.service`; a
+      success logs `fx refresh ok: {"inserted":N,"asOf":"…","source":"…"}`
+- [x] `infra/deploy/README.md` § *FX refresh timer* states a missed run is **not** an outage —
+      T052's lazy fallback fetches on demand
+- [x] Verified end to end against the prod compose stack locally: first `cuadre-fx-refresh` run
+      inserted rows, a second run the same day returned `"inserted":0`
+
+## Files touched
+
+Adds `infra/deploy/cuadre-fx-refresh` (a small POSIX-sh helper) alongside the units named below —
+it keeps the token off every command line and the unit file readable.
 
 ## Out of scope
 

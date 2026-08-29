@@ -1,0 +1,49 @@
+#!/bin/sh
+# Trigger the daily FX rate refresh. Run by cuadre-fx.service (a systemd
+# timer); also fine to run by hand to check it works.
+#
+# The refresh token is read from a file and piped to the app over stdin — it is
+# never an argv element, so it never appears in `ps` or the journal. The call
+# goes to the app on localhost *inside its own container*, so it does not
+# depend on the Cloudflare Tunnel being up.
+#
+# Install:  sudo install -m 0755 cuadre-fx-refresh /usr/local/bin/cuadre-fx-refresh
+set -eu
+umask 077
+
+# The directory holding docker-compose.yml — match cuadre-deploy.service.
+COMPOSE_DIR="${CUADRE_COMPOSE_DIR:-/home/robin/nas/cuadre}"
+# The token, one line, chmod 600. Same value as FX_REFRESH_TOKEN in .env.
+TOKEN_FILE="${CUADRE_FX_TOKEN_FILE:-/etc/cuadre/fx-refresh.token}"
+
+[ -r "$TOKEN_FILE" ] || { echo "cannot read token file: $TOKEN_FILE" >&2; exit 1; }
+
+cd "$COMPOSE_DIR"
+
+# -T: no TTY, so the host's stdin (the token file) is wired to the in-container
+# process. The inline script carries no secret; the token arrives on stdin.
+docker compose exec -T app node -e '
+let buf = "";
+process.stdin.on("data", (c) => { buf += c; });
+process.stdin.on("end", async () => {
+  const token = buf.trim();
+  if (!token) { console.error("fx refresh: token file was empty"); process.exit(1); }
+  try {
+    const res = await fetch("http://localhost:3000/api/admin/fx/refresh", {
+      method: "POST",
+      headers: { authorization: "Bearer " + token },
+    });
+    const body = await res.text();
+    if (!res.ok) {
+      console.error("fx refresh failed: HTTP " + res.status + " " + body);
+      process.exit(1);
+    }
+    // Logs { "inserted": N, "asOf": "YYYY-MM-DD", "source": "..." } — a
+    // journal line that actually says what happened.
+    console.log("fx refresh ok: " + body);
+  } catch (err) {
+    console.error("fx refresh error: " + (err && err.stack ? err.stack : err));
+    process.exit(1);
+  }
+});
+' < "$TOKEN_FILE"
