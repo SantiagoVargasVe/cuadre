@@ -1,0 +1,14 @@
+[Unit]
+Description=Refresh Cuadre FX rates (POST /api/admin/fx/refresh)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+# Reads the token from a file and pipes it to the app over stdin — the secret
+# is never an argv element, so it never reaches `ps` or the journal. The call
+# hits the app on localhost inside its container, not the public hostname, so a
+# down tunnel doesn't stop it.
+ExecStart=/usr/local/bin/cuadre-fx-refresh
+User=robin
+Group=docker
