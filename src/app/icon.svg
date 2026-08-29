@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Cuadre">
+  <!-- Violet primary (#6C5CE7, the primary token in globals.css). A static
+       brand mark, so it does not follow the theme. The equals sign is the
+       app's whole point: cuadrar cuentas, everyone settled to zero. -->
+  <rect width="32" height="32" rx="7" fill="#6C5CE7"/>
+  <rect x="8" y="10.5" width="16" height="4" rx="2" fill="#fff"/>
+  <rect x="8" y="17.5" width="16" height="4" rx="2" fill="#fff"/>
+</svg>
