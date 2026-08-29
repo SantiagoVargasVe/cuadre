@@ -65,3 +65,30 @@ export function formatEnvError(error: z.ZodError): string {
     .map((issue) => `  - ${issue.path.join(".") || "(root)"}: ${issue.message}`)
     .join("\n");
 }
+
+/** Validate `env`, throwing one error that lists *every* problem rather than only the first. */
+export function parseEnv(env: Record<string, string | undefined>): Env {
+  const parsed = envSchema.safeParse(env);
+  if (!parsed.success) {
+    throw new Error(`Invalid environment configuration:\n${formatEnvError(parsed.error)}`);
+  }
+  return parsed.data;
+}
+
+/**
+ * A memoized, **lazy** accessor over `readEnv()`. Nothing is validated until
+ * the first call.
+ *
+ * Laziness is load-bearing: `next build` evaluates the module graph for static
+ * analysis, so validating at import time would make the production build — and
+ * every `docker build` — demand real secrets just to compile, and a
+ * placeholder passed only to satisfy the build could mask a genuine
+ * misconfiguration. Fail-fast isn't lost, it moves to the right moment:
+ * `src/instrumentation.ts` calls the accessor once at server startup.
+ */
+export function createConfigAccessor(
+  readEnv: () => Record<string, string | undefined>,
+): () => Env {
+  let cached: Env | undefined;
+  return () => (cached ??= parseEnv(readEnv()));
+}

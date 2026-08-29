@@ -1,16 +1,30 @@
 import "server-only";
-import { envSchema, formatEnvError } from "./config.schema";
+import { createConfigAccessor, type Env } from "./config.schema";
 
 /**
- * The one place this app reads `process.env`. Validated once, at import
- * time, so a bad `.env` fails at boot with the name of what's wrong instead
- * of surfacing as `undefined is not a connection string` three modules deep.
- * Never import `envSchema` directly from `src/app/**` — import this instead.
+ * The one place this app reads `process.env`.
+ *
+ * Validation is **lazy and memoized** (see `createConfigAccessor`). Importing
+ * this module costs nothing, so `next build` and the test runner can evaluate
+ * the module graph with no real environment. `src/instrumentation.ts` forces
+ * validation once at server startup, so a bad `.env` still fails at boot with
+ * the name of what's wrong instead of surfacing as `undefined is not a
+ * connection string` three modules deep on the first request.
+ *
+ * Never read `process.env` elsewhere, and never import `envSchema` from
+ * `src/app/**` — import this.
  */
-const parsed = envSchema.safeParse(process.env);
+export const getConfig = createConfigAccessor(() => process.env);
 
-if (!parsed.success) {
-  throw new Error(`Invalid environment configuration:\n${formatEnvError(parsed.error)}`);
-}
-
-export const config = parsed.data;
+/**
+ * Property-access sugar: `config.DATABASE_URL` rather than
+ * `getConfig().DATABASE_URL`. Every read resolves through the same memoized
+ * accessor, so the first property access is what triggers validation.
+ */
+export const config = new Proxy({} as Env, {
+  get: (_target, prop) => getConfig()[prop as keyof Env],
+  has: (_target, prop) => prop in getConfig(),
+  ownKeys: () => Reflect.ownKeys(getConfig()),
+  getOwnPropertyDescriptor: (_target, prop) =>
+    Reflect.getOwnPropertyDescriptor(getConfig(), prop),
+});
