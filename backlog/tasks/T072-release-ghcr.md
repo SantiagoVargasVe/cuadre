@@ -2,7 +2,7 @@
 id: T072
 title: Release workflow — build and push to GHCR on CI success
 epic: E8-deploy
-status: todo
+status: done
 depends_on: [T070, T071]
 size: S
 ---
@@ -16,18 +16,21 @@ Read [ADR-0010](../../docs/adr/0010-deploy-via-ghcr-and-pull-timer.md).
 
 ## Acceptance criteria
 
-- [ ] Triggered on **CI success** for `main`, not on push
-- [ ] Builds `linux/amd64` and pushes to GHCR as `latest` **and** `sha-<commit>` — the sha tag is
-      what a rollback pins to
-- [ ] Uses the built-in `GITHUB_TOKEN`. No PAT
-- [ ] **The GHCR package must be public.** That is what keeps "no GitHub credentials on the host"
-      true. If it ever flips private, the host needs a read-only PAT
-- [ ] Layer caching so a release doesn't take longer than the CI run that gated it
-- [ ] Document in the workflow: **don't merge two PRs within a minute of each other.** The second
-      merge cancels the first's in-flight CI run, and since release is gated on *CI success*, that
-      commit never gets an image
-- [ ] **Never add a self-hosted runner.** This repo is public; any PR author could then run code
-      inside the LAN
+- [x] Triggered on **CI success** for `main` (`workflow_run` → `workflows: ["CI"]`,
+      `branches: [main]`, `if: conclusion == 'success'`), not on push
+- [x] Builds `linux/amd64` and pushes to GHCR as `latest` **and** `sha-<commit>`
+      (`type=sha,format=long`) — the sha tag is what a rollback pins to
+- [x] Built-in `GITHUB_TOKEN` via `docker/login-action`; `permissions: packages: write`. No PAT
+- [x] Comment states **the GHCR package must be public** — what keeps "no GitHub credentials on the
+      host" true; if it flips private the host needs a read-only PAT
+- [x] Layer caching: `cache-from/to: type=gha, mode=max`
+- [x] Header comment documents **don't merge two PRs within a minute** — CI's concurrency group
+      cancels the older run, a cancelled run isn't a success, so that commit never gets an image
+- [x] Header comment documents **never add a self-hosted runner** — public repo, PR authors could
+      then run code inside the LAN
+- **Manual, once, after this merges:** set the GHCR package `cuadre` visibility to Public
+  (Packages → cuadre → Package settings → Change visibility). Until then the host can't pull
+  without a PAT.
 
 ## Out of scope
 

@@ -1,0 +1,84 @@
+name: Release
+
+# Runs only after CI succeeds on main. A plain `push: [main]` trigger would
+# race CI and could publish an image that never passed lint, typecheck, tests
+# or build. See docs/adr/0010-deploy-via-ghcr-and-pull-timer.md.
+#
+# ── Two operational rules this file exists to enforce ──────────────────────
+#
+# 1. DON'T MERGE TWO PRs WITHIN A MINUTE OF EACH OTHER. CI's concurrency group
+#    cancels an in-flight run when a newer commit lands on main; a cancelled
+#    run is not a success, so this workflow never fires for that commit and it
+#    never gets an image. Merge one, wait for its CI to go green, merge the
+#    next.
+#
+# 2. NEVER ADD A SELF-HOSTED RUNNER. This repository is public. A self-hosted
+#    runner would let any pull-request author execute code on it, and the
+#    deploy target sits inside a home LAN. The host pulls; nothing pushes in.
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  publish:
+    name: build · push to GHCR
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+
+    # The only job in this repo that holds a write token. CI stays
+    # secret-free so pull requests from forks can run it safely.
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Build the exact commit CI went green on, not whatever main's tip
+          # is now.
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Built-in GITHUB_TOKEN — no PAT. This works only while the GHCR package
+      # stays PUBLIC, which is also what lets the host pull with no GitHub
+      # credentials at all. If the package ever flips private, the host needs
+      # a read-only PAT and this comment is where you'll come looking.
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # `latest` is what the host's 5-minute pull timer follows; the
+          # `sha-<commit>` tag makes any specific build addressable, which is
+          # exactly what a rollback pins to (T073's deploy README).
+          tags: |
+            type=raw,value=latest
+            type=sha,format=long
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/Dockerfile
+          # amd64 only — the deploy target is x86. Building arm64 as well would
+          # double the release time for an image nothing runs.
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Layer cache in the GitHub Actions cache, so a release doesn't take
+          # longer than the CI run that gated it.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
