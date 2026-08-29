@@ -2,9 +2,10 @@ import { es } from "../../../../../lib/i18n/es";
 import { formatCalendarDate } from "../../../../../lib/date/format";
 import { TooltipContent, TooltipRoot, TooltipTrigger } from "../../../../_ui/Tooltip";
 import { BalanceMemberRow } from "./BalanceMemberRow";
-import { PaymentPlanRow } from "./PaymentPlanRow";
+import { PaymentPlanSection } from "./PaymentPlanSection";
 import type { CurrencyBalancesView } from "./balancesTypes";
 import type { GroupMember } from "./types";
+import type { useSettlements } from "./useSettlements";
 
 const t = es.balances;
 
@@ -17,6 +18,7 @@ export interface CurrencyBalanceBlockProps {
   block: CurrencyBalancesView;
   members: GroupMember[];
   myUserId: string;
+  mutations: ReturnType<typeof useSettlements>;
 }
 
 /**
@@ -25,7 +27,7 @@ export interface CurrencyBalanceBlockProps {
  * never show a combined total"), which is why this component, not its
  * caller, owns the heading that names which currency it is.
  */
-export function CurrencyBalanceBlock({ block, members, myUserId }: CurrencyBalanceBlockProps) {
+export function CurrencyBalanceBlock({ block, members, myUserId, mutations }: CurrencyBalanceBlockProps) {
   const nameOf = nameLookup(members);
 
   return (
@@ -57,16 +59,13 @@ export function CurrencyBalanceBlock({ block, members, myUserId }: CurrencyBalan
         ))}
       </div>
 
-      <div className="flex flex-col gap-2 border-t border-border pt-3">
-        <h3 className="text-xs font-medium text-muted-foreground">{t.planHeading}</h3>
-        {block.plan.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t.settledBlock}</p>
-        ) : (
-          block.plan.map((edge) => (
-            <PaymentPlanRow key={`${edge.from}-${edge.to}`} edge={edge} currency={block.currency} myUserId={myUserId} nameOf={nameOf} />
-          ))
-        )}
-      </div>
+      <PaymentPlanSection
+        block={block}
+        members={members}
+        myUserId={myUserId}
+        mutations={mutations}
+        nameOf={nameOf}
+      />
     </section>
   );
 }

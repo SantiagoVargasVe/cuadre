@@ -34,12 +34,22 @@ export function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
+export const noSettlements = { items: [], nextCursor: null };
+
 export function renderBalancesTab(initialData: BalancesResult = unsimplified) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const invalidateSpy = vi.spyOn(client, "invalidateQueries");
   render(
     <QueryClientProvider client={client}>
-      <BalancesTab groupId="g1" myUserId="ana" members={members} initialSimplify={false} initialData={initialData} />
+      <BalancesTab
+        groupId="g1"
+        myUserId="ana"
+        members={members}
+        defaultCurrency="COP"
+        initialSimplify={false}
+        initialData={initialData}
+        initialSettlements={noSettlements}
+      />
     </QueryClientProvider>,
   );
   return { invalidateSpy };

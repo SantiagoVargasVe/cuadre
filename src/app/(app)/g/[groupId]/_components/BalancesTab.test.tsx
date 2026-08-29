@@ -31,22 +31,27 @@ const simplified: BalancesResult = {
 
 describe("BalancesTab", () => {
   it("toggling simplify PATCHes the group and re-renders from the refetched response", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(200, { group: { id: "g1" } }))
-      .mockResolvedValueOnce(jsonResponse(200, simplified));
+    // The PATCH invalidates the whole ["group", "g1"] key, so both the
+    // balances query and the settlements list refetch under it.
+    const fetchMock = vi.fn((url: string, _init?: RequestInit) => {
+      if (url === "/api/groups/g1") return Promise.resolve(jsonResponse(200, { group: { id: "g1" } }));
+      if (url.endsWith("/settlements")) return Promise.resolve(jsonResponse(200, { items: [], nextCursor: null }));
+      return Promise.resolve(jsonResponse(200, simplified));
+    });
     vi.stubGlobal("fetch", fetchMock);
     renderBalancesTab();
     const user = userEvent.setup();
 
     await user.click(screen.getByRole("switch"));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     const [patchUrl, patchInit] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(patchUrl).toBe("/api/groups/g1");
     expect(patchInit.method).toBe("PATCH");
     expect(JSON.parse(patchInit.body as string)).toEqual({ simplifyDebts: true });
 
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.some(([u]) => u === "/api/groups/g1/balances")).toBe(true),
+    );
     await waitFor(() => expect(screen.getByRole("switch")).toBeChecked());
   });
 

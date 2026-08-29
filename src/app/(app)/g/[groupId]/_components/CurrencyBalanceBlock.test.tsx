@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { CurrencyBalanceBlock } from "./CurrencyBalanceBlock";
 import type { CurrencyBalancesView } from "./balancesTypes";
+import { mockSettlements } from "./settlementsTestHelpers";
 import type { GroupMember } from "./types";
 
 const members: GroupMember[] = [{ userId: "ana", displayName: "Ana", role: "owner" }];
@@ -17,12 +18,12 @@ const converted: CurrencyBalancesView = {
 
 describe("CurrencyBalanceBlock", () => {
   it("does not show a converted marker for a block with no pins", () => {
-    render(<CurrencyBalanceBlock block={{ ...converted, pins: undefined }} members={members} myUserId="ana" />);
+    render(<CurrencyBalanceBlock block={{ ...converted, pins: undefined }} members={members} myUserId="ana" mutations={mockSettlements()} />);
     expect(screen.queryByText("Tasas de conversión")).not.toBeInTheDocument();
   });
 
   it("reveals the pin's date and source on hover, reachable in one tap", async () => {
-    render(<CurrencyBalanceBlock block={converted} members={members} myUserId="ana" />);
+    render(<CurrencyBalanceBlock block={converted} members={members} myUserId="ana" mutations={mockSettlements()} />);
     const user = userEvent.setup();
 
     expect(screen.queryByText(/tasa del/)).not.toBeInTheDocument();
