@@ -54,7 +54,13 @@ export interface GroupSettings {
 }
 
 export interface GroupDetailResult {
-  group: { id: string; title: string; defaultCurrency: string };
+  group: {
+    id: string;
+    title: string;
+    defaultCurrency: string;
+    description: string | null;
+    archivedAt: string | null;
+  };
   members: GroupMember[];
   settings: GroupSettings;
 }

@@ -91,10 +91,10 @@ describe.skipIf(!hasTestDatabase)("/api/groups/[id]/display-currency", () => {
     expect((await displayCurrencyPUT(req("PUT", outsiderToken, { currency: "USD" }), ctx())).status).toBe(404);
   });
 
-  it("GET returns the current currency and pins", async () => {
+  it("GET returns the current currency, pins, and the provider source", async () => {
     await displayCurrencyPUT(req("PUT", ownerToken, { currency: "USD" }), ctx());
     const body = await (await displayCurrencyGET(req("GET", ownerToken), ctx())).json();
-    expect(body).toEqual({ currency: "USD", pins: [expect.objectContaining({ fromCurrency: "COP" })] });
+    expect(body).toEqual({ currency: "USD", pins: [expect.objectContaining({ fromCurrency: "COP" })], source: expect.any(String) });
   });
 
   it("DELETE clears displayCurrency but keeps the pins", async () => {
