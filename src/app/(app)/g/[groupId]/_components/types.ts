@@ -1,3 +1,5 @@
+import type { AvatarChoice } from "../../../../../lib/avatar";
+
 /**
  * Mirrors `ExpenseSummary`/`ExpenseListResult` (server/services/expenses.ts)
  * — the wire shape from `GET /api/groups/:id/expenses` and
@@ -46,6 +48,9 @@ export interface GroupMember {
   userId: string;
   displayName: string;
   role: "owner" | "member";
+  /** The member's chosen avatar. The wire always sends it; `null` /
+   * absent both mean the T107 default (T108). */
+  avatar?: AvatarChoice | null;
 }
 
 export interface GroupSettings {

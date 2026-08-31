@@ -1,5 +1,8 @@
 import "server-only";
 import { eq } from "drizzle-orm";
+import type { AvatarChoice } from "../../lib/avatar";
+import type { AvatarChoiceInput } from "../../lib/schemas/avatar";
+import { toAvatarChoice } from "../db/avatar";
 import { db, withTransaction } from "../db/client";
 import { groupMembers, users } from "../db/schema";
 import { hashPassword, verifyPassword } from "../auth/password";
@@ -37,6 +40,8 @@ export interface AuthUser {
   id: string;
   email: string;
   displayName: string;
+  /** The member's chosen avatar, or `null` for the T107 default (T108). */
+  avatar: AvatarChoice | null;
 }
 
 export interface LoginResult {
@@ -52,13 +57,38 @@ export async function login(email: string, password: string): Promise<LoginResul
   if (!user || !ok) throw new InvalidCredentialsError();
 
   const token = await signSessionToken(user.id);
-  return { user: { id: user.id, email: user.email, displayName: user.displayName }, token };
+  return {
+    user: { id: user.id, email: user.email, displayName: user.displayName, avatar: toAvatarChoice(user) },
+    token,
+  };
 }
 
 /** Used by GET /api/auth/me once a session has already resolved a userId. */
 export async function getUserById(userId: string): Promise<AuthUser | null> {
   const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  return user ? { id: user.id, email: user.email, displayName: user.displayName } : null;
+  return user
+    ? { id: user.id, email: user.email, displayName: user.displayName, avatar: toAvatarChoice(user) }
+    : null;
+}
+
+/**
+ * A member changes **their own** avatar (T108). The acting `userId` comes
+ * from the session at the route boundary, never from the body. `null`
+ * resets to the T107 default by clearing all three columns.
+ */
+export async function updateAvatar(userId: string, choice: AvatarChoiceInput): Promise<AuthUser> {
+  const [user] = await db
+    .update(users)
+    .set({
+      avatarVariant: choice?.variant ?? null,
+      avatarSeed: choice?.seed ?? null,
+      avatarPalette: choice?.palette ?? null,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId))
+    .returning();
+  if (!user) throw new UnauthorizedError();
+  return { id: user.id, email: user.email, displayName: user.displayName, avatar: toAvatarChoice(user) };
 }
 
 export interface RegisterInput {
@@ -104,5 +134,8 @@ export async function register(input: RegisterInput): Promise<LoginResult> {
   });
 
   const token = await signSessionToken(user.id);
-  return { user: { id: user.id, email: user.email, displayName: user.displayName }, token };
+  return {
+    user: { id: user.id, email: user.email, displayName: user.displayName, avatar: toAvatarChoice(user) },
+    token,
+  };
 }

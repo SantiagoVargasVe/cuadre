@@ -2,16 +2,25 @@ import { formatCalendarDate, formatTimestamp } from "../../../../../lib/date/for
 import { es } from "../../../../../lib/i18n/es";
 import { Avatar } from "../../../../_ui/Avatar";
 import { Money } from "../../../../_ui/Money";
+import { buildMemberLookup, type MemberLookup } from "./memberLookup";
 import { strategyPhrase } from "./strategyPhrase";
-import { resolveDisplayAmounts, type ExpenseParty, type ExpenseSummary } from "./types";
+import { resolveDisplayAmounts, type ExpenseParty, type ExpenseSummary, type GroupMember } from "./types";
 
 const t = es.expenseFeed;
 
-function PartyRow({ party, currency }: { party: ExpenseParty; currency: string }) {
+function PartyRow({
+  party,
+  currency,
+  avatarOf,
+}: {
+  party: ExpenseParty;
+  currency: string;
+  avatarOf: MemberLookup["avatarOf"];
+}) {
   return (
     <div className="flex items-center justify-between text-sm">
       <span className="flex items-center gap-2">
-        <Avatar userId={party.userId} displayName={party.displayName} size={24} />
+        <Avatar userId={party.userId} avatar={avatarOf(party.userId)} size={24} />
         {party.displayName}
       </span>
       <Money value={{ amount: BigInt(party.amount), currency }} />
@@ -21,8 +30,9 @@ function PartyRow({ party, currency }: { party: ExpenseParty; currency: string }
 
 /** The full split breakdown for one expense — rendered from the same
  * `payers`/`splits` arrays the feed row already has, never a second fetch. */
-export function ExpenseDetail({ expense }: { expense: ExpenseSummary }) {
+export function ExpenseDetail({ expense, members = [] }: { expense: ExpenseSummary; members?: GroupMember[] }) {
   const display = resolveDisplayAmounts(expense);
+  const { avatarOf } = buildMemberLookup(members);
 
   return (
     <div className="mt-4 flex flex-col gap-4 text-foreground">
@@ -33,7 +43,7 @@ export function ExpenseDetail({ expense }: { expense: ExpenseSummary }) {
       <div className="flex flex-col gap-1">
         <h3 className="text-sm font-medium text-muted-foreground">{t.payersHeading}</h3>
         {display.payers.map((payer) => (
-          <PartyRow key={payer.userId} party={payer} currency={display.currency} />
+          <PartyRow key={payer.userId} party={payer} currency={display.currency} avatarOf={avatarOf} />
         ))}
       </div>
       <div className="flex flex-col gap-1">
@@ -45,7 +55,7 @@ export function ExpenseDetail({ expense }: { expense: ExpenseSummary }) {
           })}
         </p>
         {display.splits.map((split) => (
-          <PartyRow key={split.userId} party={split} currency={display.currency} />
+          <PartyRow key={split.userId} party={split} currency={display.currency} avatarOf={avatarOf} />
         ))}
       </div>
       {expense.editedAt && (

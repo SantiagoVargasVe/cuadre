@@ -40,6 +40,15 @@ export const users = pgTable("users", {
   email: citext("email").notNull().unique(),
   displayName: text("display_name").notNull(),
   passwordHash: text("password_hash").notNull(),
+  // Avatar choice (T108). All three nullable — null means "the T107
+  // default" (variant `beam`, seeded by the user id, default palette), so
+  // existing rows need no backfill and the columns can be dropped without
+  // data loss. Values are validated at the API boundary against the six
+  // known variants and the named palette set; plain `text` keeps the
+  // migration reversible.
+  avatarVariant: text("avatar_variant"),
+  avatarSeed: text("avatar_seed"),
+  avatarPalette: text("avatar_palette"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

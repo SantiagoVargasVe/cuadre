@@ -3,6 +3,7 @@
 import { es } from "../../../../../lib/i18n/es";
 import { Avatar } from "../../../../_ui/Avatar";
 import { DialogContent, DialogRoot, DialogTitle, DialogTrigger } from "../../../../_ui/Dialog";
+import type { MemberLookup } from "./memberLookup";
 import type { PlanEdgeView } from "./balancesTypes";
 import { planEdgePhrase } from "./planPhrase";
 
@@ -12,7 +13,8 @@ export interface PaymentPlanRowProps {
   edge: PlanEdgeView;
   currency: string;
   myUserId: string;
-  nameOf: (userId: string) => string;
+  nameOf: MemberLookup["nameOf"];
+  avatarOf: MemberLookup["avatarOf"];
 }
 
 /**
@@ -22,12 +24,12 @@ export interface PaymentPlanRowProps {
  * (splitting.md § 5 *The social caveat*), so it becomes a dialog trigger
  * instead of static text.
  */
-export function PaymentPlanRow({ edge, currency, myUserId, nameOf }: PaymentPlanRowProps) {
+export function PaymentPlanRow({ edge, currency, myUserId, nameOf, avatarOf }: PaymentPlanRowProps) {
   const phrase = planEdgePhrase(edge, currency, myUserId, nameOf);
   const explains = edge.explains ?? [];
   // The counterparty — whoever isn't me, or the payer for a third-person edge.
   const otherId = edge.from === myUserId ? edge.to : edge.from;
-  const avatar = <Avatar userId={otherId} displayName={nameOf(otherId)} size={24} />;
+  const avatar = <Avatar userId={otherId} avatar={avatarOf(otherId)} size={24} />;
 
   if (explains.length === 0) {
     return (

@@ -26,7 +26,7 @@ export function MemberList({ groupId, members, myUserId, amOwner }: MemberListPr
         {members.map((member) => (
           <li key={member.userId} className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Avatar userId={member.userId} displayName={member.displayName} />
+              <Avatar userId={member.userId} avatar={member.avatar} />
               <div className="flex flex-col">
                 <span className="text-sm text-foreground">
                   {member.displayName}

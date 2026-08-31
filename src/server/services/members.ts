@@ -1,6 +1,8 @@
 import "server-only";
 import { and, eq, isNull, sql } from "drizzle-orm";
+import type { AvatarChoice } from "../../lib/avatar";
 import { requireMembership, requireOwner } from "../auth/membership";
+import { avatarColumns, toAvatarChoice } from "../db/avatar";
 import { db } from "../db/client";
 import { groupMembers, users } from "../db/schema";
 import { NotFoundError, ValidationError } from "../errors";
@@ -37,9 +39,11 @@ export interface MemberSummary {
   displayName: string;
   role: "owner" | "member";
   joinedAt: string;
+  /** The member's chosen avatar, or `null` for the T107 default (T108). */
+  avatar: AvatarChoice | null;
 }
 
-/** Never emails (security.md § Privacy) — display name and id only, regardless of who's asking. */
+/** Never emails (security.md § Privacy) — display name, id, avatar choice only. */
 export async function listMembers(groupId: string, userId: string): Promise<MemberSummary[]> {
   await requireMembership(groupId, userId);
 
@@ -49,12 +53,19 @@ export async function listMembers(groupId: string, userId: string): Promise<Memb
       displayName: users.displayName,
       role: groupMembers.role,
       joinedAt: groupMembers.joinedAt,
+      ...avatarColumns,
     })
     .from(groupMembers)
     .innerJoin(users, eq(users.id, groupMembers.userId))
     .where(and(eq(groupMembers.groupId, groupId), isNull(groupMembers.removedAt)));
 
-  return rows.map((row) => ({ ...row, joinedAt: row.joinedAt.toISOString() }));
+  return rows.map((row) => ({
+    userId: row.userId,
+    displayName: row.displayName,
+    role: row.role,
+    joinedAt: row.joinedAt.toISOString(),
+    avatar: toAvatarChoice(row),
+  }));
 }
 
 async function currentOwnerCount(groupId: string): Promise<number> {

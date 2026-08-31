@@ -1,6 +1,8 @@
 import "server-only";
 import { and, eq, isNull, sql } from "drizzle-orm";
+import type { AvatarChoice } from "../../lib/avatar";
 import { config } from "../config";
+import { avatarColumns, toAvatarChoice } from "../db/avatar";
 import { db, withTransaction } from "../db/client";
 import { groupMembers, groups, users } from "../db/schema";
 import { assertGroupNotArchived, requireMembership, requireOwner } from "../auth/membership";
@@ -40,6 +42,8 @@ export interface GroupMemberSummary {
   userId: string;
   displayName: string;
   role: "owner" | "member";
+  /** The member's chosen avatar, or `null` for the T107 default (T108). */
+  avatar: AvatarChoice | null;
 }
 
 export interface GroupSettings {
@@ -69,15 +73,25 @@ export async function getGroupDetail(groupId: string, userId: string): Promise<G
   // proves this row is there.
   const [group] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
 
-  const members = await db
-    .select({ userId: groupMembers.userId, displayName: users.displayName, role: groupMembers.role })
+  const memberRows = await db
+    .select({
+      userId: groupMembers.userId,
+      displayName: users.displayName,
+      role: groupMembers.role,
+      ...avatarColumns,
+    })
     .from(groupMembers)
     .innerJoin(users, eq(users.id, groupMembers.userId))
     .where(and(eq(groupMembers.groupId, groupId), isNull(groupMembers.removedAt)));
 
   return {
     group: group!,
-    members,
+    members: memberRows.map((m) => ({
+      userId: m.userId,
+      displayName: m.displayName,
+      role: m.role,
+      avatar: toAvatarChoice(m),
+    })),
     settings: { displayCurrency: group!.displayCurrency, simplifyDebts: group!.simplifyDebts },
   };
 }

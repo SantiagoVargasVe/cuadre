@@ -21,10 +21,18 @@ those differ.
 
 ### `users`
 
-`id uuid pk` · `email citext unique` · `display_name` · `password_hash` · timestamps
+`id uuid pk` · `email citext unique` · `display_name` · `password_hash` ·
+`avatar_variant` nullable · `avatar_seed` nullable · `avatar_palette` nullable · timestamps
 
 Argon2id hashes. No role column — see the sibling repo's precedent; authorization here is
 membership-based, not role-based, with the single exception of `group_members.role`.
+
+The three `avatar_*` columns hold a member's chosen generated avatar (T108) — a
+`boring-avatars` variant, an **app-generated** seed (`nanoid`, never free text), and a
+**named** palette from a curated set (`avatar_palette` stores the name, never raw hex).
+All three nullable: `null` means the T107 default (variant `beam`, seeded by the user id,
+default palette), so existing rows need no backfill and the columns drop cleanly. Values are
+validated at the API boundary; the columns are plain `text` to keep the migration reversible.
 
 ### `invite_codes`
 

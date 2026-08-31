@@ -72,7 +72,7 @@ describe.skipIf(!hasTestDatabase)("/api/groups/[id]", () => {
 
       expect(response.status).toBe(200);
       expect(body.group.id).toBe(groupId);
-      expect(body.members).toEqual([{ userId: expect.any(String), displayName: "Ana", role: "owner" }]);
+      expect(body.members).toEqual([{ userId: expect.any(String), displayName: "Ana", role: "owner", avatar: null }]);
     });
   });
 

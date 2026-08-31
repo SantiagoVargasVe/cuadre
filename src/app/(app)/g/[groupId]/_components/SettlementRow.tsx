@@ -6,6 +6,7 @@ import { Avatar } from "../../../../_ui/Avatar";
 import { Button } from "../../../../_ui/Button";
 import { DialogClose, DialogContent, DialogRoot, DialogTitle, DialogTrigger } from "../../../../_ui/Dialog";
 import { Money } from "../../../../_ui/Money";
+import type { MemberLookup } from "./memberLookup";
 import { SettleUpDialog } from "./SettleUpDialog";
 import type { SettlementView } from "./settlementTypes";
 import type { GroupMember } from "./types";
@@ -20,7 +21,8 @@ export interface SettlementRowProps {
   myUserId: string;
   presentCurrencies: string[];
   mutations: ReturnType<typeof useSettlements>;
-  nameOf: (userId: string) => string;
+  nameOf: MemberLookup["nameOf"];
+  avatarOf: MemberLookup["avatarOf"];
 }
 
 /** One recorded payment. Editable and deletable by any member, the same
@@ -33,6 +35,7 @@ export function SettlementRow({
   presentCurrencies,
   mutations,
   nameOf,
+  avatarOf,
 }: SettlementRowProps) {
   const phrase = t.paidPhrase(nameOf(settlement.fromUserId), nameOf(settlement.toUserId));
 
@@ -40,7 +43,7 @@ export function SettlementRow({
     <li className="flex flex-col gap-1 rounded-md border border-border p-3">
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-2 text-sm text-foreground">
-          <Avatar userId={settlement.fromUserId} displayName={nameOf(settlement.fromUserId)} size={24} />
+          <Avatar userId={settlement.fromUserId} avatar={avatarOf(settlement.fromUserId)} size={24} />
           {phrase}
         </span>
         <Money
