@@ -38,7 +38,7 @@ describe("GroupsList", () => {
     );
 
     expect(screen.getByText(`+$${NBSP}20.000`)).toBeInTheDocument();
-    expect(screen.getByText(`-$${NBSP}5,00`)).toBeInTheDocument();
+    expect(screen.getByText(`-US$${NBSP}5,00`)).toBeInTheDocument();
     // Nothing should render a value summing across the two currencies —
     // there's no shared unit for 20.000 COP and 5 USD to add up in.
     expect(screen.queryByText(/total/i)).not.toBeInTheDocument();

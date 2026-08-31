@@ -151,12 +151,15 @@ member's view; it is not a personal view preference and must not feel like one.
 
 ## Money
 
-**Never call `Intl` directly.** Use the shared formatter in `src/lib/money/format.ts`. Two
-verified reasons it exists:
+**Never call `Intl` directly.** Use the shared formatter in `src/lib/money/format.ts`. Verified
+reasons it exists — see design-system.md § *Money display* for the full table:
 
 - `Intl.NumberFormat('es-CO', { currency: 'COP' })` renders `$ 150.000,00`. COP needs
   `maximumFractionDigits: 0` explicitly.
-- `EUR` under `es-CO` renders `EUR 45,00`, not `€45,00`.
+- `EUR` under `es-CO` renders `EUR 45,00`, not `€45,00` — EUR uses `narrowSymbol`.
+- `narrowSymbol` renders **both COP and USD as `$`** under `es-CO`. So the `currencyDisplay`
+  mode is per-currency: COP/USD use `symbol` (`$` / `US$`), giving every currency a distinct
+  string (T101). The currency name lives only here — no component appends its own.
 
 Money **inputs** take major units with locale thousands separators (`150.000`) and convert to
 minor units on submit. The `bigint` boundary is the form's `onSubmit`, and nothing downstream of

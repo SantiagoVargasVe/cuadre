@@ -10,6 +10,22 @@ export interface CurrencyMeta {
   /** How many of those minor-unit digits are actually shown — and, for
    * `<MoneyField>`, how many the user is allowed to type. */
   displayDecimals: number;
+  /**
+   * The `Intl` `currencyDisplay` mode this currency renders under. It is
+   * per-currency, not one global setting, because no single mode names all
+   * three of this app's currencies distinctly under `es-CO` (T101):
+   *
+   * | currency | `symbol` | `narrowSymbol` |
+   * |----------|----------|----------------|
+   * | COP      | `$`      | `$`            |
+   * | USD      | `US$`    | `$`            |  ← collide under narrowSymbol
+   * | EUR      | `EUR`    | `€`            |  ← literal code under symbol
+   *
+   * So: `symbol` for COP (`$`) and USD (`US$`, which disambiguates it from
+   * COP — the same `$`/`US$` split T104's helper text already speaks), and
+   * `narrowSymbol` for EUR to keep `€` instead of the literal string `EUR`.
+   */
+  currencyDisplay: "symbol" | "narrowSymbol";
 }
 
 /**
@@ -20,9 +36,9 @@ export interface CurrencyMeta {
  * several files (currency.md § Supported currencies).
  */
 const CURRENCY_META: Record<string, CurrencyMeta> = {
-  COP: { exponent: 2, displayDecimals: 0 },
-  USD: { exponent: 2, displayDecimals: 2 },
-  EUR: { exponent: 2, displayDecimals: 2 },
+  COP: { exponent: 2, displayDecimals: 0, currencyDisplay: "symbol" },
+  USD: { exponent: 2, displayDecimals: 2, currencyDisplay: "symbol" },
+  EUR: { exponent: 2, displayDecimals: 2, currencyDisplay: "narrowSymbol" },
 };
 
 export function getCurrencyMeta(currency: string): CurrencyMeta {
@@ -62,14 +78,17 @@ export interface FormatMoneyOptions {
 
 /**
  * The only place `Intl.NumberFormat` runs on a money value (design-system.md
- * § *Money display*). Two verified gotchas it exists to absorb:
+ * § *Money display*). Three verified gotchas it exists to absorb:
  *
  * - `Intl.NumberFormat('es-CO', { currency: 'COP' })` defaults to two
  *   fraction digits (CLDR), so `maximumFractionDigits` has to come from
  *   `displayDecimals`, never the ISO exponent.
  * - `currencyDisplay: 'symbol'` renders EUR as the literal string `EUR`
- *   under `es-CO`, not `€` — `narrowSymbol` fixes it for every currency
- *   this app supports.
+ *   under `es-CO`, not `€` — so EUR alone uses `narrowSymbol`.
+ * - under `es-CO`, `narrowSymbol` collapses **both** COP and USD onto a bare
+ *   `$`: two currencies, one string, in an app that is entirely who-owes-whom
+ *   (T101). So the mode is per-currency (`meta.currencyDisplay`): `symbol`
+ *   keeps `$` for COP and gives USD its distinct `US$`.
  *
  * The amount is split into major/minor parts with `bigint` arithmetic and
  * handed to `Intl` as a `bigint` — never a `Number` — so a COP amount past
@@ -91,7 +110,7 @@ export function formatMoney(value: Money, options: FormatMoneyOptions = {}): str
   const parts = new Intl.NumberFormat(LOCALE, {
     style: "currency",
     currency: value.currency,
-    currencyDisplay: "narrowSymbol",
+    currencyDisplay: meta.currencyDisplay,
     maximumFractionDigits: 0,
     minimumFractionDigits: 0,
     signDisplay: "never",
