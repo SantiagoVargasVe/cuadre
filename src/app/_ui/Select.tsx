@@ -4,6 +4,31 @@ import { cn } from "../../lib/cn";
 
 export const SelectRoot = BaseSelect.Root;
 
+/**
+ * `<SelectValue>` on a closed trigger renders the selected *value*, not the
+ * label — the `<Select.Item>` children aren't mounted while closed, so it has
+ * nothing else to go on. When value ≠ label (a `userId` option whose text is
+ * a display name) that surfaces a raw UUID on screen (T103).
+ *
+ * Base UI's supported fix is the `items` map on `<Select.Root>` — "when
+ * specified, `<Select.Value>` renders the label of the selected item". Build
+ * it with this helper and pass it to `<SelectRoot items={…}>`:
+ *
+ * ```tsx
+ * <SelectRoot items={selectItems(members, (m) => m.userId, (m) => m.displayName)} …>
+ * ```
+ *
+ * A select whose value *is* its label (the currency pickers, value `"COP"` /
+ * label `"COP"`) already renders correctly and doesn't need this.
+ */
+export function selectItems<T>(
+  list: readonly T[],
+  getValue: (item: T) => string,
+  getLabel: (item: T) => React.ReactNode,
+): Record<string, React.ReactNode> {
+  return Object.fromEntries(list.map((item) => [getValue(item), getLabel(item)]));
+}
+
 export function SelectTrigger({
   className,
   children,

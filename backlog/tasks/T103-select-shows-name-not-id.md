@@ -2,7 +2,7 @@
 id: T103
 title: The settle-up recipient select shows a UUID instead of the member's name
 epic: E12-first-use
-status: todo
+status: done
 depends_on: []
 size: S
 ---
@@ -24,20 +24,22 @@ Read [design-system.md](../../docs/frontend/design-system.md) § *Component libr
 
 ## Acceptance criteria
 
-- [ ] The closed select shows the member's **display name**; the dropdown is unchanged
-- [ ] Fixed with Base UI's own supported mechanism — check the installed `@base-ui/react@1.7.0`
-      API for `items` on `Select.Root` or a render/children function on `Select.Value` — rather
-      than a hand-rolled `find()` in each consumer. Don't fight the library
-      (design-system.md: "Base UI handles [...] don't reimplement it, don't fight it")
-- [ ] If the fix belongs in the shared wrapper, it goes in `src/app/_ui/Select.tsx` so every
-      select gets it
-- [ ] **Audit the other selects** — currency in `CreateGroupDialog`, currency in
-      `AmountCurrencyFields`, the loan beneficiary in the split editor, and whatever
-      [T104](T104-settle-up-any-currency.md) adds. Any whose value ≠ label has the same bug
-- [ ] **No UUID is ever rendered as user-facing text anywhere.** Grep the app for other places a
-      raw id could reach the screen and fix or file them
-- [ ] Test: with a recipient selected, the trigger's text is the display name and does **not**
-      match a UUID pattern
+- [x] The closed select shows the member's **display name**; the dropdown is unchanged
+- [x] Fixed with Base UI's supported mechanism: the `items` map on `<Select.Root>` ("when
+      specified, `<Select.Value>` renders the label of the selected item"). No hand-rolled
+      `find()` — a `selectItems(list, getValue, getLabel)` helper builds the map
+- [x] The reusable half lives in `src/app/_ui/Select.tsx` (`selectItems` + a doc comment on
+      when a select needs it); `SettlementForm` passes `items={recipientItems}`
+- [x] **Audited the other selects.** Currency in `CreateGroupDialog` and `AmountCurrencyFields`:
+      value === label (`"COP"` / `"COP"`), render correctly, no change. Loan beneficiary in the
+      split editor: a `RadioGroup`, not a `Select` — its items are always mounted, so the label
+      always shows. (T104's currency select will use `selectItems` or, being code === label,
+      won't need it.)
+- [x] **No UUID rendered as user-facing text.** Grepped `src/app/**/*.tsx` for `userId` / `.id`
+      reaching JSX text — every consumer maps through `nameOf` / `displayName` / a `byId` map;
+      the settle-up trigger was the only leak
+- [x] Test (`SettlementForm.test.tsx`): the closed trigger's text is the display name and does
+      not match a UUID pattern, both for the default recipient and after picking another
 
 ## Out of scope
 
