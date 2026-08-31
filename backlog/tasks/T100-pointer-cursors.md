@@ -2,7 +2,7 @@
 id: T100
 title: Restore pointer cursors on every interactive control
 epic: E12-first-use
-status: todo
+status: done
 depends_on: []
 size: S
 ---
@@ -26,23 +26,26 @@ Read [design-system.md](../../docs/frontend/design-system.md) § *Component rule
 
 ## Acceptance criteria
 
-- [ ] Every interactive control shows `cursor: pointer` on hover: `Button` (all variants and
+- [x] Every interactive control shows `cursor: pointer` on hover: `Button` (all variants and
       sizes), `DialogTrigger` / `DialogClose`, `Tab`, `Switch`, `Checkbox`, `RadioGroup` items,
       `SelectTrigger` and `SelectItem`, `TooltipTrigger`, the expense-row trigger, the
       add-expense FAB, and any `<label>` that toggles a control
-- [ ] **Fixed once, centrally** — a base-layer rule in `globals.css` or the shared primitives in
-      `src/app/_ui/`. Do **not** sprinkle `cursor-pointer` onto individual call sites; the next
-      component added would just miss it again
-- [ ] **A disabled control never shows a pointer.** `Button` already carries
-      `disabled:pointer-events-none`; verify the same holds for every other primitive, including
-      Base UI's `data-disabled` state, and fix whatever doesn't
-- [ ] Text inputs keep their text caret and non-interactive text stays `default` — this is not a
-      blanket `cursor: pointer` on everything
-- [ ] `SelectItem`'s existing `cursor-default` is either justified in a comment or changed; right
-      now it is the one place that deliberately opts out and it reads as an oversight
-- [ ] A note in [design-system.md](../../docs/frontend/design-system.md) recording that Tailwind
-      v4 does not do this for us, so the next person doesn't delete the rule as redundant
-- [ ] Verified by hand at 1280px in both themes
+      — one base-layer rule covers `button`, `a[href]`, the ARIA roles Base UI renders
+      (`[role="button"|"tab"|"option"|"checkbox"|"radio"|"switch"|"menuitem…"]`), and
+      `label:has(> …toggle…)`
+- [x] **Fixed once, centrally** — a base-layer rule in `src/app/globals.css`. No `cursor-pointer`
+      at any call site
+- [x] **A disabled control never shows a pointer.** Carve-out block for `button:disabled`,
+      `[data-disabled]` (Base UI sets it on every disabled primitive) and `[aria-disabled="true"]`
+      (primitives that keep focus while disabled), placed after the enable rule so it wins at
+      equal specificity
+- [x] Text inputs keep their text caret and non-interactive text stays `default` — neither block
+      targets a bare `input` or `*`; guarded by a test
+- [x] `SelectItem`'s `cursor-default` removed; it now inherits the base-layer pointer via its
+      `role="option"` and opts back out via `data-disabled`, with a comment saying so
+- [x] Note added to [design-system.md](../../docs/frontend/design-system.md) § *Component rules*
+      → "Pointer cursors are ours to supply"
+- [x] Verified by hand at 1280px (and 375px) in both themes — screenshots in the PR
 
 ## Out of scope
 

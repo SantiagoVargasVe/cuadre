@@ -52,7 +52,10 @@ export function SelectItem({
   return (
     <BaseSelect.Item
       className={cn(
-        "flex cursor-default items-center justify-between rounded px-2 py-1.5 text-sm",
+        // An option is a choice you click — it takes the pointer cursor from
+        // the base layer (globals.css § T100) via its `role="option"`, and
+        // its `data-disabled` state opts back out there. No `cursor-*` here.
+        "flex items-center justify-between rounded px-2 py-1.5 text-sm",
         "data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground",
         className,
       )}

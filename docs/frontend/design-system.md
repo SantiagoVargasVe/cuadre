@@ -157,6 +157,22 @@ A component with nine boolean props is two components wearing a trenchcoat.
 One `cn()` helper (`clsx` + `tailwind-merge`) for conditional classes. No inline `style` except
 for genuinely dynamic values (a chart bar's width), and none of those exist before E9.
 
+### Pointer cursors are ours to supply
+
+Tailwind v4's Preflight **dropped** the rule that gave `button` / `[role="button"]`
+`cursor: pointer` (v3 had it; v4 expects the app to opt back in). Verified against
+`tailwindcss` 4.3.3 — `preflight.css` carries no such rule, and it is not a browser default for
+`<button>` either. A single base-layer rule in [`globals.css`](../../src/app/globals.css) puts
+the pointer back on every interactive control — `button`, `a[href]`, the ARIA roles Base UI
+renders (`Switch`/`Checkbox`/`Radio` are a `<span role="…">`, not a `<button>`; `SelectItem` is
+a `<div role="option">`), and any `<label>` wrapping a toggle — with a carve-out so a disabled
+control (`:disabled`, `[data-disabled]`, `[aria-disabled="true"]`) never shows one.
+
+**Do not** add `cursor-pointer` at a call site, and **do not** delete the base rule as
+redundant — nothing upstream provides it, so removing it silently un-clicks the whole app again
+(T100). New primitives that render a plain `<button>` or one of those roles are covered for
+free; a genuinely new interaction pattern extends the rule in `globals.css`, once.
+
 ## Money display
 
 **One component renders money. Never format inline, never call `Intl` in a component.**
