@@ -7,7 +7,14 @@ import type { CreateSettlementInput } from "../../../../../lib/schemas/settlemen
 import { Button } from "../../../../_ui/Button";
 import { DialogClose } from "../../../../_ui/Dialog";
 import { MoneyField } from "../../../../_ui/MoneyField";
-import { SelectContent, SelectItem, SelectRoot, SelectTrigger, SelectValue } from "../../../../_ui/Select";
+import {
+  SelectContent,
+  SelectItem,
+  selectItems,
+  SelectRoot,
+  SelectTrigger,
+  SelectValue,
+} from "../../../../_ui/Select";
 import { TextField } from "../../../../_ui/TextField";
 import {
   settlementFormSchema,
@@ -32,6 +39,9 @@ export interface SettlementFormProps {
  * so it isn't here — the recipient list just excludes them. */
 export function SettlementForm({ members, myUserId, currency, defaults, submitting, onSubmit }: SettlementFormProps) {
   const recipients = members.filter((m) => m.userId !== myUserId);
+  // The item value is a userId; without this map the closed trigger renders
+  // that raw id instead of the name (T103).
+  const recipientItems = selectItems(recipients, (m) => m.userId, (m) => m.displayName);
   const {
     register,
     control,
@@ -56,7 +66,7 @@ export function SettlementForm({ members, myUserId, currency, defaults, submitti
           name="toUserId"
           control={control}
           render={({ field }) => (
-            <SelectRoot value={field.value} onValueChange={field.onChange}>
+            <SelectRoot items={recipientItems} value={field.value} onValueChange={field.onChange}>
               <SelectTrigger aria-label={t.toLabel}>
                 <SelectValue />
               </SelectTrigger>
