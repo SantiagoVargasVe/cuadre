@@ -1,21 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { es } from "../../../../../lib/i18n/es";
 import type { CreateSettlementInput } from "../../../../../lib/schemas/settlements";
 import { Button } from "../../../../_ui/Button";
 import { DialogClose } from "../../../../_ui/Dialog";
-import { MoneyField } from "../../../../_ui/MoneyField";
-import {
-  SelectContent,
-  SelectItem,
-  selectItems,
-  SelectRoot,
-  SelectTrigger,
-  SelectValue,
-} from "../../../../_ui/Select";
 import { TextField } from "../../../../_ui/TextField";
+import { RecipientSelect } from "./RecipientSelect";
+import { SettlementAmountFields } from "./SettlementAmountFields";
 import {
   settlementFormSchema,
   toCreateInput,
@@ -27,9 +20,14 @@ import type { GroupMember } from "./types";
 const t = es.settlements.form;
 
 export interface SettlementFormProps {
+  groupId: string;
   members: GroupMember[];
   myUserId: string;
+  /** The currency the form opens in — a plan edge's block, or the group
+   * default. The initial value of the select, not a fixed setting (T104). */
   currency: string;
+  /** Currencies actually present in the group — what the select offers. */
+  presentCurrencies: string[];
   defaults?: Partial<SettlementFormValues>;
   submitting: boolean;
   onSubmit: (input: CreateSettlementInput) => void;
@@ -37,21 +35,31 @@ export interface SettlementFormProps {
 
 /** The settle-up fields. `fromUserId` is always the acting user (ADR-0009),
  * so it isn't here — the recipient list just excludes them. */
-export function SettlementForm({ members, myUserId, currency, defaults, submitting, onSubmit }: SettlementFormProps) {
+export function SettlementForm({
+  groupId,
+  members,
+  myUserId,
+  currency,
+  presentCurrencies,
+  defaults,
+  submitting,
+  onSubmit,
+}: SettlementFormProps) {
   const recipients = members.filter((m) => m.userId !== myUserId);
-  // The item value is a userId; without this map the closed trigger renders
-  // that raw id instead of the name (T103).
-  const recipientItems = selectItems(recipients, (m) => m.userId, (m) => m.displayName);
   const {
     register,
     control,
+    watch,
+    setValue,
+    getValues,
     handleSubmit,
     formState: { errors, isValid },
   } = useForm<SettlementFormValues>({
-    resolver: zodResolver(settlementFormSchema(currency)),
+    resolver: zodResolver(settlementFormSchema()),
     mode: "onChange",
     defaultValues: {
       toUserId: defaults?.toUserId ?? recipients[0]?.userId ?? "",
+      currency: defaults?.currency ?? currency,
       amount: defaults?.amount ?? "",
       settledOn: defaults?.settledOn ?? todayIso(),
       note: defaults?.note ?? "",
@@ -59,33 +67,17 @@ export function SettlementForm({ members, myUserId, currency, defaults, submitti
   });
 
   return (
-    <form onSubmit={handleSubmit((v) => onSubmit(toCreateInput(v, currency)))} className="mt-4 flex flex-col gap-4" noValidate>
-      <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-foreground">{t.toLabel}</span>
-        <Controller
-          name="toUserId"
-          control={control}
-          render={({ field }) => (
-            <SelectRoot items={recipientItems} value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger aria-label={t.toLabel}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {recipients.map((m) => (
-                  <SelectItem key={m.userId} value={m.userId}>
-                    {m.displayName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </SelectRoot>
-          )}
-        />
-      </div>
-      <MoneyField
-        label={t.amountLabel(currency)}
-        currency={currency}
-        error={errors.amount ? t.amountNotPositive : undefined}
-        {...register("amount")}
+    <form onSubmit={handleSubmit((v) => onSubmit(toCreateInput(v)))} className="mt-4 flex flex-col gap-4" noValidate>
+      <RecipientSelect control={control} recipients={recipients} />
+      <SettlementAmountFields
+        groupId={groupId}
+        control={control}
+        register={register}
+        watch={watch}
+        setValue={setValue}
+        getValues={getValues}
+        currencies={Array.from(new Set([currency, ...presentCurrencies]))}
+        amountError={errors.amount ? t.amountNotPositive : undefined}
       />
       <TextField type="date" label={t.dateLabel} error={errors.settledOn?.message} {...register("settledOn")} />
       <TextField label={t.noteLabel} hint={t.noteHint} error={errors.note?.message} {...register("note")} />

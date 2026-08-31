@@ -13,9 +13,14 @@ type Mutations = Pick<ReturnType<typeof useSettlements>, "create" | "update">;
 export interface SettleUpDialogProps {
   trigger: React.ReactElement;
   title: string;
+  groupId: string;
   members: GroupMember[];
   myUserId: string;
+  /** The currency the form opens in — the select's default, no longer fixed
+   * by which button was pressed (T104). */
   currency: string;
+  /** Currencies actually present in the group — what the select offers. */
+  presentCurrencies: string[];
   mutations: Mutations;
   /** Prefill from a plan edge (ADR-0009): a convenience only, nothing links
    * the settlement back to the edge. `amountMinor` is minor units, as the
@@ -34,9 +39,11 @@ export interface SettleUpDialogProps {
 export function SettleUpDialog({
   trigger,
   title,
+  groupId,
   members,
   myUserId,
   currency,
+  presentCurrencies,
   mutations,
   prefill,
   settlement,
@@ -47,12 +54,17 @@ export function SettleUpDialog({
   const defaults = settlement
     ? {
         toUserId: settlement.toUserId,
+        currency: settlement.currency,
         amount: formatAmountInputValue(BigInt(settlement.amount), settlement.currency),
         settledOn: settlement.settledOn,
         note: settlement.note ?? "",
       }
     : prefill
-      ? { toUserId: prefill.toUserId, amount: formatAmountInputValue(BigInt(prefill.amountMinor), currency) }
+      ? {
+          toUserId: prefill.toUserId,
+          currency,
+          amount: formatAmountInputValue(BigInt(prefill.amountMinor), currency),
+        }
       : undefined;
 
   return (
@@ -61,9 +73,11 @@ export function SettleUpDialog({
       <DialogContent>
         <DialogTitle className="text-lg font-semibold text-foreground">{title}</DialogTitle>
         <SettlementForm
+          groupId={groupId}
           members={members}
           myUserId={myUserId}
           currency={currency}
+          presentCurrencies={presentCurrencies}
           defaults={defaults}
           submitting={create.isPending || update.isPending}
           onSubmit={(input) => {

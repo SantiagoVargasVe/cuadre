@@ -285,13 +285,22 @@ just move the net.
 ## Currency
 
 ```
-PUT    /api/groups/:id/display-currency   { currency }  → 200 { group, pins[] }
-DELETE /api/groups/:id/display-currency                 → 200 { group }
-GET    /api/groups/:id/display-currency                 → 200 { currency, pins[], source }
+PUT    /api/groups/:id/display-currency   { currency }        → 200 { group, pins[] }
+DELETE /api/groups/:id/display-currency                        → 200 { group }
+GET    /api/groups/:id/display-currency                        → 200 { currency, pins[], source }
+GET    /api/groups/:id/fx-quote            ?from=USD&to=COP    → 200 { rate, asOf, source }
 ```
 
 `GET`'s `source` is the FX provider a conversion would pin from — the Ajustes tab names it,
 alongside today's date, in the convert confirmation *before* the write.
+
+`GET /fx-quote` is a **read-only** rate quote for an arbitrary pair — `rate` is `to` units per
+1 unit of `from`, as a `numeric(20,10)` string, with its `asOf` and `source`. The settle-up form
+uses it to spell out "how much COP to wire" for a payment recorded in another currency (T104).
+It derives the cross rate from the two USD legs (`ensureRate`, so a missing day lazily fetches
+once), **never writes a pin**, and returns `RATE_UNAVAILABLE` rather than a stale number. `from`
+or `to` outside `SUPPORTED_CURRENCIES` is `CURRENCY_NOT_SUPPORTED` (`422`); a malformed pair is
+`VALIDATION_ERROR` (`400`).
 
 `PUT` snapshots the rates for every currency present in the group and writes `group_fx_pins`. The
 response returns the pins — rate, `asOf`, and `source` — because the UI has to be able to show

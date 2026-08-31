@@ -59,6 +59,11 @@ export function BalancesTab({
   });
 
   const simplified = data.byCurrency[0]?.simplified ?? initialSimplify;
+  // The currencies the settle-up select offers — the group default plus any
+  // with live activity, never every supported code (T104).
+  const presentCurrencies = Array.from(
+    new Set([defaultCurrency, ...data.byCurrency.map((b) => b.currency)]),
+  );
 
   return (
     <div className="flex flex-col gap-4 pb-20">
@@ -70,9 +75,11 @@ export function BalancesTab({
         <SettleUpDialog
           trigger={<Button size="sm" type="button">{es.settlements.record}</Button>}
           title={es.settlements.recordTitle}
+          groupId={groupId}
           members={members}
           myUserId={myUserId}
           currency={defaultCurrency}
+          presentCurrencies={presentCurrencies}
           mutations={settlements}
         />
       </div>
@@ -84,11 +91,25 @@ export function BalancesTab({
         </div>
       ) : (
         data.byCurrency.map((block) => (
-          <CurrencyBalanceBlock key={block.currency} block={block} members={members} myUserId={myUserId} mutations={settlements} />
+          <CurrencyBalanceBlock
+            key={block.currency}
+            groupId={groupId}
+            block={block}
+            members={members}
+            myUserId={myUserId}
+            presentCurrencies={presentCurrencies}
+            mutations={settlements}
+          />
         ))
       )}
 
-      <SettlementList members={members} myUserId={myUserId} mutations={settlements} />
+      <SettlementList
+        groupId={groupId}
+        members={members}
+        myUserId={myUserId}
+        presentCurrencies={presentCurrencies}
+        mutations={settlements}
+      />
     </div>
   );
 }

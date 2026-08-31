@@ -1,6 +1,7 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DialogRoot } from "../../../../_ui/Dialog";
 import { SettlementForm } from "./SettlementForm";
 import type { GroupMember } from "./types";
@@ -14,38 +15,78 @@ const members: GroupMember[] = [
   { userId: "33333333-3333-4333-8333-333333333333", displayName: "Caro", role: "member" },
 ];
 
-/** `DialogClose` inside the form needs a `Dialog.Root` ancestor for context. */
-function renderForm() {
+afterEach(() => vi.unstubAllGlobals());
+
+/** `DialogClose` needs a `Dialog.Root` ancestor; `TransferHint` needs a query client. */
+function renderForm(props: Partial<Parameters<typeof SettlementForm>[0]> = {}) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const onSubmit = vi.fn();
   render(
-    <DialogRoot open>
-      <SettlementForm
-        members={members}
-        myUserId={members[0]!.userId}
-        currency="COP"
-        submitting={false}
-        onSubmit={vi.fn()}
-      />
-    </DialogRoot>,
+    <QueryClientProvider client={client}>
+      <DialogRoot open>
+        <SettlementForm
+          groupId="g1"
+          members={members}
+          myUserId={members[0]!.userId}
+          currency="COP"
+          presentCurrencies={["COP", "USD"]}
+          submitting={false}
+          onSubmit={onSubmit}
+          {...props}
+        />
+      </DialogRoot>
+    </QueryClientProvider>,
   );
-  return screen.getByRole("combobox");
+  return { onSubmit, recipient: () => screen.getByRole("combobox", { name: "¿A quién le pagaste?" }) };
 }
 
 describe("SettlementForm recipient select (T103)", () => {
   it("shows the recipient's display name on the closed trigger, never their id", () => {
-    const trigger = renderForm();
-    // Ana is the payer and excluded; recipients[0] (Beto) is the default value.
-    expect(trigger).toHaveTextContent("Beto");
-    expect(trigger.textContent ?? "").not.toMatch(UUID);
+    const { recipient } = renderForm();
+    expect(recipient()).toHaveTextContent("Beto");
+    expect(recipient().textContent ?? "").not.toMatch(UUID);
   });
 
   it("keeps showing a name, not an id, after a different recipient is picked", async () => {
     const user = userEvent.setup();
-    const trigger = renderForm();
+    const { recipient } = renderForm();
 
-    await user.click(trigger);
+    await user.click(recipient());
     await user.click(await screen.findByRole("option", { name: "Caro" }));
 
-    expect(trigger).toHaveTextContent("Caro");
-    expect(trigger.textContent ?? "").not.toMatch(UUID);
+    expect(recipient()).toHaveTextContent("Caro");
+    expect(recipient().textContent ?? "").not.toMatch(UUID);
+  });
+});
+
+describe("SettlementForm currency select (T104)", () => {
+  it("offers the currencies present in the group, defaulting to the opened context", () => {
+    renderForm({ currency: "USD" });
+    expect(screen.getByRole("combobox", { name: "Moneda" })).toHaveTextContent("USD");
+  });
+
+  it("submits the currency that is selected", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderForm();
+
+    await user.type(screen.getByLabelText("Monto (COP)"), "50000");
+    await user.click(screen.getByRole("combobox", { name: "Moneda" }));
+    await user.click(await screen.findByRole("option", { name: "USD" }));
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ currency: "USD" }));
+  });
+
+  it("re-formats the amount on a currency switch rather than reinterpreting it x100", async () => {
+    const user = userEvent.setup();
+    renderForm({ currency: "USD" });
+
+    const amount = screen.getByLabelText("Monto (USD)");
+    await user.type(amount, "40,50");
+    await user.click(screen.getByRole("combobox", { name: "Moneda" }));
+    await user.click(await screen.findByRole("option", { name: "COP" }));
+
+    // COP has no centavos → "40,50" becomes "40", not "4.050" or "4050".
+    expect(screen.getByLabelText("Monto (COP)")).toHaveValue("40");
   });
 });

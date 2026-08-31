@@ -4,26 +4,40 @@ import type { CreateSettlementInput } from "../../../../../lib/schemas/settlemen
 
 /**
  * Validates the settle-up form's *raw* fields (a `<MoneyField>` string in
- * major units, a date, a note). The wire schema in
+ * major units, a currency, a date, a note). The wire schema in
  * `lib/schemas/settlements.ts` validates the *converted* payload; the
- * `bigint` conversion happens once here, at `toCreateInput` — the form
+ * `bigint` conversion happens once, at `toCreateInput` — the form
  * boundary (design-system.md § *Forms*).
+ *
+ * `currency` is a field now (T104): the form has a currency select, so
+ * "is the amount > 0" has to be checked against whatever currency is
+ * currently chosen — the object-level refine reads `v.currency`.
  *
  * The app is recording a fact, not confirming a suggested payment: **any
  * positive amount is accepted**, including one that doesn't match a plan
- * edge (ADR-0009). The only amount rule is "> 0" — a zero or empty field
- * keeps the save button disabled rather than erroring on submit.
+ * edge (ADR-0009). The only amount rule is "> 0".
  */
-export function settlementFormSchema(currency: string) {
-  return z.object({
-    toUserId: z.string().min(1),
-    amount: z
-      .string()
-      .min(1)
-      .refine((raw) => parseAmountInput(raw, currency) > 0n, { error: "amountNotPositive" }),
-    settledOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    note: z.string().trim().max(500).optional(),
-  });
+export function settlementFormSchema() {
+  return z
+    .object({
+      toUserId: z.string().min(1),
+      currency: z.string().regex(/^[A-Z]{3}$/),
+      amount: z.string().min(1),
+      settledOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      note: z.string().trim().max(500).optional(),
+    })
+    .refine(
+      (v) => {
+        try {
+          return parseAmountInput(v.amount, v.currency) > 0n;
+        } catch {
+          // An unknown currency is already caught by the field's own regex —
+          // don't let it throw out of the object refine.
+          return false;
+        }
+      },
+      { error: "amountNotPositive", path: ["amount"] },
+    );
 }
 
 export type SettlementFormValues = z.infer<ReturnType<typeof settlementFormSchema>>;
@@ -34,12 +48,12 @@ export function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-/** Form values + the field's currency → the `POST`/`PATCH` body. */
-export function toCreateInput(values: SettlementFormValues, currency: string): CreateSettlementInput {
+/** Form values → the `POST`/`PATCH` body. The currency is now on `values`. */
+export function toCreateInput(values: SettlementFormValues): CreateSettlementInput {
   return {
     toUserId: values.toUserId,
-    amount: parseAmountInput(values.amount, currency).toString(),
-    currency,
+    amount: parseAmountInput(values.amount, values.currency).toString(),
+    currency: values.currency,
     settledOn: values.settledOn,
     note: values.note?.trim() ? values.note.trim() : undefined,
   };

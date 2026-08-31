@@ -13,16 +13,26 @@ import type { useSettlements } from "./useSettlements";
 const t = es.settlements;
 
 export interface SettlementRowProps {
+  groupId: string;
   settlement: SettlementView;
   members: GroupMember[];
   myUserId: string;
+  presentCurrencies: string[];
   mutations: ReturnType<typeof useSettlements>;
   nameOf: (userId: string) => string;
 }
 
 /** One recorded payment. Editable and deletable by any member, the same
  * rule as expenses (services/settlements.ts). */
-export function SettlementRow({ settlement, members, myUserId, mutations, nameOf }: SettlementRowProps) {
+export function SettlementRow({
+  groupId,
+  settlement,
+  members,
+  myUserId,
+  presentCurrencies,
+  mutations,
+  nameOf,
+}: SettlementRowProps) {
   const phrase = t.paidPhrase(nameOf(settlement.fromUserId), nameOf(settlement.toUserId));
 
   return (
@@ -40,9 +50,11 @@ export function SettlementRow({ settlement, members, myUserId, mutations, nameOf
         <SettleUpDialog
           trigger={<Button variant="ghost" size="sm" type="button">{t.edit}</Button>}
           title={t.editTitle}
+          groupId={groupId}
           members={members}
           myUserId={myUserId}
           currency={settlement.currency}
+          presentCurrencies={presentCurrencies}
           mutations={mutations}
           settlement={settlement}
         />
