@@ -9,29 +9,37 @@ function jsonResponse(status: number, body: unknown): Response {
   });
 }
 
-const headerStore = new Map([
-  ["host", "cuadre.example.com"],
-  ["x-forwarded-proto", "https"],
-]);
-
 vi.mock("next/headers", () => ({
   cookies: async () => ({ toString: () => "cuadre_session=abc123" }),
-  headers: async () => ({ get: (key: string) => headerStore.get(key) ?? null }),
 }));
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe("apiFetchServer", () => {
-  it("builds an absolute URL from x-forwarded-proto and host", async () => {
+  it("hits the loopback listener, never the public origin (no NAT hairpin)", async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { items: [] }));
     vi.stubGlobal("fetch", fetchMock);
 
     await apiFetchServer("/api/groups");
 
     const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("https://cuadre.example.com/api/groups");
+    expect(url).toBe("http://127.0.0.1:3000/api/groups");
+  });
+
+  it("honours INTERNAL_API_ORIGIN and PORT for the base", async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse(200, {})));
+    vi.stubGlobal("fetch", fetchMock);
+
+    vi.stubEnv("PORT", "8080");
+    await apiFetchServer("/api/groups");
+    expect((fetchMock.mock.calls[0] as [string])[0]).toBe("http://127.0.0.1:8080/api/groups");
+
+    vi.stubEnv("INTERNAL_API_ORIGIN", "http://cuadre-app:3000");
+    await apiFetchServer("/api/groups");
+    expect((fetchMock.mock.calls[1] as [string])[0]).toBe("http://cuadre-app:3000/api/groups");
   });
 
   it("forwards the session cookie", async () => {

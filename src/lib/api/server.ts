@@ -1,9 +1,25 @@
 import "server-only";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { ApiError, parseApiError } from "./errors";
 
 export interface ApiFetchServerOptions extends Omit<RequestInit, "body"> {
   body?: unknown;
+}
+
+/**
+ * The base a Server Component uses to reach *this app's own* Route
+ * Handlers. It is always the loopback listener, never the public origin:
+ * this is a one-container monolith, so the API is on the same host, and
+ * building the URL from `x-forwarded-*` sent the request out to the public
+ * hostname — which, on a Cloudflare-Tunnel-only deployment, means a NAT
+ * hairpin (container → internet → Cloudflare → tunnel → same container)
+ * that just times out (`ETIMEDOUT`). `PORT` is set by the Dockerfile and
+ * matched by `next dev`; `INTERNAL_API_ORIGIN` overrides for anything
+ * exotic. Read from `process.env` directly — like `PORT`/`HOSTNAME` in
+ * instrumentation.ts, this is a deployment detail, not validated app config.
+ */
+function internalOrigin(): string {
+  return process.env.INTERNAL_API_ORIGIN ?? `http://127.0.0.1:${process.env.PORT ?? "3000"}`;
 }
 
 /**
@@ -13,24 +29,19 @@ export interface ApiFetchServerOptions extends Omit<RequestInit, "body"> {
  * stop, regardless of which side of the server/client boundary they're
  * on).
  *
- * A Server Component's `fetch` has no browser to inherit an origin or a
- * cookie jar from, so both are rebuilt from the incoming request: the
- * origin from `x-forwarded-proto`/`host` — this app is only ever reached
- * through the Cloudflare Tunnel, which sets both (architecture.md applies
- * the same trust assumption to `CF-Connecting-IP`) — and the session
- * cookie forwarded explicitly via `next/headers` `cookies()`, since a
- * server-side fetch never carries it automatically. `cache: "no-store"`
- * because this is always per-user data.
+ * A server-side `fetch` carries no cookie jar, so the session cookie is
+ * forwarded explicitly via `next/headers` `cookies()`. `cache: "no-store"`
+ * because this is always per-user data. The request never leaves the box —
+ * see `INTERNAL_ORIGIN` above.
  */
 export async function apiFetchServer<T>(
   path: string,
   options: ApiFetchServerOptions = {},
 ): Promise<T> {
   const { body, headers: extraHeaders, ...rest } = options;
-  const [cookieStore, headerList] = await Promise.all([cookies(), headers()]);
-  const origin = `${headerList.get("x-forwarded-proto") ?? "http"}://${headerList.get("host")}`;
+  const cookieStore = await cookies();
 
-  const response = await fetch(`${origin}${path}`, {
+  const response = await fetch(`${internalOrigin()}${path}`, {
     ...rest,
     cache: "no-store",
     headers: {
