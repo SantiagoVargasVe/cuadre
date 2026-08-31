@@ -4,14 +4,16 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { GroupTabs } from "./GroupTabs";
 
 const pushMock = vi.fn();
+const prefetchMock = vi.fn();
 let pathname = "/g/abc";
 vi.mock("next/navigation", () => ({
   usePathname: () => pathname,
-  useRouter: () => ({ push: pushMock }),
+  useRouter: () => ({ push: pushMock, prefetch: prefetchMock }),
 }));
 
 beforeEach(() => {
   pushMock.mockClear();
+  prefetchMock.mockClear();
   pathname = "/g/abc";
 });
 
@@ -43,5 +45,15 @@ describe("GroupTabs", () => {
     await user.click(screen.getByRole("tab", { name: "Balances" }));
 
     expect(pushMock).toHaveBeenCalledWith("/g/abc/balances");
+  });
+
+  it("prefetches every sibling tab route on mount so a switch isn't cold (T106)", () => {
+    render(<GroupTabs groupId="abc" />);
+
+    expect(prefetchMock.mock.calls.map(([href]) => href)).toEqual([
+      "/g/abc",
+      "/g/abc/balances",
+      "/g/abc/ajustes",
+    ]);
   });
 });

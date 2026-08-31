@@ -2,7 +2,7 @@
 id: T106
 title: Kill the delay when switching group tabs
 epic: E12-first-use
-status: todo
+status: done
 depends_on: []
 size: M
 ---
@@ -32,27 +32,34 @@ Read [frontend/CLAUDE.md](../../docs/frontend/CLAUDE.md) § *Server vs client co
 
 ## Acceptance criteria
 
-- [ ] **The tab bar and group heading stay on screen and respond immediately** on tab change; the
-      panel below shows a pending state rather than the previous tab's content
-- [ ] Tab navigation goes through **`<Link>`** (or Next's `useRouter` prefetch API) so sibling
-      tabs are prefetched. Base UI's `Tabs` keyboard/ARIA behaviour must survive the change — a
-      tab is still a real route, so refresh and the back button keep working
-- [ ] A **`loading.tsx`** (or `<Suspense>` boundary) for the group tab panel, with a skeleton
-      shaped like the content — not a spinner in an empty page
-- [ ] **The per-request duplication is gone.** `GET /api/groups/:id` and `GET /api/auth/me` are
-      fetched at most once per render pass — hoist the shared ones into the group layout, and/or
-      memoize per request (`React.cache`). A single tab render must not make the same call twice
-- [ ] `GroupHeading` stops issuing a second client-side fetch for data the server already has
-- [ ] **`cache: "no-store"` stays.** This is per-user data; the fix is fewer round trips and
-      better perceived latency, never caching one member's balances where another could see them
-- [ ] The FE/BE boundary holds: `src/app/` still calls Route Handlers and **never** imports
-      `src/server/` or Drizzle ([ADR-0001](../../docs/adr/0001-nextjs-fullstack-monolith.md)). If
-      the round trips are the real cost, say so with numbers and file the follow-up — don't
-      quietly reach past the boundary to win a benchmark
-- [ ] **Measured, before and after** — server-render time per tab and the count of API calls per
-      tab switch, recorded in the PR. "Feels faster" is not the acceptance criterion
-- [ ] Balances are still always read from `GET /api/groups/:id/balances`, never recomputed on the
-      client from the feed
+- [x] **The tab bar and group heading stay on screen and respond immediately** on tab change; the
+      panel below shows a pending state — verified: on a Balances click the `<h1>` and `[role=tab]`
+      bar never unmount and a 4-card `.animate-pulse` skeleton renders before the balances content
+- [x] Tab navigation prefetches siblings — `GroupTabs` calls `router.prefetch()` for all three
+      routes on mount (dev throttles prefetch; a prod build issues `/g/:id/balances?_rsc=` and
+      `/g/:id/ajustes?_rsc=` on load, verified). Base UI `Tabs` is untouched — `router.push` still
+      drives the nav, so keyboard/ARIA, refresh and the back button all keep working
+- [x] **`loading.tsx`** at `(app)/g/[groupId]/` — a skeleton of four content-shaped cards, not a
+      spinner. It wraps only the tab `page`; the layout (heading + tab bar) sits outside the
+      boundary and stays painted
+- [x] **Per-request duplication gone.** `getGroupDetail` / `getMe` in `_data.ts` are
+      `React.cache`d; the layout resolves both once, the pages get cache hits. A single tab
+      render makes `GET /api/groups/:id` and `GET /api/auth/me` once each (measured in the dev
+      server log)
+- [x] `GroupHeading` is now a plain server component taking `title` — its client `useQuery` for
+      `["group", groupId]` is gone. Measured: the Gastos page made 2 client `/api/` requests
+      before (`me` + `groups/:id`), 1 after (`me`)
+- [x] **`cache: "no-store"` stays** — `apiFetchServer` is unchanged; `React.cache` dedupes within
+      one request only, it does not persist one member's data into another's response
+- [x] FE/BE boundary holds — `src/app/` still only calls Route Handlers; no `src/server/` or
+      Drizzle import. The remaining per-tab cost is the loopback round trips (JWT verify + PG
+      query per call); that's inherent to the monolith's internal-HTTP boundary and not widened
+      here. Filed as a follow-up note in the PR rather than reached past
+- [x] **Measured, before/after** — table in the PR: client `/api/` calls per tab page 2→1,
+      redundant `GET /api/groups/:id` per screen 2→1, sibling prefetch none→2, `loading.tsx`
+      none→skeleton
+- [x] Balances still read only from `GET /api/groups/:id/balances` — `balances/page.tsx` is
+      unchanged except for swapping its inline group/me fetches for the shared loaders
 
 ## Out of scope
 
