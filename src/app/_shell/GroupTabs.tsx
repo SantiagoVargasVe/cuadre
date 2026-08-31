@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { es } from "../../lib/i18n/es";
 import { Tab, TabsIndicator, TabsList, TabsRoot } from "../_ui/Tabs";
@@ -14,6 +15,9 @@ const TABS: { value: TabValue; label: string; segment: string | null }[] = [
   { value: "settings", label: t.settings, segment: "ajustes" },
 ];
 
+const hrefFor = (groupId: string, segment: string | null) =>
+  segment ? `/g/${groupId}/${segment}` : `/g/${groupId}`;
+
 function activeTab(pathname: string, groupId: string): TabValue {
   const rest = pathname.slice(`/g/${groupId}`.length).replace(/^\/+/, "");
   return TABS.find((tab) => tab.segment === (rest || null))?.value ?? "expenses";
@@ -23,12 +27,20 @@ function activeTab(pathname: string, groupId: string): TabValue {
  * The tab is a real route, not client-only state (design-system.md § *Group
  * tabs*), so a refresh or the back button lands on the right panel for
  * free. Base UI's Tabs supplies the ARIA/keyboard behaviour; navigation
- * itself goes through next/navigation rather than Tabs' own panel switch.
+ * goes through next/navigation.
+ *
+ * Every sibling tab is prefetched on mount (`router.prefetch`, T106) — the
+ * old code navigated with a bare `router.push` and no `<Link>`, so Next
+ * never warmed the sibling routes and every switch started cold.
  */
 export function GroupTabs({ groupId }: { groupId: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const active = activeTab(pathname, groupId);
+
+  React.useEffect(() => {
+    for (const tab of TABS) router.prefetch(hrefFor(groupId, tab.segment));
+  }, [router, groupId]);
 
   return (
     <TabsRoot
@@ -36,7 +48,7 @@ export function GroupTabs({ groupId }: { groupId: string }) {
       onValueChange={(value) => {
         const tab = TABS.find((t) => t.value === value);
         if (!tab) return;
-        router.push(tab.segment ? `/g/${groupId}/${tab.segment}` : `/g/${groupId}`);
+        router.push(hrefFor(groupId, tab.segment));
       }}
     >
       <TabsList className="relative">
