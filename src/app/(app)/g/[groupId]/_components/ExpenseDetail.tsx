@@ -1,5 +1,6 @@
 import { formatCalendarDate, formatTimestamp } from "../../../../../lib/date/format";
 import { es } from "../../../../../lib/i18n/es";
+import { Avatar } from "../../../../_ui/Avatar";
 import { Money } from "../../../../_ui/Money";
 import { strategyPhrase } from "./strategyPhrase";
 import { resolveDisplayAmounts, type ExpenseParty, type ExpenseSummary } from "./types";
@@ -9,7 +10,10 @@ const t = es.expenseFeed;
 function PartyRow({ party, currency }: { party: ExpenseParty; currency: string }) {
   return (
     <div className="flex items-center justify-between text-sm">
-      <span>{party.displayName}</span>
+      <span className="flex items-center gap-2">
+        <Avatar userId={party.userId} displayName={party.displayName} size={24} />
+        {party.displayName}
+      </span>
       <Money value={{ amount: BigInt(party.amount), currency }} />
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { formatCalendarDate } from "../../../../../lib/date/format";
 import { es } from "../../../../../lib/i18n/es";
+import { Avatar } from "../../../../_ui/Avatar";
 import { Button } from "../../../../_ui/Button";
 import { DialogClose, DialogContent, DialogRoot, DialogTitle, DialogTrigger } from "../../../../_ui/Dialog";
 import { Money } from "../../../../_ui/Money";
@@ -38,7 +39,10 @@ export function SettlementRow({
   return (
     <li className="flex flex-col gap-1 rounded-md border border-border p-3">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-sm text-foreground">{phrase}</span>
+        <span className="flex items-center gap-2 text-sm text-foreground">
+          <Avatar userId={settlement.fromUserId} displayName={nameOf(settlement.fromUserId)} size={24} />
+          {phrase}
+        </span>
         <Money
           value={{ amount: BigInt(settlement.amount), currency: settlement.currency }}
           className="text-sm font-medium"
