@@ -32,7 +32,7 @@ describe("Money", () => {
       />,
     );
 
-    expect(screen.getByText(`$${NBSP}75,00`)).toBeInTheDocument();
+    expect(screen.getByText(`US$${NBSP}75,00`)).toBeInTheDocument();
     const marker = screen.getByRole("button", { name: "Monto convertido" });
 
     await user.hover(marker);

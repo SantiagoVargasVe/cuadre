@@ -14,10 +14,9 @@ function netClassName(net: bigint): string {
 
 /**
  * One net line per currency, never summed (frontend/CLAUDE.md § *Multi-
- * currency display*). The currency code is shown next to the amount
- * because `<Money>`'s narrowSymbol can render the same "$" for more than
- * one of this app's currencies — the code is what disambiguates a COP
- * line from a USD one, not just the figure.
+ * currency display*). `<Money>` now names the currency itself — `$` / `US$`
+ * / `€` (T101) — so a COP line and a USD line read differently on their own,
+ * without this card prepending the ISO code.
  */
 export function GroupCard({ group }: { group: MyGroupSummary }) {
   return (
@@ -41,7 +40,7 @@ export function GroupCard({ group }: { group: MyGroupSummary }) {
             const net = BigInt(entry.net);
             return (
               <span key={entry.currency} className={netClassName(net)}>
-                {entry.currency} <Money value={{ amount: net, currency: entry.currency }} signed />
+                <Money value={{ amount: net, currency: entry.currency }} signed />
               </span>
             );
           })

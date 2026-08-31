@@ -163,17 +163,32 @@ for genuinely dynamic values (a chart bar's width), and none of those exist befo
 
 ```tsx
 <Money value={{ amount: 15000000n, currency: "COP" }} />   // $ 150.000
+<Money value={{ amount: 8645n, currency: "USD" }} />        // US$ 86,45
+<Money value={{ amount: 4500n, currency: "EUR" }} />        // € 45,00
 <Money value={net} signed />                                // + $ 20.000 / − $ 20.000
 ```
 
-Backed by `src/lib/money/format.ts`, which exists to absorb two verified quirks:
+Backed by `src/lib/money/format.ts`, which exists to absorb three verified `Intl` quirks under
+`es-CO` — the `currencyDisplay` mode is **per currency** (`CURRENCY_META`), because no single
+mode names all three distinctly:
 
 - `Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' })` gives `$ 150.000,00`.
   CLDR assigns COP two fraction digits; Colombians expect none. Pass `maximumFractionDigits: 0`.
-- `EUR` under `es-CO` gives `EUR 45,00`, not `€45,00`.
+- `currencyDisplay: 'symbol'` gives EUR the literal string `EUR`, not `€` — so **EUR alone**
+  uses `narrowSymbol`.
+- `currencyDisplay: 'narrowSymbol'` collapses **COP and USD both onto a bare `$`** — two
+  currencies, one string, measured. In an app whose entire output is who-owes-whom that is a
+  trust bug, so **COP and USD use `symbol`**: `$` stays `$` for COP, and USD gets its distinct
+  CLDR form `US$` (the same `$` / `US$` split T104's transfer-amount helper text speaks). An
+  earlier note here claimed `narrowSymbol` was right "for every currency" — it was not; this is
+  the correction (T101).
+
+The currency name lives **only** in `format.ts`. No component appends its own code next to a
+`<Money>` — if two amounts look alike on screen, the fix goes here, not at the call site.
 
 **Amounts are tabular.** Use `font-variant-numeric: tabular-nums` everywhere money appears in a
-column, or a balances list becomes unreadable as digits shift.
+column, or a balances list becomes unreadable as digits shift. The `US$` prefix is three glyphs
+wider than `$` — checked at 375px, it neither wraps nor breaks column alignment.
 
 **A converted amount is always marked.** When a group has a display currency, `<Money>` shows the
 converted value with an affordance to the original and the pin date. Unlabelled converted money is

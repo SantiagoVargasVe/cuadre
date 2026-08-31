@@ -12,14 +12,35 @@ describe("formatMoney", () => {
     expect(formatMoney({ amount: 15000000n, currency: "COP" })).toBe(`$${NBSP}150.000`);
   });
 
-  it("renders USD with two decimals", () => {
-    expect(formatMoney({ amount: 8645n, currency: "USD" })).toBe(`$${NBSP}86,45`);
+  it("renders USD with two decimals and the distinct 'US$' symbol", () => {
+    // Under es-CO, narrowSymbol renders USD as a bare "$" — identical to COP.
+    // `symbol` gives the CLDR "US$", which is what tells the two apart (T101).
+    expect(formatMoney({ amount: 8645n, currency: "USD" })).toBe(`US$${NBSP}86,45`);
   });
 
   it("renders EUR with the € symbol, not the literal code 'EUR'", () => {
     const result = formatMoney({ amount: 4500n, currency: "EUR" });
     expect(result).toBe(`€${NBSP}45,00`);
     expect(result).not.toContain("EUR");
+  });
+
+  it("gives COP, USD and EUR three visually distinct strings for the same amount", () => {
+    // The regression this guards: two different currencies formatting
+    // identically, in an app whose entire output is who owes whom (T101).
+    const cop = formatMoney({ amount: 8000n, currency: "COP" });
+    const usd = formatMoney({ amount: 8000n, currency: "USD" });
+    const eur = formatMoney({ amount: 8000n, currency: "EUR" });
+
+    expect(cop).toBe(`$${NBSP}80`);
+    expect(usd).toBe(`US$${NBSP}80,00`);
+    expect(eur).toBe(`€${NBSP}80,00`);
+    expect(new Set([cop, usd, eur]).size).toBe(3);
+
+    // The exact case that regressed here: the same numeric amount in COP and
+    // in USD must not format identically.
+    expect(formatMoney({ amount: 15000000n, currency: "COP" })).not.toBe(
+      formatMoney({ amount: 15000000n, currency: "USD" }),
+    );
   });
 
   it("drops a COP fractional remainder rather than rounding it in", () => {
@@ -59,7 +80,7 @@ describe("formatMoney", () => {
       // -50n at exponent 2 is -0.50 — majorPart is 0n, which carries no
       // sign of its own (bigint division truncates toward zero). The
       // minus must come from the original amount, not from formatting 0n.
-      expect(formatMoney({ amount: -50n, currency: "USD" })).toBe(`-$${NBSP}0,50`);
+      expect(formatMoney({ amount: -50n, currency: "USD" })).toBe(`-US$${NBSP}0,50`);
     });
   });
 

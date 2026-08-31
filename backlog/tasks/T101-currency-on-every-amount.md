@@ -2,7 +2,7 @@
 id: T101
 title: Name the currency on every amount — COP and USD both render as "$"
 epic: E12-first-use
-status: todo
+status: done
 depends_on: []
 size: S
 ---
@@ -37,24 +37,28 @@ Read [design-system.md](../../docs/frontend/design-system.md) § *Money display*
 
 ## Acceptance criteria
 
-- [ ] COP, USD and EUR are **visually distinguishable** wherever an amount is rendered. Decide
-      the rule deliberately (e.g. `currencyDisplay: "code"`, or a `US$` / `$` split, or a code
-      suffix) and **write down why in design-system.md**, next to the existing `narrowSymbol`
-      note — which must be corrected, since it currently implies `narrowSymbol` was the right
-      answer for every currency
-- [ ] The fix lives in **`src/lib/money/format.ts`**, the one place allowed to call `Intl`.
-      No component starts appending a currency code of its own
-- [ ] The existing guarantees still hold: **COP shows no decimals**, EUR never renders as the
-      literal `EUR`, amounts stay `tabular-nums`, and the `bigint` path is untouched — no amount
-      is ever converted to `Number`
-- [ ] Applies everywhere `<Money>` is used: the expense feed and row, the expense detail, the
-      balances rows, the payment plan, the settlement list, and the groups list
-- [ ] The per-currency balance block headings stay — this does not replace them, and **nothing
-      starts summing across currencies**
-- [ ] Tests in `format.test.ts` assert the three currencies produce three **distinct** strings,
-      including the specific case that regressed here: the same numeric amount in COP and in USD
-      must not format identically. `src/lib/money/**` is gated at 95% — keep it green
-- [ ] Checked at 375px: the longer strings must not wrap or break the row layout
+- [x] COP, USD and EUR are **visually distinguishable** wherever an amount is rendered. The rule:
+      per-currency `currencyDisplay` — `symbol` for COP (`$`) and USD (`US$`), `narrowSymbol`
+      for EUR (`€`). Chose the `$` / `US$` split over `currencyDisplay: "code"` so amounts keep
+      a glyph for quick scanning, EUR keeps `€` rather than the literal `EUR` (an explicit
+      guarantee below), and it matches the `$` / `US$` wording T104 already assumes. Written up
+      in design-system.md § *Money display*; the stale "narrowSymbol for every currency" note is
+      corrected there and in frontend/CLAUDE.md § *Money*
+- [x] The fix lives in **`src/lib/money/format.ts`** (`CURRENCY_META[c].currencyDisplay`). No
+      component appends a code — and `GroupCard`'s pre-existing `{entry.currency}` workaround,
+      which did exactly that, is removed now that `<Money>` names the currency itself
+- [x] The existing guarantees still hold: COP shows no decimals, EUR renders `€ 45,00` (never
+      the literal `EUR` — asserted), amounts stay `tabular-nums`, the `bigint` split→`Intl`
+      path is byte-for-byte unchanged — no amount becomes a `Number`
+- [x] Applies everywhere `<Money>` is used — the change is entirely inside `formatMoney`, so the
+      feed, row, detail, balance rows, payment plan, settlement list and groups list all get it
+- [x] The per-currency balance block headings are untouched (`BalancesTab` still renders a
+      `heading` per currency); nothing sums across currencies
+- [x] `format.test.ts`: new case asserts COP/USD/EUR produce three distinct strings and that the
+      **same** amount in COP vs USD does not format identically; USD/negative-USD expectations
+      updated to `US$`. `src/lib/money/**` coverage stays green (no new branches)
+- [x] Checked at 375px in both themes — `US$` does not wrap or break `tabular-nums` alignment;
+      screenshots in the PR
 
 ## Out of scope
 

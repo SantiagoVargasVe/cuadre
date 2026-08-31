@@ -52,11 +52,11 @@ describe("ExpenseDetail", () => {
     );
 
     // Ana both paid and is the only one whose payer line is shown, so the
-    // converted $75,00 appears twice: once as the total, once as her
+    // converted US$ 75,00 appears twice: once as the total, once as her
     // payer row — the point being that the *breakdown* is converted too,
     // not just the headline figure.
-    expect(screen.getAllByText(`$${NBSP}75,00`)).toHaveLength(2);
-    expect(screen.getAllByText(`$${NBSP}37,50`)).toHaveLength(2); // Ana's and Beto's converted splits
+    expect(screen.getAllByText(`US$${NBSP}75,00`)).toHaveLength(2);
+    expect(screen.getAllByText(`US$${NBSP}37,50`)).toHaveLength(2); // Ana's and Beto's converted splits
     expect(screen.getByRole("button", { name: "Monto convertido" })).toBeInTheDocument();
   });
 });
