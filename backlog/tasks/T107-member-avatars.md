@@ -2,7 +2,7 @@
 id: T107
 title: Deterministic generated avatars for members
 epic: E12-first-use
-status: todo
+status: done
 depends_on: []
 size: M
 ---
@@ -49,33 +49,33 @@ Read [design-system.md](../../docs/frontend/design-system.md) and
 
 ## Acceptance criteria
 
-- [ ] One shared **`<Avatar>`** component under `src/app/_ui/`, ≤ 100 lines, taking a member's
-      `userId` and `displayName`
-- [ ] **Deterministic**: the same `userId` produces the same avatar on every render, every
-      device, and every member's screen — two people looking at the same group see the same faces
-- [ ] **Seeded by `userId`**, never by email, and not by a value that changes on rename
-- [ ] Generated **in-process** via `boring-avatars`. No runtime request to any third-party host,
-      and no new outbound dependency in the request path
-- [ ] `boring-avatars` added to architecture.md's dependency list with the justifying line
-      (zero runtime deps, MIT, ~28 KB, renders locally)
-- [ ] **One variant chosen as the app default** and used everywhere — pick it by looking at all
-      six at 24–32px against the real UI, since that is the only size that matters here. Whoever
-      picks it should assume [T108](T108-avatar-editor.md) will let people change it later
-- [ ] The `colors` palette is **defined once, derived from the theme**, and imported — not a hex
-      array pasted into each call site. `boring-avatars` needs concrete hex values, so a single
-      exported palette constant with a comment tying it to the theme is the honest way to satisfy
-      design-system.md's "never a hardcoded colour in a component" without fighting the library.
-      Verify it is legible in **both** light and dark
-- [ ] **Never the only carrier of identity.** Every avatar sits beside the name it belongs to and
-      is `aria-hidden` / decorative — a screen reader must not be handed a shape instead of a
-      name, and colour-vision deficiency must not make two members interchangeable
-- [ ] Rendered in: the Ajustes member list, balance member rows, the payment plan, payer and
-      split rows in the expense detail, the settlement history, and the header user menu
-- [ ] Sizes composed rather than configured — no nine-boolean-prop component
-- [ ] Layout still works at 375px; avatars must not push amounts out of their column or break
-      `tabular-nums` alignment
-- [ ] Tests: the same `userId` renders identical output twice; two different ids differ; the
-      avatar is not exposed to the accessibility tree as the member's identity
+- [x] `src/app/_ui/Avatar.tsx` — `"use client"` (boring-avatars calls `useId`), ~50 lines, takes
+      `userId` + optional `displayName`
+- [x] **Deterministic**: the visual output is a pure function of `userId` — asserted (same id →
+      identical SVG twice after normalising the one invisible `useId` mask id; different ids
+      differ). Two viewers of the same group see the same faces
+- [x] **Seeded by `userId`** — never email (`displayName` is passed only as a defensive fallback
+      seed for an empty id, never otherwise); a rename does not change the avatar (asserted)
+- [x] In-process via `boring-avatars` — pure SVG, no network. Verified against the built bundle:
+      **zero runtime dependencies**
+- [x] Added to `architecture.md` § *Dependency policy* with the line (zero runtime deps, MIT,
+      ~28 KB, renders locally, pinned `2.0.4`)
+- [x] Default variant: **`beam`** — looked at all six at 20–24px against the real member lists;
+      `marble`/`sunset` blur to a gradient dot at that size, `beam`'s little faces keep the most
+      per-member identity. T108 makes it changeable
+- [x] `src/app/_ui/avatarPalette.ts` — one exported 6-hex constant, each entry commented with the
+      theme token it flattens (`--primary` / `--chart-2` / `--chart-4` / `--credit` / `--accent`
+      + one warm hue the theme lacks). Verified legible in light and dark
+- [x] `aria-hidden` on the wrapper *and* the `<svg role="img">` — asserted that no `img` role
+      reaches the accessibility tree. Every avatar sits beside its name; `beam`'s face geometry
+      (not just colour) differentiates two members who land the same palette pair
+- [x] Rendered in `MemberList`, `BalanceMemberRow`, `PaymentPlanRow`, `ExpenseDetail`'s
+      `PartyRow` (payers + splits), `SettlementRow`, and `UserMenu`
+- [x] One `size?: number` prop (default 28), not a wall of layout props
+- [x] Verified at 375px, light + dark: avatars sit in a fixed leading column and do not push the
+      right-aligned amounts or break `tabular-nums`
+- [x] `Avatar.test.tsx`: same id identical, different ids differ, rename-stable, not in the a11y
+      tree, plain size number
 
 ## Out of scope
 

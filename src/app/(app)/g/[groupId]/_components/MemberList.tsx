@@ -2,6 +2,7 @@
 
 import { formatTimestamp } from "../../../../../lib/date/format";
 import { es } from "../../../../../lib/i18n/es";
+import { Avatar } from "../../../../_ui/Avatar";
 import { RemoveMemberDialog } from "./RemoveMemberDialog";
 import type { MemberSummary } from "./groupSettingsTypes";
 
@@ -24,14 +25,17 @@ export function MemberList({ groupId, members, myUserId, amOwner }: MemberListPr
       <ul className="flex flex-col gap-2">
         {members.map((member) => (
           <li key={member.userId} className="flex items-center justify-between gap-2">
-            <div className="flex flex-col">
-              <span className="text-sm text-foreground">
-                {member.displayName}
-                {member.userId === myUserId && ` ${t.you}`}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {(member.role === "owner" ? t.roleOwner : t.roleMember)} · {t.joined(formatTimestamp(member.joinedAt))}
-              </span>
+            <div className="flex items-center gap-2">
+              <Avatar userId={member.userId} displayName={member.displayName} />
+              <div className="flex flex-col">
+                <span className="text-sm text-foreground">
+                  {member.displayName}
+                  {member.userId === myUserId && ` ${t.you}`}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {(member.role === "owner" ? t.roleOwner : t.roleMember)} · {t.joined(formatTimestamp(member.joinedAt))}
+                </span>
+              </div>
             </div>
             {amOwner && member.userId !== myUserId && (
               <RemoveMemberDialog groupId={groupId} member={member} />

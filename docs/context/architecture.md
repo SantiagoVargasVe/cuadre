@@ -144,7 +144,13 @@ Adding a runtime dependency needs a line in the ADR or task explaining why. Curr
 
 `next` · `react` · `drizzle-orm` · `postgres` · `zod` · `jose` (JWT) · `@node-rs/argon2` ·
 `nanoid` · `tailwindcss` · `@base-ui/react` · `@tanstack/react-query` ·
-`react-hook-form` · `@hookform/resolvers`
+`react-hook-form` · `@hookform/resolvers` · `boring-avatars`
+
+**`boring-avatars`** (T107) generates each member's identicon-style avatar. Chosen over
+DiceBear's HTTP API and every other remote service: it has **zero runtime dependencies** (React
+is a peer), is MIT, ~28 KB unpacked, and produces pure SVG in-process — so it adds no outbound
+request to the page render path, which a per-render avatar fetch would (a privacy change, not
+just a dependency). Pinned to `2.0.4`.
 
 **No money library.** Amounts are `bigint` minor units and the arithmetic in
 [splitting.md](splitting.md) is addition, comparison, and one integer division with an explicit

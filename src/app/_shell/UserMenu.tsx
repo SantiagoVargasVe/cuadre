@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 import { apiFetch } from "../../lib/api/client";
 import { es } from "../../lib/i18n/es";
+import { Avatar } from "../_ui/Avatar";
 import { Button } from "../_ui/Button";
 
 const t = es.nav;
@@ -38,11 +39,14 @@ export function UserMenu() {
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2">
       {data && (
-        <span className="hidden text-sm text-muted-foreground sm:inline">
-          {data.user.displayName}
-        </span>
+        <>
+          <Avatar userId={data.user.id} displayName={data.user.displayName} size={24} />
+          <span className="hidden text-sm text-muted-foreground sm:inline">
+            {data.user.displayName}
+          </span>
+        </>
       )}
       <Button variant="ghost" size="sm" onClick={onLogout} disabled={loggingOut}>
         {loggingOut ? t.loggingOut : t.logout}

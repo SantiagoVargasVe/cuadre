@@ -1,6 +1,7 @@
 "use client";
 
 import { es } from "../../../../../lib/i18n/es";
+import { Avatar } from "../../../../_ui/Avatar";
 import { DialogContent, DialogRoot, DialogTitle, DialogTrigger } from "../../../../_ui/Dialog";
 import type { PlanEdgeView } from "./balancesTypes";
 import { planEdgePhrase } from "./planPhrase";
@@ -24,17 +25,26 @@ export interface PaymentPlanRowProps {
 export function PaymentPlanRow({ edge, currency, myUserId, nameOf }: PaymentPlanRowProps) {
   const phrase = planEdgePhrase(edge, currency, myUserId, nameOf);
   const explains = edge.explains ?? [];
+  // The counterparty — whoever isn't me, or the payer for a third-person edge.
+  const otherId = edge.from === myUserId ? edge.to : edge.from;
+  const avatar = <Avatar userId={otherId} displayName={nameOf(otherId)} size={24} />;
 
   if (explains.length === 0) {
-    return <p className="text-sm text-foreground">{phrase}</p>;
+    return (
+      <p className="flex items-center gap-2 text-sm text-foreground">
+        {avatar}
+        {phrase}
+      </p>
+    );
   }
 
   return (
     <DialogRoot>
       <DialogTrigger
-        className="w-full rounded-md border border-border p-2 text-left text-sm text-foreground hover:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex w-full items-center gap-2 rounded-md border border-border p-2 text-left text-sm text-foreground hover:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         render={<button type="button" />}
       >
+        {avatar}
         {phrase}
       </DialogTrigger>
       <DialogContent>

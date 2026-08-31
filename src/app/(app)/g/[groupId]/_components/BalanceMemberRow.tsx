@@ -1,5 +1,6 @@
 import { es } from "../../../../../lib/i18n/es";
 import { formatMoney } from "../../../../../lib/money/format";
+import { Avatar } from "../../../../_ui/Avatar";
 import type { BalanceMemberView } from "./balancesTypes";
 
 const t = es.balances;
@@ -30,7 +31,8 @@ export function BalanceMemberRow({ member, displayName, currency }: { member: Ba
       aria-label={`${displayName}: ${t.paidLabel} ${paid}, ${t.shareLabel} ${share}, ${text}`}
       className="flex items-center justify-between gap-2 text-sm"
     >
-      <span aria-hidden="true" className="font-medium text-foreground">
+      <span aria-hidden="true" className="flex items-center gap-2 font-medium text-foreground">
+        <Avatar userId={member.userId} displayName={displayName} size={24} />
         {displayName}
       </span>
       <div aria-hidden="true" className="flex flex-col items-end gap-0.5">
