@@ -22,7 +22,7 @@ cd "$COMPOSE_DIR"
 
 # -T: no TTY, so the host's stdin (the token file) is wired to the in-container
 # process. The inline script carries no secret; the token arrives on stdin.
-docker compose exec -T app node -e '
+docker compose exec -T cuadre-app node -e '
 let buf = "";
 process.stdin.on("data", (c) => { buf += c; });
 process.stdin.on("end", async () => {
