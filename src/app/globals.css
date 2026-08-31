@@ -228,4 +228,46 @@
   table, .tabular {
     font-variant-numeric: tabular-nums;
   }
+
+  /* [CUADRE / T100] Tailwind v4's Preflight no longer gives `button` /
+     `[role="button"]` `cursor: pointer` — it expects the app to opt back in,
+     and nothing here did, so on desktop no control read as clickable. The
+     worst casualty was the expense-feed row: a real <button> that opened the
+     split breakdown but looked like a static card, so nobody tapped it.
+
+     Fixed once, centrally, rather than a `cursor-pointer` on each call site
+     that the next new component would forget. Base UI renders its
+     Switch/Checkbox/Radio as a `<span role="…">` rather than a <button>,
+     which is why the role selectors sit alongside `button`; SelectItem is a
+     `<div role="option">`.
+
+     Do NOT delete this as redundant — verified against tailwindcss 4.3.3
+     (preflight.css carries no such rule) and it is not a browser default for
+     <button>. See docs/frontend/design-system.md § Component rules. */
+  button,
+  a[href],
+  [role="button"],
+  [role="tab"],
+  [role="option"],
+  [role="menuitem"],
+  [role="menuitemcheckbox"],
+  [role="menuitemradio"],
+  [role="checkbox"],
+  [role="radio"],
+  [role="switch"],
+  label:has(> :is(button, [role="checkbox"], [role="radio"], [role="switch"], input:is([type="checkbox"], [type="radio"]))) {
+    cursor: pointer;
+  }
+
+  /* A disabled control is never a pointer. Base UI flags disabled state with
+     the native attribute AND `data-disabled`; primitives that keep focus
+     while disabled use `aria-disabled="true"`. After the rule above so it
+     wins at equal specificity. Text inputs are untouched by either block and
+     keep their caret. */
+  button:disabled,
+  [data-disabled],
+  [aria-disabled="true"],
+  label:has(> :is(button, [role="checkbox"], [role="radio"], [role="switch"]):is(:disabled, [data-disabled], [aria-disabled="true"])) {
+    cursor: default;
+  }
 }
