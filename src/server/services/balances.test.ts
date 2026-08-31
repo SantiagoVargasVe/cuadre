@@ -326,6 +326,31 @@ describe.skipIf(!hasTestDatabase)("getBalancesView", () => {
     expect(afterSettle.byCurrency[0]!.plan).toEqual([]);
   });
 
+  it("a settlement in one currency does not move another currency's net (T104)", async () => {
+    const { groupId, memberIds } = await seedGroup(2);
+    const [ana, beto] = memberIds as [string, string];
+    // Beto owes Ana in both COP and USD.
+    await createExpense(groupId, ana, {
+      title: "COP dinner", date: "2026-08-24", amount: "10000", currency: "COP", split: { strategy: "equal" },
+    });
+    await createExpense(groupId, ana, {
+      title: "USD taxi", date: "2026-08-24", amount: "8000", currency: "USD", split: { strategy: "equal" },
+    });
+
+    const netFor = (view: Awaited<ReturnType<typeof getBalancesView>>, ccy: string, user: string) =>
+      BigInt(view.byCurrency.find((c) => c.currency === ccy)!.members.find((m) => m.userId === user)!.net);
+
+    const before = await getBalancesView(groupId, ana, {});
+    const usdNetBefore = netFor(before, "USD", beto);
+
+    // Beto settles in COP only.
+    await createSettlement(groupId, beto, { toUserId: ana, amount: "5000", currency: "COP", settledOn: "2026-08-24" });
+
+    const after = await getBalancesView(groupId, ana, {});
+    expect(netFor(after, "COP", beto)).toBe(0n); // COP net moved to settled
+    expect(netFor(after, "USD", beto)).toBe(usdNetBefore); // USD net untouched
+  });
+
   it("404s a non-member", async () => {
     const { groupId } = await seedGroup(1);
     await expect(getBalancesView(groupId, crypto.randomUUID(), {})).rejects.toThrow(NotAMemberError);

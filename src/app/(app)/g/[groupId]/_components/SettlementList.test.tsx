@@ -17,12 +17,12 @@ const paid: SettlementView = {
 
 describe("SettlementList", () => {
   it("shows a calm empty state when nothing is recorded", () => {
-    render(<SettlementList members={members} myUserId="ana" mutations={mockSettlements([])} />);
+    render(<SettlementList groupId="g1" members={members} myUserId="ana" presentCurrencies={["COP"]} mutations={mockSettlements([])} />);
     expect(screen.getByText("Aún no hay pagos registrados.")).toBeInTheDocument();
   });
 
   it("renders a recorded payment with its amount, date, note, and edit/delete controls", () => {
-    render(<SettlementList members={members} myUserId="ana" mutations={mockSettlements([paid])} />);
+    render(<SettlementList groupId="g1" members={members} myUserId="ana" presentCurrencies={["COP"]} mutations={mockSettlements([paid])} />);
 
     expect(screen.getByText("Beto le pagó a Ana")).toBeInTheDocument();
     expect(screen.getByText("$ 50.000")).toBeInTheDocument();

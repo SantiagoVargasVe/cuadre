@@ -283,6 +283,44 @@ export async function getDisplayCurrency(
 }
 
 /**
+ * A read-only rate quote for an arbitrary pair — `to` units per 1 unit of
+ * `from`, at today's rate, with its `source` and `asOf` (T104). The
+ * settle-up form spells out "how much COP to wire" with this; it is
+ * **not** a pin.
+ *
+ * The cross rate is derived from the two USD legs the same way
+ * `setDisplayCurrency` derives a pin's — `(USD→to) / (USD→from)` — via
+ * `ensureRate`, so a missing day lazily fetches once and a genuinely
+ * unavailable rate is `RATE_UNAVAILABLE` naming the requested pair, never
+ * a silent stale fallback (currency.md § The conversion arithmetic).
+ * Nothing here writes to `group_fx_pins` or `groups.display_currency`.
+ */
+export async function quoteRate(
+  groupId: string,
+  userId: string,
+  from: string,
+  to: string,
+): Promise<{ rate: string; asOf: string; source: string }> {
+  await requireMembership(groupId, userId);
+  assertSupportedCurrency(from);
+  assertSupportedCurrency(to);
+
+  const today = todayUtcDate();
+  const source = getRateProvider().source;
+  if (from === to) return { rate: formatRateScaled(RATE_SCALE_FACTOR), asOf: today, source };
+
+  const base = config.FX_BASE_CURRENCY;
+  try {
+    const usdToFrom = from === base ? RATE_SCALE_FACTOR : parseRateScaled((await ensureRate(from)).rate);
+    const usdToTo = to === base ? RATE_SCALE_FACTOR : parseRateScaled((await ensureRate(to)).rate);
+    return { rate: formatRateScaled(deriveCrossRateScaled(usdToTo, usdToFrom)), asOf: today, source };
+  } catch (error) {
+    if (error instanceof RateUnavailableError) throw new RateUnavailableError(from, to, today);
+    throw error;
+  }
+}
+
+/**
  * Everything the read path (T054) needs to convert a group's activity
  * into its display currency, fetched once per request rather than once
  * per expense — `ratesByFromCurrency`/`exponentsByCurrency` are tiny maps

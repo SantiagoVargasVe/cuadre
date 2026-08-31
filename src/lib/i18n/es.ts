@@ -261,6 +261,12 @@ export const es = {
       toLabel: "¿A quién le pagaste?",
       amountLabel: (currency: string) => `Monto (${currency})`,
       amountNotPositive: "Ingresa un monto mayor que cero.",
+      currencyLabel: "Moneda",
+      /** The transfer amount spelled out — the debt is in `debt`'s currency,
+       * `transfer` is the COP you actually wire (T104). */
+      transferHint: (debt: string, transfer: string) =>
+        `Para pagar ${debt} necesitas transferir ${transfer}`,
+      rateProvenance: (source: string, date: string) => `tasa de ${source}, ${date}`,
       dateLabel: "Fecha",
       noteLabel: "Nota",
       noteHint: "Opcional. Máximo 500 caracteres.",

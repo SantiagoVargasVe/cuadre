@@ -15,9 +15,11 @@ function nameLookup(members: GroupMember[]): (userId: string) => string {
 }
 
 export interface CurrencyBalanceBlockProps {
+  groupId: string;
   block: CurrencyBalancesView;
   members: GroupMember[];
   myUserId: string;
+  presentCurrencies: string[];
   mutations: ReturnType<typeof useSettlements>;
 }
 
@@ -27,7 +29,14 @@ export interface CurrencyBalanceBlockProps {
  * never show a combined total"), which is why this component, not its
  * caller, owns the heading that names which currency it is.
  */
-export function CurrencyBalanceBlock({ block, members, myUserId, mutations }: CurrencyBalanceBlockProps) {
+export function CurrencyBalanceBlock({
+  groupId,
+  block,
+  members,
+  myUserId,
+  presentCurrencies,
+  mutations,
+}: CurrencyBalanceBlockProps) {
   const nameOf = nameLookup(members);
 
   return (
@@ -60,9 +69,11 @@ export function CurrencyBalanceBlock({ block, members, myUserId, mutations }: Cu
       </div>
 
       <PaymentPlanSection
+        groupId={groupId}
         block={block}
         members={members}
         myUserId={myUserId}
+        presentCurrencies={presentCurrencies}
         mutations={mutations}
         nameOf={nameOf}
       />

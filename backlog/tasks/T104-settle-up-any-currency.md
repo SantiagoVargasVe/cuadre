@@ -2,7 +2,7 @@
 id: T104
 title: Settle up in any of the group's currencies, with the conversion spelled out
 epic: E12-first-use
-status: todo
+status: done
 depends_on: [T103]
 size: L
 ---
@@ -40,39 +40,43 @@ Read [ADR-0009](../../docs/adr/0009-settlements-are-ledger-entries.md),
 
 ## Acceptance criteria
 
-- [ ] The settle-up form has a **currency select**, defaulting to the currency of the context it
-      was opened from (the plan edge's block, or the group default for the standalone button).
-      Reaching a USD payment no longer requires finding the USD block
-- [ ] The select offers the currencies **actually present in the group**, not every supported
-      code — offering EUR to a COP/USD group is noise
-- [ ] The amount field re-formats when the currency changes: COP takes no decimals, USD and EUR
-      take two ([splitting.md](../../docs/context/splitting.md) § 1). Switching currency must not
-      silently reinterpret a typed amount by a factor of 100
-- [ ] **Helper text naming the transfer amount**, whenever the selected currency isn't COP —
-      e.g. "Para pagar US$ 40 necesitas transferir $ 168.000". It updates live with the amount
-- [ ] **The rate is never a bare number.** Its `source` and `asOf` are shown alongside, per
-      currency.md's whole argument (two legitimate sources disagreed by 0.45% on the same day)
-- [ ] **No endpoint quotes an arbitrary pair today** — verified against the full route list; the
-      only rate-shaped read is `GET /api/groups/:id/display-currency`, and only once a display
-      currency is pinned. Add a small read-only quote, or extend an existing response. It must be
-      additive and member-only, and it must return the same `{ rate, asOf, source }` shape the
-      rest of the app already speaks
-- [ ] **Quoting a rate must not write a pin.** Re-pinning is the only thing allowed to move an
-      already-converted group's numbers, and only as an explicit member action (CLAUDE.md
-      non-negotiable #5). A quote is a read
-- [ ] A missing rate surfaces `RATE_UNAVAILABLE` naming the pair and date — **never a silent
-      fall back to a stale rate**. The helper text disappears rather than lying
-- [ ] The lazy-fetch fallback still applies: a quote for a pair with no rate today may fetch on
-      demand, exactly as `ensureRate` already does
-- [ ] Amounts entered are still `bigint` minor units at the form boundary; nothing downstream
-      sees a `Number`
-- [ ] The prefill from a plan edge still works and is still **only a convenience** — nothing
-      links the settlement back to the edge, and no code looks for such a link
-- [ ] Over- and under-payment remain normal: any positive amount submits
-- [ ] Tests: the currency select changes the submitted `currency`; the helper text shows the
-      converted transfer amount with its source and date; switching currency re-formats rather
-      than reinterpreting the amount; `RATE_UNAVAILABLE` hides the helper instead of showing a
-      stale number; a settlement recorded in one currency does not move another currency's net
+- [x] The form has a **currency select** (`SettlementAmountFields`), defaulting to the currency
+      the dialog was opened from — the plan edge's block, the settlement's own currency when
+      editing, or the group default for the standalone button. `SettleUpDialog` passes it as the
+      initial value, no longer a fixed prop
+- [x] The select offers `presentCurrencies` — the group default plus any currency with live
+      activity (`BalancesTab` derives it from `data.byCurrency`), unioned with the opened
+      currency. Never every supported code
+- [x] `<MoneyField currency={watch("currency")}>` re-formats live; on a currency switch an effect
+      re-runs `formatAmountInput` so "40,50" typed as USD becomes "40" under COP. `parseAmountInput`
+      already splits on the decimal separator, not the grouping dot, so there is no ×100 reinterpret
+      in either direction — asserted
+- [x] **Helper text** (`TransferHint`) whenever the selected currency isn't COP: "Para pagar
+      US$ 40,00 necesitas transferir $ 160.000 · tasa de <source>, <date>". Updates live with the
+      amount and currency
+- [x] The rate line always carries `source` + `asOf` (`t.rateProvenance`), never a bare number
+- [x] **No arbitrary-pair quote existed** (checked the full route list — only `GET
+      /display-currency`, pins-only). Added `GET /api/groups/:id/fx-quote?from=&to=` →
+      `{ rate, asOf, source }`, member-only (`requireMembership` in `quoteRate`), documented in
+      api-contract.md
+- [x] **Never writes a pin** — `quoteRate` derives the cross rate from the two USD legs via
+      `ensureRate` and returns it; a service test asserts `group_fx_pins` stays empty and
+      `display_currency` stays null after a quote
+- [x] A missing rate → `RATE_UNAVAILABLE` naming the requested `from`/`to`; `TransferHint` renders
+      `null` on the query error rather than a stale number — asserted
+- [x] Lazy fetch still applies — `quoteRate` calls `ensureRate`, which fetches on a missing day;
+      asserted
+- [x] `bigint` boundary intact — the form's `amount` is a string until `toCreateInput`
+      (`parseAmountInput` → minor-unit string); `TransferHint` converts with `convertMinorUnits`
+      on `bigint`s. Nothing sees a `Number`
+- [x] Plan-edge prefill unchanged — still `{ toUserId, amountMinor }` with no link back; the only
+      addition is prefilling `currency` from the same context
+- [x] Over/under-payment unchanged — the schema's only amount rule is still "> 0"
+- [x] Tests: `SettlementForm.test.tsx` (select changes submitted `currency`; switch re-formats
+      not ×100), `SettlementForm.transferHint.test.tsx` (converted amount + source/date;
+      `RATE_UNAVAILABLE` hides it; no fetch when COP), `fx-quote.test.ts` + `route.test.ts`
+      (cross rate, no pin, lazy fetch, non-member, unsupported), `balances.test.ts` (a COP
+      settlement leaves the USD net untouched)
 
 ## Out of scope
 

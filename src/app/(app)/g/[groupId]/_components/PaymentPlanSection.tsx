@@ -11,9 +11,11 @@ import type { useSettlements } from "./useSettlements";
 const t = es.balances;
 
 export interface PaymentPlanSectionProps {
+  groupId: string;
   block: CurrencyBalancesView;
   members: GroupMember[];
   myUserId: string;
+  presentCurrencies: string[];
   mutations: ReturnType<typeof useSettlements>;
   nameOf: (userId: string) => string;
 }
@@ -21,7 +23,15 @@ export interface PaymentPlanSectionProps {
 /** The "who pays whom" list, plus a "Registrar pago" that prefills the
  * settle-up form from an edge — but only on an edge the acting user is the
  * payer of, since `fromUserId` is always them (ADR-0009). */
-export function PaymentPlanSection({ block, members, myUserId, mutations, nameOf }: PaymentPlanSectionProps) {
+export function PaymentPlanSection({
+  groupId,
+  block,
+  members,
+  myUserId,
+  presentCurrencies,
+  mutations,
+  nameOf,
+}: PaymentPlanSectionProps) {
   return (
     <div className="flex flex-col gap-2 border-t border-border pt-3">
       <h3 className="text-xs font-medium text-muted-foreground">{t.planHeading}</h3>
@@ -35,9 +45,11 @@ export function PaymentPlanSection({ block, members, myUserId, mutations, nameOf
               <SettleUpDialog
                 trigger={<Button variant="ghost" size="sm" type="button">{es.settlements.record}</Button>}
                 title={es.settlements.recordTitle}
+                groupId={groupId}
                 members={members}
                 myUserId={myUserId}
                 currency={block.currency}
+                presentCurrencies={presentCurrencies}
                 mutations={mutations}
                 prefill={{ toUserId: edge.to, amountMinor: edge.amount }}
               />
