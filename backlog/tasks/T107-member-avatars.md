@@ -24,10 +24,25 @@ recognise, with no uploads and no file storage.
 - **It must render locally.** DiceBear's HTTP API and any other remote avatar service are out:
   architecture.md states the app's only outbound dependency is one FX call a day, and a
   per-render request to a third party would put that third party in the request path of every
-  page — a privacy change, not just a dependency. Use a library that generates SVG in-process
-  (`boring-avatars` is a pure-SVG React component; `@dicebear/core` plus a collection also runs
-  offline). Whichever is chosen needs **a line justifying it**
-  ([architecture.md](../../docs/context/architecture.md) § *Dependency policy*).
+  page — a privacy change, not just a dependency.
+
+**The library is decided: [`boring-avatars`](https://github.com/boringdesigners/boring-avatars).**
+Verified against `boring-avatars@2.0.4` on npm: **zero runtime dependencies** (React and
+react-dom are peers, both already here), MIT, ~28 KB unpacked, and it generates pure SVG
+in-process with no network request. That satisfies
+[architecture.md](../../docs/context/architecture.md) § *Dependency policy* about as cheaply as a
+runtime dependency can — record that line when adding it.
+
+Its API, for reference:
+
+```tsx
+import Avatar from "boring-avatars";
+<Avatar name={seed} variant="beam" size={32} colors={[...]} square title={false} />
+```
+
+`variant` is one of `marble` · `beam` · `pixel` · `sunset` · `ring` · `bauhaus`. `name` is the
+seed — everything is derived from it deterministically. `colors` takes concrete hex values, which
+is the one place this collides with "never a hardcoded colour in a component"; see the criteria.
 
 Read [design-system.md](../../docs/frontend/design-system.md) and
 [security.md](../../docs/context/security.md) § *Privacy*.
@@ -39,12 +54,18 @@ Read [design-system.md](../../docs/frontend/design-system.md) and
 - [ ] **Deterministic**: the same `userId` produces the same avatar on every render, every
       device, and every member's screen — two people looking at the same group see the same faces
 - [ ] **Seeded by `userId`**, never by email, and not by a value that changes on rename
-- [ ] Generated **in-process**. No runtime request to any third-party host, and no new outbound
-      dependency in the request path
-- [ ] The chosen library is named in the PR **with the reason**, and added to architecture.md's
-      dependency list. Prefer the smallest thing that works — this is decoration
-- [ ] Colours come from the **theme tokens**, not hardcoded hexes (design-system.md: "Never a
-      hardcoded colour in a component"), and the avatar is legible in both light and dark
+- [ ] Generated **in-process** via `boring-avatars`. No runtime request to any third-party host,
+      and no new outbound dependency in the request path
+- [ ] `boring-avatars` added to architecture.md's dependency list with the justifying line
+      (zero runtime deps, MIT, ~28 KB, renders locally)
+- [ ] **One variant chosen as the app default** and used everywhere — pick it by looking at all
+      six at 24–32px against the real UI, since that is the only size that matters here. Whoever
+      picks it should assume [T108](T108-avatar-editor.md) will let people change it later
+- [ ] The `colors` palette is **defined once, derived from the theme**, and imported — not a hex
+      array pasted into each call site. `boring-avatars` needs concrete hex values, so a single
+      exported palette constant with a comment tying it to the theme is the honest way to satisfy
+      design-system.md's "never a hardcoded colour in a component" without fighting the library.
+      Verify it is legible in **both** light and dark
 - [ ] **Never the only carrier of identity.** Every avatar sits beside the name it belongs to and
       is `aria-hidden` / decorative — a screen reader must not be handed a shape instead of a
       name, and colour-vision deficiency must not make two members interchangeable
@@ -60,13 +81,16 @@ Read [design-system.md](../../docs/frontend/design-system.md) and
 
 Uploading an image. That introduces a file-storage mount and its permission traps — a separate
 problem, deliberately deferred (`T091`, and see how it went in the sibling repo before designing
-it). Letting a member *choose* a style is [T108](T108-avatar-style-picker.md), on purpose:
-this task ships a good default with no schema change.
+it).
+
+Letting a member **change** their avatar is [T108](T108-avatar-editor.md), on purpose: this task
+ships one good default with **no schema change**, so it can land immediately. Don't add a column
+here, and don't build a picker here.
 
 ## Files likely touched
 
 ```
-src/app/_ui/Avatar.tsx                 (new)
+src/app/_ui/Avatar.tsx                 (new — wraps boring-avatars, owns the default variant + palette)
 src/app/_ui/Avatar.test.tsx            (new)
 src/app/(app)/g/[groupId]/_components/{MemberList,BalanceMemberRow,SettlementRow,ExpenseDetail}.tsx
 src/app/_shell/UserMenu.tsx

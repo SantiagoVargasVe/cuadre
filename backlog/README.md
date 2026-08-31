@@ -203,9 +203,11 @@ in particular.
   everyone — not just formatting)
 - `T106` Kill the tab-switch delay — no prefetch, no `loading.tsx`, and every tab refetches the
   same two endpoints
-- `T107` Deterministic generated avatars, seeded by `userId` (an email-seeded one is impossible:
-  no endpoint returns a co-member's email)
-- `T108` Let a member pick an avatar style — library variants only, never an upload
+- `T107` Deterministic generated avatars via `boring-avatars`, seeded by `userId` (an
+  email-seeded one is impossible: no endpoint returns a co-member's email). One good default,
+  no schema change
+- `T108` Avatar editor — a grid of live candidates across the six `boring-avatars` variants with
+  a reroll, not a dropdown. App-generated seeds only, and **never an upload**
 
 Open design questions that are **not** backlog items — cross-group balances, user deletion,
 per-member display currency, password reset, multi-instance — are listed in
