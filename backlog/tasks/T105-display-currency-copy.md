@@ -2,7 +2,7 @@
 id: T105
 title: Explain what "moneda de visualización" actually changes
 epic: E12-first-use
-status: todo
+status: done
 depends_on: []
 size: S
 ---
@@ -27,25 +27,27 @@ Read [frontend/CLAUDE.md](../../docs/frontend/CLAUDE.md) § *Multi-currency disp
 
 ## Acceptance criteria
 
-- [ ] The section explains, in Spanish, that converting changes **amounts, balances and the
-      payment plan** — everything derived — and that it applies to **every member**, not just the
-      person clicking
-- [ ] Before converting, the confirmation lists **the rate it will pin for each currency present
-      in the group**, with `source` and `asOf` — not just the provider name and date
-- [ ] It says plainly that this is **reversible**, and that reverting restores the original
-      per-currency view with the original numbers
-- [ ] It says that once converted, **the numbers stop moving** — no job, no cache expiry, no
-      "this looks stale" heuristic will change them — and that **re-pinning is the only action
-      that moves them**. That's a product promise (CLAUDE.md non-negotiable #5) and the UI should
-      state it rather than leaving it to be discovered
-- [ ] Once converted, the pinned rate for each pair stays visible with its date and source
-      (already partly true — extend it to name every pair)
-- [ ] The revert control stays **as prominent as the convert control was**
-- [ ] Every string goes through i18n keys. No hardcoded user-facing text
-- [ ] Reads correctly at 375px — this is a lot of text on a small screen; it must not become a
-      wall
-- [ ] Tests: the pre-convert confirmation renders a rate line per currency pair, with source and
-      date, and still issues no write until confirmed
+- [x] `CurrencyExplainer` (3 short paragraphs, `es.settings.currency.explain*`): converting
+      "recalcula los montos, los balances y el plan de pago —todo lo que el grupo deriva—" and
+      "aplica a todos los miembros, no solo a quien lo hace"
+- [x] `ConvertRatePreview` (convert mode, before the write) lists one line per present currency →
+      target: `USD → COP: <rate> · <source>, <date>`. It reuses **T104's** `GET /fx-quote` (a
+      read, writes nothing); a pair with no rate today shows `sin tasa disponible hoy` in
+      `--debit` rather than being hidden
+- [x] `explainReversible`: "Es reversible: al volver, cada moneda se muestra otra vez con sus
+      montos originales."
+- [x] `explainFrozen`: "los números dejan de moverse: ningún trabajo automático, caché ni 'esto
+      se ve viejo' los cambia. Volver a fijar las tasas es la única acción que lo hace."
+- [x] Once converted, `data.pins.map` still renders `pinLine` for every pinned pair with its
+      `asOf` + `source` (unchanged — it already covers every pair)
+- [x] Revert is `<Button variant="secondary">` now (was `ghost`) — same variant as the convert /
+      re-pin buttons; a test asserts `revert.className === repin.className`
+- [x] Every new string is an `es.settings.currency.*` key
+- [x] Verified at 375px: the explainer is three short paragraphs, not one block; the confirm
+      dialog is a full-screen sheet and the rate lines stack
+- [x] `CurrencySwitcher.test.tsx`: the pre-convert confirm renders `Tasas que se van a fijar` +
+      a `USD → COP: … · source, date` line, `RATE_UNAVAILABLE` shows the unavailable line, and
+      no write is recorded until "Convertir" is clicked a second time
 
 ## Out of scope
 

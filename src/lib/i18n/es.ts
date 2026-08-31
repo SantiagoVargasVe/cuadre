@@ -220,7 +220,15 @@ export const es = {
     },
     currency: {
       heading: "Moneda de visualización",
-      body: "Cambia cómo ve los montos todo el grupo, no solo tú. Se puede revertir.",
+      /** The three things a reader has to know before converting (T105). */
+      explainChanges:
+        "Convertir recalcula los montos, los balances y el plan de pago —todo lo que el grupo " +
+        "deriva— a una tasa fija. Aplica a todos los miembros, no solo a quien lo hace.",
+      explainReversible:
+        "Es reversible: al volver, cada moneda se muestra otra vez con sus montos originales.",
+      explainFrozen:
+        "Una vez convertido, los números dejan de moverse: ningún trabajo automático, caché ni " +
+        "“esto se ve viejo” los cambia. Volver a fijar las tasas es la única acción que lo hace.",
       targetLabel: "Convertir a",
       convert: "Convertir",
       currentlyIn: (currency: string) => `El grupo se muestra en ${currency}.`,
@@ -229,12 +237,21 @@ export const es = {
       revert: "Volver a monedas originales",
       repin: "Volver a fijar tasas de hoy",
       confirmConvertTitle: "Convertir la vista del grupo",
-      confirmConvertBody: (currency: string) => `Vas a mostrar todos los montos del grupo en ${currency}.`,
+      confirmConvertBody: (currency: string) =>
+        `Vas a mostrar en ${currency} todos los montos del grupo —gastos, balances y el plan de ` +
+        `pago—, para todos los miembros.`,
       confirmConvertCta: "Convertir",
       confirmRepinTitle: "Volver a fijar las tasas",
       confirmRepinBody: (currency: string) =>
         `Vas a re-fijar las tasas de ${currency} a las de hoy. Esto sí mueve los números ya convertidos.`,
       confirmRepinCta: "Re-fijar",
+      /** The per-pair rate preview shown before the write (T105). */
+      ratePreviewHeading: "Tasas que se van a fijar",
+      ratePreviewLine: (from: string, to: string, rate: string, source: string, date: string) =>
+        `${from} → ${to}: ${rate} · ${source}, ${date}`,
+      ratePreviewLoading: "Consultando las tasas de hoy…",
+      ratePreviewUnavailable: (from: string, to: string) =>
+        `${from} → ${to}: sin tasa disponible hoy — no se podrá convertir esta moneda`,
       provenance: (date: string, source: string) => `Se fijará la tasa de ${source} del ${date} para cada moneda del grupo.`,
       everyoneWarning: "Todos los miembros verán los montos convertidos.",
       cancel: "Cancelar",
