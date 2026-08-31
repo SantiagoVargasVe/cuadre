@@ -1,6 +1,7 @@
 import { formatCalendarDate, formatTimestamp } from "../../../../../lib/date/format";
 import { es } from "../../../../../lib/i18n/es";
 import { Money } from "../../../../_ui/Money";
+import { strategyPhrase } from "./strategyPhrase";
 import { resolveDisplayAmounts, type ExpenseParty, type ExpenseSummary } from "./types";
 
 const t = es.expenseFeed;
@@ -33,6 +34,12 @@ export function ExpenseDetail({ expense }: { expense: ExpenseSummary }) {
       </div>
       <div className="flex flex-col gap-1">
         <h3 className="text-sm font-medium text-muted-foreground">{t.splitsHeading}</h3>
+        <p className="text-sm text-foreground">
+          {strategyPhrase(expense.strategy, {
+            splitCount: display.splits.length,
+            loanTo: display.splits[0]?.displayName ?? "",
+          })}
+        </p>
         {display.splits.map((split) => (
           <PartyRow key={split.userId} party={split} currency={display.currency} />
         ))}
