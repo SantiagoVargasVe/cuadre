@@ -78,6 +78,7 @@ establish that.
 | **E8** deploy | Dockerfile, CI, GHCR, compose, timers, tunnel | T070–T076 | M7 |
 | **E9** insights | Charts, CSV export, revision diffs | T080–T084 | post-MVP |
 | **E10** quality-of-life | Categories, receipts, recurring, comments, notifications, PWA | T090–T095 | post-MVP |
+| **E12** first-use | Fixes and clarity from the first real use of the deployed app | T100–T108 | post-MVP |
 
 Sequencing rationale is in [docs/roadmap.md](../docs/roadmap.md). The short version: the ledger
 has to be trustworthy before anything is built on top of it, so the money math lands in M3–M4 and
@@ -178,6 +179,33 @@ of an untrustworthy ledger are worse than no charts.
 E9 and E10 are one-liners deliberately. Expand one into a task file when you pick it up, following
 [_template.md](_template.md) — and expect the shape to have changed once a real trip has run
 through the app.
+
+**E12 — First use** · post-MVP
+
+Written from the first real session on the deployed app (2026-08-31). Unlike E9/E10 these are
+full task files, because each one names a defect that was reproduced rather than a feature that
+was imagined. Several turned out to be more specific than the report suggested — the currency one
+in particular.
+
+*Do these first — small, independent, each one removes a daily papercut:*
+- `T100` Restore pointer cursors — Tailwind v4 dropped them from Preflight and nothing opted back
+  in, so nothing in the app reads as clickable
+- `T101` **Name the currency on every amount.** Under `es-CO` with `narrowSymbol`, COP and USD
+  both render as `$` — measured. Two different currencies format identically today
+- `T102` Make the split breakdown discoverable — it already exists behind a tap on an expense
+  row; nobody found it, largely because of T100
+- `T103` The settle-up recipient select shows a UUID instead of the member's name
+
+*Then:*
+- `T104` Settle up in any of the group's currencies, with the transfer amount spelled out. Read
+  its Context before touching it — recording a COP settlement does **not** reduce a USD debt
+- `T105` Explain what the display-currency switch actually changes (balances and the plan, for
+  everyone — not just formatting)
+- `T106` Kill the tab-switch delay — no prefetch, no `loading.tsx`, and every tab refetches the
+  same two endpoints
+- `T107` Deterministic generated avatars, seeded by `userId` (an email-seeded one is impossible:
+  no endpoint returns a co-member's email)
+- `T108` Let a member pick an avatar style — library variants only, never an upload
 
 Open design questions that are **not** backlog items — cross-group balances, user deletion,
 per-member display currency, password reset, multi-instance — are listed in

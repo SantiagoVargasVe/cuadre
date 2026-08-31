@@ -115,6 +115,32 @@ Charting library chosen in the task, against real requirements, not guessed at n
 - **PWA / offline add** — expenses get added in restaurants with bad wifi; a queued offline write
   is genuinely useful and genuinely fiddly
 
+### E12 · First use
+
+Written after the first real session on the deployed app, 2026-08-31 — the milestone the whole
+plan was pointed at ("ships against a real trip"). It is exactly the correction the post-MVP
+ordering above expected: *"expect the shape to have changed once a real trip has run through the
+app."*
+
+What the first session actually surfaced, in priority order:
+
+- **Currency is ambiguous on screen.** `es-CO` with `currencyDisplay: "narrowSymbol"` renders
+  both COP and USD as `$`. A 100.000 COP expense and an 80 USD one are typographically
+  indistinguishable. This is the one to fix first — it is a trust bug, not a formatting nit.
+- **Nothing looks interactive.** Tailwind v4 dropped `cursor: pointer` from Preflight and nothing
+  opted back in. The visible cost is that a whole feature — the split breakdown behind a tap on
+  an expense row — was never discovered.
+- **Settling across currencies is awkward.** The currency of a payment is decided by which button
+  you happen to press, and nothing tells you what to actually wire from a COP bank account.
+- **The display-currency switch undersells itself**, reading like a formatting preference when it
+  recomputes every balance and the payment plan, for every member.
+- **Tab switches feel slow** — no prefetch, no loading boundary, and the same two endpoints
+  refetched on every tab.
+- **Members are hard to scan** in lists that are just columns of names.
+
+These come before E9 and E10. Charts and categories on top of an interface people misread is the
+same mistake as charts on top of a ledger people don't trust.
+
 ### E11 · Bigger questions
 
 Real design work, not backlog items. Written down so they're not rediscovered as bugs.
