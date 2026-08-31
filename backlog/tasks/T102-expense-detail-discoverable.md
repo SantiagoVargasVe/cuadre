@@ -2,7 +2,7 @@
 id: T102
 title: Make an expense's split breakdown discoverable
 epic: E12-first-use
-status: todo
+status: done
 depends_on: [T100]
 size: S
 ---
@@ -29,22 +29,25 @@ Read [frontend/CLAUDE.md](../../docs/frontend/CLAUDE.md) § *The expense form* a
 
 ## Acceptance criteria
 
-- [ ] An expense row is **visibly tappable**: hover/active state, a chevron or equivalent
-      affordance, and `cursor: pointer` (from T100). At 375px, where there is no hover, the
-      affordance must still be visible
-- [ ] The trigger announces itself — `aria-haspopup="dialog"` and an accessible name that names
-      the expense, not a bare "button"
-- [ ] The detail dialog states **how the expense was divided**, in words, from
-      `expense.strategy` — e.g. "En partes iguales entre 4 personas", "Por porcentaje",
-      "Montos exactos", "Préstamo a Ana". Spanish, through i18n keys, never a hardcoded string
-- [ ] Each split row shows the member and their amount (already true) — keep the accessible label
-      naming *whose* amount it is, per design-system.md § *Accessibility*
-- [ ] Still **no second fetch** on open. The payers/splits arrays on the row are complete; a
-      per-expense request would fan the feed out into N+1
-- [ ] Amounts in the dialog carry their currency ([T101](T101-currency-on-every-amount.md)) and,
-      when the group is converted, stay marked as converted with the pin reachable
-- [ ] Test: the strategy phrase renders for each of the six strategies; opening the dialog issues
-      no network request
+- [x] An expense row is **visibly tappable** — restructured to a `group` row with a persistent
+      right-edge chevron (`svg[aria-hidden]` that nudges on `group-hover`), `hover:border-ring
+      hover:bg-muted/40`, `active:bg-muted`, and `cursor: pointer` from T100. The chevron is the
+      affordance at 375px, verified in-browser (light + dark)
+- [x] `aria-haspopup="dialog"` comes from Base UI's `DialogTrigger`; the button's text leads with
+      the title, so its accessible name is `"Hotel Cartagena US$ 90,00 …"`, not `"button"` —
+      asserted with `toHaveAccessibleName`
+- [x] The dialog states **how it was divided** under "Dividido entre" — `strategyPhrase.ts` maps
+      `expense.strategy` → `es.expenseFeed.strategy.*`: "En partes iguales entre N personas"
+      (covers `equal` + `equal_subset`), "Por participaciones", "Por porcentaje", "Montos
+      exactos", "Préstamo a {name}", plus an `unknown` fallback. All i18n
+- [x] Split rows still show member + amount, unchanged — `PartyRow` is untouched
+- [x] **No second fetch** — `ExpenseDetail` takes the row's complete `payers`/`splits` arrays;
+      the "opens with no network request" test stubs `fetch` and asserts 0 calls
+- [x] Dialog amounts carry currency (US$/€/$ via T101) and a converted total keeps its
+      "Monto convertido" marker — existing `ExpenseDetail.test.tsx` converted case still green
+- [x] Tests: `strategyPhrase.test.ts` covers all six strategies + the singular/fallback cases;
+      `ExpenseDetail.test.tsx` renders a phrase for each of the six; `ExpenseRow.detail.test.tsx`
+      asserts `aria-haspopup` + no network on open
 
 ## Out of scope
 

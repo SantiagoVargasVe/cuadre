@@ -23,6 +23,41 @@ const expense: ExpenseSummary = {
 };
 
 describe("ExpenseDetail", () => {
+  it("states how the expense was divided, in words, from the strategy", () => {
+    render(<ExpenseDetail expense={expense} />);
+    // strategy "equal", 2 splits.
+    expect(screen.getByText("En partes iguales entre 2 personas")).toBeInTheDocument();
+  });
+
+  it("names the beneficiary for a loan", () => {
+    render(
+      <ExpenseDetail
+        expense={{
+          ...expense,
+          strategy: "loan",
+          splits: [{ userId: "beto", amount: "30000000", displayName: "Beto" }],
+        }}
+      />,
+    );
+    expect(screen.getByText("Préstamo a Beto")).toBeInTheDocument();
+  });
+
+  it("renders a phrase for every one of the six strategies", () => {
+    const phrases: Record<string, RegExp> = {
+      equal: /En partes iguales/,
+      equal_subset: /En partes iguales/,
+      shares: /Por participaciones/,
+      percentage: /Por porcentaje/,
+      exact: /Montos exactos/,
+      loan: /Préstamo a/,
+    };
+    for (const [strategy, re] of Object.entries(phrases)) {
+      const { unmount } = render(<ExpenseDetail expense={{ ...expense, strategy }} />);
+      expect(screen.getByText(re)).toBeInTheDocument();
+      unmount();
+    }
+  });
+
   it("renders the full payer and split breakdown", () => {
     render(<ExpenseDetail expense={expense} />);
 

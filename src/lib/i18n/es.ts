@@ -153,6 +153,17 @@ export const es = {
     detailTitle: "Detalle del gasto",
     payersHeading: "Pagado por",
     splitsHeading: "Dividido entre",
+    /** How the expense was divided, in words — from `expense.strategy`, shown
+     * in the detail dialog (T102). `equal` covers `equal_subset` too: the
+     * split rows already name who, so "entre N personas" reads the same. */
+    strategy: {
+      equal: (n: number) => `En partes iguales entre ${n} ${n === 1 ? "persona" : "personas"}`,
+      shares: "Por participaciones",
+      percentage: "Por porcentaje",
+      exact: "Montos exactos",
+      loan: (name: string) => `Préstamo a ${name}`,
+      unknown: "Dividido entre los participantes",
+    },
     close: "Cerrar",
     comingSoon: {
       title: "Agregar gasto",
