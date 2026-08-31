@@ -9,6 +9,7 @@ import { KNOWN_CURRENCIES } from "../../../../../lib/money/format";
 import { Button } from "../../../../_ui/Button";
 import { SelectContent, SelectItem, SelectRoot, SelectTrigger, SelectValue } from "../../../../_ui/Select";
 import { ConvertCurrencyDialog } from "./ConvertCurrencyDialog";
+import { CurrencyExplainer } from "./CurrencyExplainer";
 import type { DisplayCurrencyState } from "./groupSettingsTypes";
 
 const t = es.settings.currency;
@@ -27,6 +28,14 @@ export function CurrencySwitcher({ groupId, initial }: { groupId: string; initia
     initialData: initial,
     staleTime: Infinity,
   });
+  // The currencies the convert preview quotes rates for — shared cache key
+  // with the Balances tab (T106).
+  const { data: balances } = useQuery({
+    queryKey: ["group", groupId, "balances"],
+    queryFn: () => apiFetch<{ byCurrency: { currency: string }[] }>(`/api/groups/${groupId}/balances`),
+    staleTime: Infinity,
+  });
+  const presentCurrencies = balances?.byCurrency.map((c) => c.currency) ?? [];
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["group", groupId] });
   const put = useMutation({
@@ -43,7 +52,7 @@ export function CurrencySwitcher({ groupId, initial }: { groupId: string; initia
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
       <h2 className="text-sm font-semibold text-foreground">{t.heading}</h2>
-      <p className="text-sm text-muted-foreground">{t.body}</p>
+      <CurrencyExplainer />
 
       {data.currency ? (
         <div className="flex flex-col gap-2">
@@ -56,13 +65,16 @@ export function CurrencySwitcher({ groupId, initial }: { groupId: string; initia
             ))}
           </ul>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="ghost" disabled={pending} onClick={() => revert.mutate()}>
+            {/* As prominent as the convert control was (T105) — not a ghost. */}
+            <Button type="button" variant="secondary" disabled={pending} onClick={() => revert.mutate()}>
               {t.revert}
             </Button>
             <ConvertCurrencyDialog
               trigger={<Button type="button" variant="secondary">{t.repin}</Button>}
               mode="repin"
+              groupId={groupId}
               currency={data.currency}
+              presentCurrencies={presentCurrencies}
               source={data.source}
               pending={pending}
               onConfirm={() => put.mutate(data.currency!)}
@@ -84,7 +96,9 @@ export function CurrencySwitcher({ groupId, initial }: { groupId: string; initia
           <ConvertCurrencyDialog
             trigger={<Button type="button">{t.convert}</Button>}
             mode="convert"
+            groupId={groupId}
             currency={target}
+            presentCurrencies={presentCurrencies}
             source={data.source}
             pending={pending}
             onConfirm={() => put.mutate(target)}

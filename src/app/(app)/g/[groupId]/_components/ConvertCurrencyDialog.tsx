@@ -6,6 +6,7 @@ import { es } from "../../../../../lib/i18n/es";
 import { todayIso } from "./settlementFormSchema";
 import { Button } from "../../../../_ui/Button";
 import { DialogClose, DialogContent, DialogRoot, DialogTitle, DialogTrigger } from "../../../../_ui/Dialog";
+import { ConvertRatePreview } from "./ConvertRatePreview";
 
 const t = es.settings.currency;
 
@@ -13,7 +14,10 @@ export interface ConvertCurrencyDialogProps {
   trigger: React.ReactElement;
   /** "convert" = first switch to `currency`; "repin" = re-pin the current one. */
   mode: "convert" | "repin";
+  groupId: string;
   currency: string;
+  /** Currencies with activity in the group — the pairs the preview quotes. */
+  presentCurrencies: string[];
   /** The FX provider the rates will be pinned from. */
   source: string;
   pending: boolean;
@@ -21,11 +25,21 @@ export interface ConvertCurrencyDialogProps {
 }
 
 /**
- * The confirm step. Names the rate's provenance — today's date and the FX
- * `source` — **before** the write, and states plainly that this changes
- * what *every* member sees, not just the person clicking (T068).
+ * The confirm step. Before the write it spells out that converting moves
+ * amounts, balances and the plan for *every* member (not just formatting),
+ * and lists the exact rate it will pin per currency pair with its source
+ * and date (T105) — never only the provider name.
  */
-export function ConvertCurrencyDialog({ trigger, mode, currency, source, pending, onConfirm }: ConvertCurrencyDialogProps) {
+export function ConvertCurrencyDialog({
+  trigger,
+  mode,
+  groupId,
+  currency,
+  presentCurrencies,
+  source,
+  pending,
+  onConfirm,
+}: ConvertCurrencyDialogProps) {
   const [open, setOpen] = React.useState(false);
   const body = mode === "convert" ? t.confirmConvertBody(currency) : t.confirmRepinBody(currency);
 
@@ -36,8 +50,11 @@ export function ConvertCurrencyDialog({ trigger, mode, currency, source, pending
         <DialogTitle className="text-lg font-semibold text-foreground">
           {mode === "convert" ? t.confirmConvertTitle : t.confirmRepinTitle}
         </DialogTitle>
-        <div className="mt-3 flex flex-col gap-2 text-sm text-foreground">
+        <div className="mt-3 flex flex-col gap-3 text-sm text-foreground">
           <p>{body}</p>
+          {open && mode === "convert" && (
+            <ConvertRatePreview groupId={groupId} target={currency} presentCurrencies={presentCurrencies} />
+          )}
           <p className="text-muted-foreground">{t.provenance(formatCalendarDate(todayIso()), source)}</p>
           <p className="font-medium">{t.everyoneWarning}</p>
         </div>
