@@ -52,10 +52,38 @@ export const es = {
   nav: {
     appName: "Cuadre",
     groupsLink: "Grupos",
+    account: "Tu cuenta",
     logout: "Cerrar sesión",
     loggingOut: "Cerrando sesión…",
     themeToLight: "Cambiar a tema claro",
     themeToDark: "Cambiar a tema oscuro",
+  },
+  account: {
+    heading: "Tu cuenta",
+    avatar: {
+      heading: "Tu avatar",
+      body: "Se genera a partir de un estilo, unos colores y una semilla — sin subir imágenes. Lo verán los demás miembros de tus grupos.",
+      previewSmall: "Como se ve en una fila:",
+      reroll: "Otra",
+      save: "Guardar",
+      saving: "Guardando…",
+      useDefault: "Usar el predeterminado",
+      error: "No se pudo guardar el avatar. Intenta de nuevo.",
+      palette: {
+        default: "Mezcla",
+        cool: "Fríos",
+        warm: "Cálidos",
+      },
+      variantName: {
+        marble: "Mármol",
+        beam: "Caritas",
+        pixel: "Píxeles",
+        sunset: "Atardecer",
+        ring: "Anillos",
+        bauhaus: "Bauhaus",
+      },
+      variantLabel: (v: string) => `Elegir el estilo ${v}`,
+    },
   },
   groupTabs: {
     expenses: "Gastos",

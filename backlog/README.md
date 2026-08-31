@@ -78,7 +78,7 @@ establish that.
 | **E8** deploy | Dockerfile, CI, GHCR, compose, timers, tunnel | T070–T076 | M7 |
 | **E9** insights | Charts, CSV export, revision diffs | T080–T084 | post-MVP |
 | **E10** quality-of-life | Categories, receipts, recurring, comments, notifications, PWA | T090–T095 | post-MVP |
-| **E12** first-use | Fixes and clarity from the first real use of the deployed app | T100–T108 | post-MVP |
+| **E12** first-use | Fixes and clarity from the first real use of the deployed app | T100–T109 | post-MVP |
 
 Sequencing rationale is in [docs/roadmap.md](../docs/roadmap.md). The short version: the ledger
 has to be trustworthy before anything is built on top of it, so the money math lands in M3–M4 and
@@ -208,6 +208,8 @@ in particular.
   no schema change
 - `T108` Avatar editor — a grid of live candidates across the six `boring-avatars` variants with
   a reroll, not a dropdown. App-generated seeds only, and **never an upload**
+- `T109` Grow `/cuenta` (the personal-settings surface T108 created) into a real settings page —
+  display-name editing first. Spun off from T108 rather than growing it
 
 Open design questions that are **not** backlog items — cross-group balances, user deletion,
 per-member display currency, password reset, multi-instance — are listed in

@@ -2,17 +2,13 @@ import { es } from "../../../../../lib/i18n/es";
 import { formatCalendarDate } from "../../../../../lib/date/format";
 import { TooltipContent, TooltipRoot, TooltipTrigger } from "../../../../_ui/Tooltip";
 import { BalanceMemberRow } from "./BalanceMemberRow";
+import { buildMemberLookup } from "./memberLookup";
 import { PaymentPlanSection } from "./PaymentPlanSection";
 import type { CurrencyBalancesView } from "./balancesTypes";
 import type { GroupMember } from "./types";
 import type { useSettlements } from "./useSettlements";
 
 const t = es.balances;
-
-function nameLookup(members: GroupMember[]): (userId: string) => string {
-  const byId = new Map(members.map((m) => [m.userId, m.displayName]));
-  return (userId: string) => byId.get(userId) ?? "?";
-}
 
 export interface CurrencyBalanceBlockProps {
   groupId: string;
@@ -37,7 +33,7 @@ export function CurrencyBalanceBlock({
   presentCurrencies,
   mutations,
 }: CurrencyBalanceBlockProps) {
-  const nameOf = nameLookup(members);
+  const { nameOf, avatarOf } = buildMemberLookup(members);
 
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
@@ -64,7 +60,13 @@ export function CurrencyBalanceBlock({
 
       <div className="flex flex-col gap-2">
         {block.members.map((member) => (
-          <BalanceMemberRow key={member.userId} member={member} displayName={nameOf(member.userId)} currency={block.currency} />
+          <BalanceMemberRow
+            key={member.userId}
+            member={member}
+            displayName={nameOf(member.userId)}
+            avatar={avatarOf(member.userId)}
+            currency={block.currency}
+          />
         ))}
       </div>
 
@@ -76,6 +78,7 @@ export function CurrencyBalanceBlock({
         presentCurrencies={presentCurrencies}
         mutations={mutations}
         nameOf={nameOf}
+        avatarOf={avatarOf}
       />
     </section>
   );

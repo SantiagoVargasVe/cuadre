@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { apiFetch } from "../../lib/api/client";
@@ -11,7 +12,12 @@ import { Button } from "../_ui/Button";
 const t = es.nav;
 
 interface MeResponse {
-  user: { id: string; email: string; displayName: string };
+  user: {
+    id: string;
+    email: string;
+    displayName: string;
+    avatar: import("../../lib/avatar").AvatarChoice | null;
+  };
 }
 
 /** Displays the current user's name and signs them out. No dropdown — just
@@ -41,12 +47,16 @@ export function UserMenu() {
   return (
     <div className="flex items-center gap-2">
       {data && (
-        <>
-          <Avatar userId={data.user.id} displayName={data.user.displayName} size={24} />
+        <Link
+          href="/cuenta"
+          className="flex items-center gap-2 rounded-md hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={t.account}
+        >
+          <Avatar userId={data.user.id} avatar={data.user.avatar} size={24} />
           <span className="hidden text-sm text-muted-foreground sm:inline">
             {data.user.displayName}
           </span>
-        </>
+        </Link>
       )}
       <Button variant="ghost" size="sm" onClick={onLogout} disabled={loggingOut}>
         {loggingOut ? t.loggingOut : t.logout}

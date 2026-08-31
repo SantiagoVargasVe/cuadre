@@ -2,6 +2,7 @@
 
 import { es } from "../../../../../lib/i18n/es";
 import { Button } from "../../../../_ui/Button";
+import type { MemberLookup } from "./memberLookup";
 import { PaymentPlanRow } from "./PaymentPlanRow";
 import { SettleUpDialog } from "./SettleUpDialog";
 import type { CurrencyBalancesView } from "./balancesTypes";
@@ -17,7 +18,8 @@ export interface PaymentPlanSectionProps {
   myUserId: string;
   presentCurrencies: string[];
   mutations: ReturnType<typeof useSettlements>;
-  nameOf: (userId: string) => string;
+  nameOf: MemberLookup["nameOf"];
+  avatarOf: MemberLookup["avatarOf"];
 }
 
 /** The "who pays whom" list, plus a "Registrar pago" that prefills the
@@ -31,6 +33,7 @@ export function PaymentPlanSection({
   presentCurrencies,
   mutations,
   nameOf,
+  avatarOf,
 }: PaymentPlanSectionProps) {
   return (
     <div className="flex flex-col gap-2 border-t border-border pt-3">
@@ -40,7 +43,7 @@ export function PaymentPlanSection({
       ) : (
         block.plan.map((edge) => (
           <div key={`${edge.from}-${edge.to}`} className="flex items-center justify-between gap-2">
-            <PaymentPlanRow edge={edge} currency={block.currency} myUserId={myUserId} nameOf={nameOf} />
+            <PaymentPlanRow edge={edge} currency={block.currency} myUserId={myUserId} nameOf={nameOf} avatarOf={avatarOf} />
             {edge.from === myUserId && (
               <SettleUpDialog
                 trigger={<Button variant="ghost" size="sm" type="button">{es.settlements.record}</Button>}

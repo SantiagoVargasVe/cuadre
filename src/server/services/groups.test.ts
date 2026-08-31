@@ -96,7 +96,7 @@ describe.skipIf(!hasTestDatabase)("groups service", () => {
 
       const { members } = await getGroupDetail(group.id, owner);
 
-      expect(members).toEqual([{ userId: owner, displayName: "Ana", role: "owner" }]);
+      expect(members).toEqual([{ userId: owner, displayName: "Ana", role: "owner", avatar: null }]);
       expect(JSON.stringify(members)).not.toContain("@");
     });
 

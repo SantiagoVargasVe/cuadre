@@ -66,7 +66,7 @@ export function ExpenseFeed({
       ) : (
         <>
           {items.map((expense) => (
-            <ExpenseRow key={expense.id} expense={expense} myUserId={myUserId} />
+            <ExpenseRow key={expense.id} expense={expense} myUserId={myUserId} members={members} />
           ))}
           {cursor && (
             <Button variant="ghost" onClick={loadMore} disabled={loading}>

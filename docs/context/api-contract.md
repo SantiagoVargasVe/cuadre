@@ -52,10 +52,23 @@ POST /api/auth/register    { email, displayName, password, inviteCode }  → 201
 POST /api/auth/login       { email, password }                          → 200 { user }
 POST /api/auth/logout                                                   → 204
 GET  /api/auth/me                                                       → 200 { user, groups[] }
+PUT  /api/auth/avatar      { variant, seed, palette } | null            → 200 { avatar }
 ```
 
 `register` consumes the invite code in the same transaction that creates the user — and, if the
 code carries a `groupId`, adds the membership too. All three commit together or none do.
+
+`user` on `register` / `login` / `me` carries `avatar` — the member's chosen generated avatar
+(`{ variant, seed, palette }`) or `null` for the T107 default.
+
+`PUT /api/auth/avatar` sets **the session user's own** avatar (T108) — the acting user comes
+from the session, never the body. `variant` is one of the six `boring-avatars` names, `seed`
+must match the app-generated shape (`[A-Za-z0-9_-]{6,24}` — never free text), `palette` is a
+name from the curated set. `null` resets to the default. It responds with just `{ avatar }` —
+**this flow never returns an email**. Malformed input is `400`.
+
+Every read that returns a member's `display_name` also returns their `avatar` — `GET
+/api/groups/:id` (`members[]`) and `GET /api/groups/:id/members`. Still never an email.
 
 Login and register are rate limited by IP. Argon2 verification is deliberately expensive, so an
 unthrottled login endpoint is a cheap way to saturate the box.

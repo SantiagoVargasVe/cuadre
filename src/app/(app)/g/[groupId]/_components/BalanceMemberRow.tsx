@@ -1,3 +1,4 @@
+import type { AvatarChoice } from "../../../../../lib/avatar";
 import { es } from "../../../../../lib/i18n/es";
 import { formatMoney } from "../../../../../lib/money/format";
 import { Avatar } from "../../../../_ui/Avatar";
@@ -20,7 +21,17 @@ function netText(net: bigint, currency: string): { text: string; className: stri
  * combined `aria-label` is what ties every figure back to whose row it's
  * in for assistive tech, since the visible layout only implies that.
  */
-export function BalanceMemberRow({ member, displayName, currency }: { member: BalanceMemberView; displayName: string; currency: string }) {
+export function BalanceMemberRow({
+  member,
+  displayName,
+  avatar,
+  currency,
+}: {
+  member: BalanceMemberView;
+  displayName: string;
+  avatar: AvatarChoice | null;
+  currency: string;
+}) {
   const paid = formatMoney({ amount: BigInt(member.paid), currency });
   const share = formatMoney({ amount: BigInt(member.owed), currency });
   const { text, className } = netText(BigInt(member.net), currency);
@@ -32,7 +43,7 @@ export function BalanceMemberRow({ member, displayName, currency }: { member: Ba
       className="flex items-center justify-between gap-2 text-sm"
     >
       <span aria-hidden="true" className="flex items-center gap-2 font-medium text-foreground">
-        <Avatar userId={member.userId} displayName={displayName} size={24} />
+        <Avatar userId={member.userId} avatar={avatar} size={24} />
         {displayName}
       </span>
       <div aria-hidden="true" className="flex flex-col items-end gap-0.5">

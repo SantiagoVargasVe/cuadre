@@ -1,6 +1,7 @@
 "use client";
 
 import { es } from "../../../../../lib/i18n/es";
+import { buildMemberLookup } from "./memberLookup";
 import { SettlementRow } from "./SettlementRow";
 import type { GroupMember } from "./types";
 import type { useSettlements } from "./useSettlements";
@@ -19,8 +20,7 @@ export interface SettlementListProps {
  * endpoint already returns `settled_on DESC, id DESC` (services/settlements.ts). */
 export function SettlementList({ groupId, members, myUserId, presentCurrencies, mutations }: SettlementListProps) {
   const items = mutations.list.data?.items ?? [];
-  const byId = new Map(members.map((m) => [m.userId, m.displayName]));
-  const nameOf = (userId: string) => byId.get(userId) ?? "?";
+  const { nameOf, avatarOf } = buildMemberLookup(members);
 
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
@@ -39,6 +39,7 @@ export function SettlementList({ groupId, members, myUserId, presentCurrencies, 
               presentCurrencies={presentCurrencies}
               mutations={mutations}
               nameOf={nameOf}
+              avatarOf={avatarOf}
             />
           ))}
         </ul>

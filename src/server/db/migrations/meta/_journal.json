@@ -57,6 +57,13 @@
       "when": 1787759041938,
       "tag": "0007_group_fx_pins",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788190551808,
+      "tag": "0008_user_avatar_choice",
+      "breakpoints": true
     }
   ]
 }

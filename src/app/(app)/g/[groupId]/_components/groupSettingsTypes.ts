@@ -10,6 +10,8 @@ export interface MemberSummary {
   role: "owner" | "member";
   /** RFC 3339 UTC. */
   joinedAt: string;
+  /** The member's chosen avatar; `null` / absent → the T107 default (T108). */
+  avatar?: import("../../../../../lib/avatar").AvatarChoice | null;
 }
 
 export interface FxPin {

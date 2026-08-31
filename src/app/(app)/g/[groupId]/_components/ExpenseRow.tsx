@@ -11,7 +11,7 @@ import {
 } from "../../../../_ui/Dialog";
 import { ExpenseDetail } from "./ExpenseDetail";
 import { resolveDisplayAmounts, wireToMoney, type ExpenseParty } from "./types";
-import type { ExpenseSummary } from "./types";
+import type { ExpenseSummary, GroupMember } from "./types";
 
 const t = es.expenseFeed;
 
@@ -25,7 +25,15 @@ function paidByLabel(payers: ExpenseParty[], myUserId: string): string {
 /** One feed row (T063). The full split breakdown in the detail Dialog uses
  * data already on this row — `payers`/`splits` are complete arrays from
  * the list endpoint, so tapping a row never triggers a second fetch. */
-export function ExpenseRow({ expense, myUserId }: { expense: ExpenseSummary; myUserId: string }) {
+export function ExpenseRow({
+  expense,
+  myUserId,
+  members = [],
+}: {
+  expense: ExpenseSummary;
+  myUserId: string;
+  members?: GroupMember[];
+}) {
   const display = resolveDisplayAmounts(expense);
   const yourSplit = display.splits.find((split) => split.userId === myUserId);
 
@@ -68,7 +76,7 @@ export function ExpenseRow({ expense, myUserId }: { expense: ExpenseSummary; myU
       </DialogTrigger>
       <DialogContent>
         <DialogTitle className="text-lg font-semibold text-foreground">{expense.title}</DialogTitle>
-        <ExpenseDetail expense={expense} />
+        <ExpenseDetail expense={expense} members={members} />
       </DialogContent>
     </DialogRoot>
   );
