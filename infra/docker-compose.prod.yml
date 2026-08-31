@@ -13,13 +13,24 @@
 # Deploy:  docker compose pull && docker compose up -d
 # A systemd timer runs exactly that every 5 minutes — see infra/deploy/.
 #
+# ── Service names must be globally unique across the tunnel ───────────────
+# Compose gives every service its *service key* as a network alias, on top of
+# `container_name`, and that alias cannot be removed. The shared `cloudflared`
+# is attached to several stacks' networks at once, and Docker's embedded DNS
+# resolves a name across all of them — so a service called `app` here would
+# collide with an `app` in any other stack on that tunnel and the tunnel would
+# route to whichever one DNS happened to return. That is not hypothetical: it
+# took cloud.santiagovargas.co down with a hard 502 on 2026-08-30. Keep the
+# service key equal to the container name, and remember that anything doing
+# `docker compose exec` must use the same key (see infra/deploy/cuadre-fx-refresh).
+#
 # ── Back up data/postgres/ ────────────────────────────────────────────────
 # It is the ONLY copy of data that cannot be reconstructed. A wishlist item can
 # be re-added from its URL; a trip's ledger has no external source. This repo
 # does not implement backups — the operator must. See infra/deploy/README.md.
 
 services:
-  app:
+  cuadre-app:
     image: ghcr.io/santiagovargasve/cuadre:latest
     container_name: cuadre-app
     restart: unless-stopped
