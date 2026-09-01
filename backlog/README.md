@@ -177,14 +177,22 @@ the measured contrast rules in design-system.md. Reversing this needs an ADR.
   prerequisite for the interesting half of E9
 - `T091` Receipt photos — introduces a file-storage mount; read how that went in the sibling repo
   before designing it
-- `T092` Recurring expenses
-- `T093` Comments on an expense — where "wait, that wasn't 200" currently happens in WhatsApp
+- `T092` Recurring expenses — *a full spec was drafted 2026-09-01 and deliberately not adopted:
+  the exactly-once materialization and external-trigger machinery costs more than the feature is
+  worth until a real group asks for it. Don't re-propose it as a task file without that signal.*
+- `T093` Comments on an expense — where "wait, that wasn't 200" currently happens in WhatsApp.
+  *Spec also drafted 2026-09-01 and deliberately not adopted — same call as T092.*
 - `T094` Notifications — needs SMTP or push, neither of which this repo owns today
 - `T095` PWA / offline expense queue — expenses get added on bad restaurant wifi
 
-T080–T084 and T090 now have full task files, written 2026-09-01 against the shape the first real
-trip actually left behind. **T091–T095 are still one-liners deliberately** — expand one into a
-task file when you pick it up, following [_template.md](_template.md).
+T080–T084, T090, and T095 now have full task files, written 2026-09-01 against the shape the first
+real trip actually left behind. **T091–T094 remain one-liners deliberately** — expand one into a
+task file when it is picked up, following [_template.md](_template.md).
+
+**T095 is the lowest-priority item in E10 and is not ready to pick up.** The offline
+create-expense queue is genuinely useful and genuinely fiddly; it sits behind categories (T090)
+and the whole of E12. Its task file exists so the idempotency and service-worker cache-safety
+constraints are captured while they're fresh — not because it's next in line.
 
 **E12 — First use** · post-MVP
 
