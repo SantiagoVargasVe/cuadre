@@ -1,6 +1,7 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import type { AvatarChoice } from "../../lib/avatar";
+import type { UpdateProfileInput } from "../../lib/schemas/auth";
 import type { AvatarChoiceInput } from "../../lib/schemas/avatar";
 import { toAvatarChoice } from "../db/avatar";
 import { db, withTransaction } from "../db/client";
@@ -85,6 +86,26 @@ export async function updateAvatar(userId: string, choice: AvatarChoiceInput): P
       avatarPalette: choice?.palette ?? null,
       updatedAt: new Date(),
     })
+    .where(eq(users.id, userId))
+    .returning();
+  if (!user) throw new UnauthorizedError();
+  return { id: user.id, email: user.email, displayName: user.displayName, avatar: toAvatarChoice(user) };
+}
+
+/**
+ * A member changes **their own** display name (T109). The acting `userId`
+ * comes from the session at the route boundary, never from the body.
+ *
+ * Nothing denormalizes this name: every read that shows it — member lists,
+ * payer and split rows, settlement history, the "edited by" marker — joins
+ * `users.display_name` live, so one UPDATE here is the whole change. (The
+ * avatar *seed* is deliberately different: it's `userId`-based so it can't
+ * drift, which is why renaming never reshuffles anyone's avatar.)
+ */
+export async function updateProfile(userId: string, input: UpdateProfileInput): Promise<AuthUser> {
+  const [user] = await db
+    .update(users)
+    .set({ displayName: input.displayName, updatedAt: new Date() })
     .where(eq(users.id, userId))
     .returning();
   if (!user) throw new UnauthorizedError();

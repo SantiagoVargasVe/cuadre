@@ -53,6 +53,7 @@ POST /api/auth/login       { email, password }                          → 200 
 POST /api/auth/logout                                                   → 204
 GET  /api/auth/me                                                       → 200 { user, groups[] }
 PUT  /api/auth/avatar      { variant, seed, palette } | null            → 200 { avatar }
+PATCH /api/auth/profile    { displayName }                             → 200 { user }
 ```
 
 `register` consumes the invite code in the same transaction that creates the user — and, if the
@@ -66,6 +67,13 @@ from the session, never the body. `variant` is one of the six `boring-avatars` n
 must match the app-generated shape (`[A-Za-z0-9_-]{6,24}` — never free text), `palette` is a
 name from the curated set. `null` resets to the default. It responds with just `{ avatar }` —
 **this flow never returns an email**. Malformed input is `400`.
+
+`PATCH /api/auth/profile` changes **the session user's own** display name (T109) — same source
+of truth for the acting user, and a `userId` in the body is stripped by the schema rather than
+honoured. `displayName` is validated against exactly registration's bounds (1–200 characters);
+anything else is `400`. It responds with `{ user: { id, displayName, avatar } }` — **no email**.
+Nothing denormalizes a display name, so one write updates every member list, payer/split row and
+settlement line that shows it.
 
 Every read that returns a member's `display_name` also returns their `avatar` — `GET
 /api/groups/:id` (`members[]`) and `GET /api/groups/:id/members`. Still never an email.

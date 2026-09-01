@@ -60,6 +60,21 @@ export const es = {
   },
   account: {
     heading: "Tu cuenta",
+    subheading: "Ajustes personales. Valen para todos tus grupos, no para uno solo.",
+    profile: {
+      heading: "Perfil",
+      body: "Tu nombre es el que ven los demás en la lista de miembros, en quién pagó cada gasto y en los pagos registrados.",
+      nameLabel: "Nombre",
+      save: "Guardar",
+      saving: "Guardando…",
+      saved: "Nombre actualizado.",
+      error: "No se pudo guardar el nombre. Intenta de nuevo.",
+    },
+    security: {
+      heading: "Seguridad",
+      body: "Cambiar la contraseña o el correo todavía no está disponible.",
+      changePassword: "Cambiar contraseña",
+    },
     avatar: {
       heading: "Tu avatar",
       body: "Se genera a partir de un estilo, unos colores y una semilla — sin subir imágenes. Lo verán los demás miembros de tus grupos.",

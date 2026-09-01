@@ -2,7 +2,7 @@
 id: T109
 title: Grow the personal-settings surface (/cuenta)
 epic: E12-first-use
-status: todo
+status: done
 depends_on: [T108]
 size: M
 ---
