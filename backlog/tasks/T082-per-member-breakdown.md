@@ -9,10 +9,11 @@ size: M
 
 ## Context
 
-The balances view answers "what is my net". This answers the two numbers underneath it: **what I
-put in** (my payer rows) and **what I got** (my split rows). Those two are what people actually
-argue about, and net alone hides both — someone who paid 2.000.000 and consumed 1.900.000 has a
-small net and a large involvement, and the difference is the whole story of a trip.
+The balances view answers "what is my net". This answers the two expense numbers underneath it:
+**what I put in** (payer rows) and **what I consumed** (split rows). Those are not the same as the
+current balance once a payment has been recorded. Someone who paid 2.000.000 and consumed
+1.900.000 has an expense contribution of 100.000; a later settlement can reduce that current net
+without changing the history of what they paid for.
 
 Builds directly on the aggregates and the SVG primitives T081 creates. **Do not fork the chart
 components.**
@@ -20,20 +21,30 @@ components.**
 Read [splitting.md](../../docs/context/splitting.md) — **mandatory**, this is money —
 [design-system.md](../../docs/frontend/design-system.md),
 [frontend/CLAUDE.md](../../docs/frontend/CLAUDE.md) § *Multi-currency display*, and
+[currency.md](../../docs/context/currency.md),
 [api-contract.md](../../docs/context/api-contract.md).
 
 ## Acceptance criteria
 
-- [ ] Per member, per currency: **paid** (Σ their `expense_payers` rows), **consumed** (Σ their
-      `expense_splits` rows), and the net between them. Extends T081's insights service rather than
-      adding a second endpoint
+- [ ] Extend T081's insights response — **no second endpoint** — with one row per member and
+      currency. Each row has all-bigint-minor-unit fields (serialized as strings): **paid** (Σ live
+      `expense_payers` rows), **consumed** (Σ live `expense_splits` rows),
+      **expenseContribution = paid − consumed**, **sent** and **received** (live settlement rows),
+      and **currentNet = expenseContribution + sent − received**. `expenseContribution` describes
+      the paired bars; `currentNet` is the settlement-aware position. They must never both be
+      called simply "net" in the API or UI
 - [ ] **`Σ paid == Σ consumed == Σ expense totals` for the group, per currency** — assert it
       server-side before responding and throw if it fails, exactly as the balances endpoint asserts
       `Σ net == 0`. That assertion is the canary; a plausible-looking wrong number is the failure
       mode this whole app is designed against
-- [ ] The net shown here **agrees with the balances endpoint** for the same member and currency,
-      settlements included or excluded consistently — and the task states which, visibly, in the UI
-      copy. Two screens disagreeing about one person's net is worse than either being absent
+- [ ] **`Σ currentNet == 0` per currency** is asserted server-side, and every member's
+      `currentNet` agrees exactly with the balances endpoint for the same ledger and currency.
+      The UI labels it as the current balance and explicitly says it includes recorded payments;
+      the paired bars and `expenseContribution` intentionally do not
+- [ ] With a display currency pinned, use T054's conversion order: convert and re-apportion every
+      expense before accumulating payer/split fields, and convert each settlement before accumulating
+      `sent`/`received`. Never convert an already-netted member total — rounding would make
+      `currentNet` diverge from balances
 - [ ] Paired bars per member (paid vs. consumed), sharing one scale so the two are comparable at a
       glance. Labelled, valued as text, **never distinguished by colour alone**
 - [ ] Uses `--credit` / `--debit` only for the *net* figure, with a sign and a word alongside —
@@ -41,12 +52,15 @@ Read [splitting.md](../../docs/context/splitting.md) — **mandatory**, this is 
       body text)
 - [ ] One block per currency, never summed across them. Converted figures labelled as converted
       when a display currency is pinned
-- [ ] A member with no activity renders honestly as zero, not as an absent row — "Ana hasn't paid
-      for anything" is information
+- [ ] A current member with no expense or settlement activity renders honestly as zero, not as an
+      absent row — "Ana hasn't paid for anything" is information. A removed member with historical
+      rows follows the balances endpoint's member set and remains visible
 - [ ] Tests: the paid/consumed/total identity over a random ledger (extend the property harness in
-      `src/lib/money/__tests__/` rather than writing a one-off), agreement with the balances
-      endpoint, a multi-payer expense attributing correctly to each payer, a loan-strategy expense,
-      and a multi-currency group
+      `src/lib/money/__tests__/` rather than writing a one-off); a settled case where
+      `expenseContribution` differs from `currentNet` and the latter matches balances; the
+      `Σ currentNet == 0` assertion; a multi-payer expense attributing correctly to each payer; a
+      loan-strategy expense; a multi-currency group; and a pinned, rounding-sensitive group that
+      agrees with T054's converted balances
 
 ## Out of scope
 

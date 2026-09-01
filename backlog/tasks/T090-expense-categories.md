@@ -3,7 +3,7 @@ id: T090
 title: Categories on an expense — a fixed, app-provided set
 epic: E10-quality-of-life
 status: todo
-depends_on: [T034, T035]
+depends_on: [T034, T035, T080]
 size: M
 ---
 
@@ -21,6 +21,7 @@ nobody will ever write. A curated list is one tap, has no cleanup story, and gro
 Read [data-model.md](../../docs/context/data-model.md),
 [api-contract.md](../../docs/context/api-contract.md) § *Expenses*,
 [testing.md](../../docs/context/testing.md), and
+[backend/CLAUDE.md](../../docs/backend/CLAUDE.md) plus
 [design-system.md](../../docs/frontend/design-system.md) plus
 [frontend/CLAUDE.md](../../docs/frontend/CLAUDE.md) § *The expense form* before the UI half.
 
@@ -39,8 +40,9 @@ Read [data-model.md](../../docs/context/data-model.md),
 - [ ] The category round-trips through the whole expense lifecycle: `POST` accepts it, `PATCH`
       replaces it (including clearing it back to `null`), it appears in the `expense_revisions`
       snapshot, and it comes back on the list and detail reads
-- [ ] Zod validates the key at the route boundary against the known set — an unknown key is `422`,
-      not a silent `null`
+- [ ] Zod validates the key at the route boundary against the known set. An unknown key is a failed
+      Zod parse and therefore returns the repository-standard `400 VALIDATION_ERROR`, never a
+      silent `null` or a database error
 - [ ] **The expense form's common case must not get slower.** The picker is optional, defaults to
       no category, and never blocks save. A horizontal row of chips in the already-open form is
       fine; a required step, a modal, or anything that adds a tap to "title, amount, save" is not.

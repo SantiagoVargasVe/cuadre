@@ -3,15 +3,15 @@ id: T081
 title: Insights — spend over time, by member, and by category
 epic: E9-insights
 status: todo
-depends_on: [T044, T054, T090]
+depends_on: [T080, T044, T054, T090]
 size: L
 ---
 
 ## Context
 
 The first charts in the app, and the ones that establish the pattern the rest of E9 reuses. They
-come **after** T080 and T090 on purpose: a chart of an untrustworthy or uncategorisable ledger is
-worse than no chart ([roadmap.md](../../docs/roadmap.md) § E9).
+come **after** T080 and T090 on purpose: CSV is the escape hatch, and a chart of an untrustworthy
+or uncategorisable ledger is worse than no chart ([roadmap.md](../../docs/roadmap.md) § E9).
 
 **No charting library — decided 2026-09-01.** The three shapes this epic needs (a bar series over
 time, a horizontal bar per member, a donut or stacked bar per category) are a few dozen lines of
@@ -25,6 +25,7 @@ design-system.md. Adding it would need an ADR under
 Read [design-system.md](../../docs/frontend/design-system.md) — especially *Money semantics*,
 *Contrast*, and *Why colour alone genuinely cannot carry credit vs. debit* —
 [frontend/CLAUDE.md](../../docs/frontend/CLAUDE.md) § *Multi-currency display*,
+[currency.md](../../docs/context/currency.md),
 [api-contract.md](../../docs/context/api-contract.md), and
 [security.md](../../docs/context/security.md).
 
