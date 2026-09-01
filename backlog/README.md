@@ -161,14 +161,20 @@ of an untrustworthy ledger are worse than no charts.
 
 - `T080` CSV export of a group's expenses — the escape hatch that means nobody is trapped by
   this software. The most valuable item in this epic; do it first.
-- `T081` Spend over time and by member
+- `T081` Spend over time, by member, and by category — **owns the shared SVG chart primitives**
 - `T082` Per-member breakdown: what they paid for vs. what they consumed
 - `T083` Expense revision history as a visible diff (the data already exists from T035)
 - `T084` Group summary card — totals, biggest expense, who's carrying the trip
 
+**No charting library** — decided 2026-09-01. The three shapes E9 needs are a few dozen lines of
+SVG each over server-computed aggregates; Recharts costs ~100 KB and fights the OKLCH tokens and
+the measured contrast rules in design-system.md. Reversing this needs an ADR.
+
 **E10 — Quality of life** · post-MVP
 
-- `T090` Categories/tags on expenses — a prerequisite for the interesting half of E9
+- `T090` Categories on expenses — a **fixed, app-provided set** (`comida, alojamiento,
+  transporte, mercado, actividades, otro`), not free-form tags; decided 2026-09-01. A
+  prerequisite for the interesting half of E9
 - `T091` Receipt photos — introduces a file-storage mount; read how that went in the sibling repo
   before designing it
 - `T092` Recurring expenses
@@ -176,9 +182,9 @@ of an untrustworthy ledger are worse than no charts.
 - `T094` Notifications — needs SMTP or push, neither of which this repo owns today
 - `T095` PWA / offline expense queue — expenses get added on bad restaurant wifi
 
-E9 and E10 are one-liners deliberately. Expand one into a task file when you pick it up, following
-[_template.md](_template.md) — and expect the shape to have changed once a real trip has run
-through the app.
+T080–T084 and T090 now have full task files, written 2026-09-01 against the shape the first real
+trip actually left behind. **T091–T095 are still one-liners deliberately** — expand one into a
+task file when you pick it up, following [_template.md](_template.md).
 
 **E12 — First use** · post-MVP
 

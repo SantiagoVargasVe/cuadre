@@ -101,11 +101,19 @@ Charts and CSV export, both explicitly deferred from the original requirements.
   the escape hatch that means nobody is trapped by this software
 - The expense revision history as a visible diff, building on what M3 already records
 
-Charting library chosen in the task, against real requirements, not guessed at now.
+**Charting library: none — decided 2026-09-01**, against the real requirements as this section
+asked. A bar series over time, a horizontal bar per member and a per-category breakdown are a few
+dozen lines of hand-rolled SVG over aggregates the server already computes. Recharts would cost
+~100 KB gzipped, pull in D3 submodules, and fight both the OKLCH tokens and the measured contrast
+rules in design-system.md — and a new runtime dependency needs an ADR under architecture.md, which
+hand-rolled SVG does not. T081 owns the shared primitives; T082 and T084 consume them.
 
 ### E10 · Quality of life
 
-- **Categories/tags** on expenses — a prerequisite for the more interesting half of E9
+- **Categories** on expenses — a prerequisite for the more interesting half of E9. **A fixed,
+  app-provided set, decided 2026-09-01**: `comida, alojamiento, transporte, mercado, actividades,
+  otro`. Free-form tags were rejected — they produce `comida`/`Comida`/`food` in one trip and push
+  a normalisation step onto the charts that nobody will write. See T090
 - **Receipt photos** — introduces a file-storage mount and its permission traps; read how that
   went in the sibling repo first
 - **Recurring expenses** for longer trips and shared households
