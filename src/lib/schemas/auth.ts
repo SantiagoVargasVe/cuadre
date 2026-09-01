@@ -26,3 +26,17 @@ export const loginSchema = z.object({
   password: z.string().min(1, v.passwordTooShort),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
+
+/**
+ * `PATCH /api/auth/profile` (T109) — the display name a member can change
+ * about themselves. Derived from `registerSchema` rather than restated:
+ * the name you can set on /cuenta and the name you register with must
+ * accept exactly the same values, and a second literal `.max(200)` here
+ * is precisely how those two drift apart.
+ *
+ * Zod object schemas strip unknown keys, so a `userId` smuggled into the
+ * body never reaches the service — the acting user comes from the session
+ * at the route boundary, always.
+ */
+export const updateProfileSchema = registerSchema.pick({ displayName: true });
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
