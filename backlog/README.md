@@ -182,9 +182,9 @@ the measured contrast rules in design-system.md. Reversing this needs an ADR.
 - `T094` Notifications — needs SMTP or push, neither of which this repo owns today
 - `T095` PWA / offline expense queue — expenses get added on bad restaurant wifi
 
-T080–T084 and T090 now have full task files, written 2026-09-01 against the shape the first real
-trip actually left behind. **T091–T095 are still one-liners deliberately** — expand one into a
-task file when you pick it up, following [_template.md](_template.md).
+T080–T084, T090, T092, T093, and T095 now have full task files, written 2026-09-01 against the
+shape the first real trip actually left behind. **T091 and T094 remain one-liners deliberately** —
+expand one into a task file when it is picked up, following [_template.md](_template.md).
 
 **E12 — First use** · post-MVP
 
