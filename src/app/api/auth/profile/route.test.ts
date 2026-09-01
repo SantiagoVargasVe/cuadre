@@ -12,8 +12,10 @@ describe.skipIf(!hasTestDatabase)("PATCH /api/auth/profile (T109)", () => {
 
   let PATCH: typeof import("./route").PATCH;
   let signSessionToken: typeof import("../../../../server/auth/jwt").signSessionToken;
+  let expenseService: typeof import("../../../../server/services/expenses");
   let getGroupDetail: typeof import("../../../../server/services/groups").getGroupDetail;
   let listMembers: typeof import("../../../../server/services/members").listMembers;
+  let settlementService: typeof import("../../../../server/services/settlements");
   let aliceToken: string;
   let aliceId: string;
 
@@ -28,8 +30,10 @@ describe.skipIf(!hasTestDatabase)("PATCH /api/auth/profile (T109)", () => {
     vi.stubEnv("FX_TRM_CROSSCHECK", "false");
     ({ PATCH } = await import("./route"));
     ({ signSessionToken } = await import("../../../../server/auth/jwt"));
+    expenseService = await import("../../../../server/services/expenses");
     ({ getGroupDetail } = await import("../../../../server/services/groups"));
     ({ listMembers } = await import("../../../../server/services/members"));
+    settlementService = await import("../../../../server/services/settlements");
   });
 
   afterAll(() => vi.unstubAllEnvs());
@@ -78,17 +82,25 @@ describe.skipIf(!hasTestDatabase)("PATCH /api/auth/profile (T109)", () => {
 
   it("shows the new name everywhere it's read from, and still no emails", async () => {
     const db = getTestDb();
-    const [group] = await db
-      .insert(groups)
-      .values({ title: "Cartagena", defaultCurrency: "COP", createdBy: aliceId })
-      .returning();
-    await db.insert(groupMembers).values({ groupId: group!.id, userId: aliceId, role: "owner" });
+    const bob = await newUser("Bob"); const [group] = await db.insert(groups).values({ title: "Cartagena", defaultCurrency: "COP", createdBy: aliceId }).returning();
+    await db.insert(groupMembers).values([{ groupId: group!.id, userId: aliceId, role: "owner" }, { groupId: group!.id, userId: bob.id, role: "member" }]);
+    await expenseService.createExpense(group!.id, aliceId, { title: "Cena", date: "2026-09-01", amount: "2000", currency: "COP", paidBy: [{ userId: aliceId, amount: "2000" }], split: { strategy: "equal" } });
+    await settlementService.createSettlement(group!.id, aliceId, { toUserId: bob.id, amount: "1000", currency: "COP", settledOn: "2026-09-01" });
 
     await PATCH(req({ displayName: "Alicia" }));
 
-    const seen = [...(await getGroupDetail(group!.id, aliceId)).members, ...(await listMembers(group!.id, aliceId))];
-    expect(seen.map((m) => m.displayName)).toEqual(["Alicia", "Alicia"]);
-    for (const member of seen) expect(member).not.toHaveProperty("email");
+    const detail = await getGroupDetail(group!.id, aliceId);
+    const members = await listMembers(group!.id, aliceId);
+    const expenses = await expenseService.listExpenses(group!.id, aliceId, {});
+    const settlements = await settlementService.listSettlements(group!.id, aliceId, {});
+    const renamedParties = [...expenses.items[0]!.payers, ...expenses.items[0]!.splits]
+      .filter((party) => party.userId === aliceId);
+
+    expect([...detail.members, ...members].map((m) => m.displayName)).toEqual(["Alicia", "Bob", "Alicia", "Bob"]);
+    expect(renamedParties.every((party) => party.displayName === "Alicia")).toBe(true);
+    expect(settlements.items[0]).toMatchObject({ fromUserId: aliceId, toUserId: bob.id });
+    expect(detail.members.find((member) => member.userId === settlements.items[0]!.fromUserId)?.displayName).toBe("Alicia");
+    for (const response of [detail.members, members, expenses, settlements]) expect(JSON.stringify(response)).not.toContain("@");
   });
 
   it("rejects an empty name, one past registration's 200-character bound, or none (400)", async () => {
