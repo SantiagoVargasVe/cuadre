@@ -33,8 +33,34 @@ export interface PinView {
   source: string;
 }
 
+/** The one-glance summary card (T084), per currency. All amounts are minor-unit strings. */
+export interface LargestExpenseView {
+  title: string;
+  amount: string;
+  currency: string;
+  /** Payer display names, sorted. */
+  payers: string[];
+}
+export interface CarryingView {
+  userId: string;
+  /** The member's positive `currentNet` — how much they're currently fronting. */
+  amount: string;
+}
+export interface SummaryView {
+  totalSpent: string;
+  expenseCount: number;
+  firstExpenseDate: string | null;
+  lastExpenseDate: string | null;
+  /** `totalSpent / expenseCount`, floored to a minor unit; `"0"` when there are no expenses. */
+  averagePerExpense: string;
+  largestExpense: LargestExpenseView | null;
+  /** `null` when nobody has a positive `currentNet` — an all-settled group. */
+  carrying: CarryingView | null;
+}
+
 export interface CurrencyInsightsView {
   currency: string;
+  summary: SummaryView;
   byDay: PeriodBucketView[];
   byMonth: PeriodBucketView[];
   byCategory: CategoryBucketView[];

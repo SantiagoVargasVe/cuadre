@@ -12,7 +12,7 @@ import {
 import { requireMembership } from "../auth/membership";
 import { db } from "../db/client";
 import { liveExpenses } from "../db/helpers";
-import { expensePayers, expenseSplits, groupMembers, groups, settlements } from "../db/schema";
+import { expensePayers, expenseSplits, groupMembers, groups, settlements, users } from "../db/schema";
 import { convertAmounts, convertSettlementAmount, loadConversionContext, type Pin } from "./fx";
 
 export interface PeriodBucketView {
@@ -36,8 +36,30 @@ export interface MemberBreakdownView {
   currentNet: string;
 }
 
+/** The one-glance summary card (T084), per currency. */
+export interface LargestExpenseView {
+  title: string;
+  amount: string;
+  currency: string;
+  payers: string[];
+}
+export interface CarryingView {
+  userId: string;
+  amount: string;
+}
+export interface SummaryView {
+  totalSpent: string;
+  expenseCount: number;
+  firstExpenseDate: string | null;
+  lastExpenseDate: string | null;
+  averagePerExpense: string;
+  largestExpense: LargestExpenseView | null;
+  carrying: CarryingView | null;
+}
+
 export interface CurrencyInsightsView {
   currency: string;
+  summary: SummaryView;
   byDay: PeriodBucketView[];
   byMonth: PeriodBucketView[];
   byCategory: CategoryBucketView[];
@@ -53,6 +75,7 @@ export interface InsightsView {
 
 interface ExpenseRow {
   id: string;
+  title: string;
   date: string;
   currency: string;
   category: string | null;
@@ -165,9 +188,59 @@ const emptyAggregate = (currency: string): CurrencyAggregate => ({
   byCategory: [],
 });
 
-function serialize(aggregate: CurrencyAggregate, members: MemberBreakdownView[], pins?: Pin[]): CurrencyInsightsView {
+/**
+ * The summary card (T084): server-computed, one per currency, no
+ * client-side money math. `largestExpense` breaks a total tie by the
+ * earliest `expense_date` then the lexicographically lowest id;
+ * `carrying` is the member with the largest **positive `currentNet`**
+ * (T082 — settlement-aware, so it agrees with balances), tie broken by
+ * lowest user id, and `null` when nobody has a positive net.
+ */
+function summarize(
+  expenses: ExpenseRow[],
+  breakdownRows: MemberBreakdown[],
+  nameOf: (userId: string) => string,
+): SummaryView {
+  const count = expenses.length;
+  let totalSpent = 0n;
+  for (const expense of expenses) totalSpent += expense.total;
+  const dates = [...expenses.map((e) => e.date)].sort();
+
+  const largest = [...expenses].sort((a, b) =>
+    a.total !== b.total ? (a.total > b.total ? -1 : 1) : a.date !== b.date ? (a.date < b.date ? -1 : 1) : a.id < b.id ? -1 : 1,
+  )[0];
+
+  const carrying = breakdownRows
+    .filter((row) => row.currentNet > 0n)
+    .sort((a, b) => (a.currentNet !== b.currentNet ? (a.currentNet > b.currentNet ? -1 : 1) : a.userId < b.userId ? -1 : 1))[0];
+
+  return {
+    totalSpent: totalSpent.toString(),
+    expenseCount: count,
+    firstExpenseDate: dates[0] ?? null,
+    lastExpenseDate: dates.at(-1) ?? null,
+    averagePerExpense: (count === 0 ? 0n : totalSpent / BigInt(count)).toString(),
+    largestExpense: largest
+      ? {
+          title: largest.title,
+          amount: largest.total.toString(),
+          currency: largest.currency,
+          payers: [...largest.payers.keys()].sort().map(nameOf),
+        }
+      : null,
+    carrying: carrying ? { userId: carrying.userId, amount: carrying.currentNet.toString() } : null,
+  };
+}
+
+function serialize(
+  aggregate: CurrencyAggregate,
+  summary: SummaryView,
+  members: MemberBreakdownView[],
+  pins?: Pin[],
+): CurrencyInsightsView {
   const view: CurrencyInsightsView = {
     currency: aggregate.currency,
+    summary,
     byDay: aggregate.byDay.map((b) => ({ key: b.key, amount: b.amount.toString() })),
     byMonth: aggregate.byMonth.map((b) => ({ key: b.key, amount: b.amount.toString() })),
     byCategory: aggregate.byCategory.map((b) => ({ category: b.category, amount: b.amount.toString() })),
@@ -180,6 +253,7 @@ function assembleView(
   expenses: ExpenseRow[],
   settlementRows: SettlementRow[],
   currentMemberIds: string[],
+  nameOf: (userId: string) => string,
   displayCurrency: string | null,
   pins?: Pin[],
 ): InsightsView {
@@ -189,12 +263,20 @@ function assembleView(
   const breakdown = perMemberBreakdown(toLedger(expenses, settlementRows));
   assertTotalsMatch(expenses, breakdown);
 
+  const expensesByCurrency = new Map<string, ExpenseRow[]>();
+  for (const expense of expenses) {
+    const list = expensesByCurrency.get(expense.currency) ?? [];
+    list.push(expense);
+    expensesByCurrency.set(expense.currency, list);
+  }
+
   const currencies = [...new Set([...aggregates.map((a) => a.currency), ...breakdown.keys()])].sort();
   const byCurrency = currencies
     .map((currency) => {
       const aggregate = aggregates.find((a) => a.currency === currency) ?? emptyAggregate(currency);
       const members = serializeMembers(breakdown.get(currency) ?? [], currentMemberIds);
-      return serialize(aggregate, members, pins);
+      const summary = summarize(expensesByCurrency.get(currency) ?? [], breakdown.get(currency) ?? [], nameOf);
+      return serialize(aggregate, summary, members, pins);
     })
     // A settlement-only currency nobody currently in the group touched adds nothing.
     .filter((block) => block.members.length > 0 || block.byDay.length > 0);
@@ -203,15 +285,17 @@ function assembleView(
 }
 
 /**
- * Server-computed spending aggregates and the per-member breakdown for the
- * Análisis tab (T081, T082). The client renders and never re-aggregates
- * money — same rule as balances. Membership checked in the service, so a
- * non-member and a removed member both get `404`.
+ * Server-computed spending aggregates, the per-member breakdown, and the
+ * summary card for the Análisis tab (T081, T082, T084). The client renders
+ * and never re-aggregates money — same rule as balances. Membership checked
+ * in the service, so a non-member and a removed member both get `404`.
  *
  * Period and category buckets come from expense totals; the per-member
  * rows are a read-side reshape of `computeBalances` (paid / consumed /
  * expenseContribution / sent / received / currentNet) with the same
- * `Σ currentNet == 0` canary plus `Σ paid == Σ consumed == Σ totals`.
+ * `Σ currentNet == 0` canary plus `Σ paid == Σ consumed == Σ totals`; the
+ * per-currency `summary` (total, count, span, average, largest expense,
+ * carrying member) is derived from the same rows.
  *
  * When a display currency is pinned, every expense is converted with its
  * own id as the re-apportionment seed and every settlement as a single
@@ -228,12 +312,13 @@ export async function getInsights(groupId: string, userId: string): Promise<Insi
     .where(eq(groups.id, groupId))
     .limit(1);
 
-  const [expenseRows, currentMembers, settlementRows] = await Promise.all([
+  const [expenseRows, memberRows, settlementRows] = await Promise.all([
     liveExpenses(groupId),
     db
-      .select({ userId: groupMembers.userId })
+      .select({ userId: groupMembers.userId, displayName: users.displayName, removedAt: groupMembers.removedAt })
       .from(groupMembers)
-      .where(and(eq(groupMembers.groupId, groupId), isNull(groupMembers.removedAt))),
+      .innerJoin(users, eq(users.id, groupMembers.userId))
+      .where(eq(groupMembers.groupId, groupId)),
     db
       .select({
         from: settlements.fromUserId,
@@ -245,10 +330,13 @@ export async function getInsights(groupId: string, userId: string): Promise<Insi
       .where(and(eq(settlements.groupId, groupId), isNull(settlements.deletedAt))),
   ]);
   const parties = await loadParties(expenseRows.map((row) => row.id));
-  const currentMemberIds = currentMembers.map((row) => row.userId);
+  const currentMemberIds = memberRows.filter((row) => row.removedAt === null).map((row) => row.userId);
+  const namesById = new Map(memberRows.map((row) => [row.userId, row.displayName]));
+  const nameOf = (id: string) => namesById.get(id) ?? "?";
 
   const entered: ExpenseRow[] = expenseRows.map((row) => ({
     id: row.id,
+    title: row.title,
     date: row.expenseDate,
     currency: row.currency,
     category: isExpenseCategoryKey(row.categoryKey) ? row.categoryKey : null,
@@ -258,7 +346,7 @@ export async function getInsights(groupId: string, userId: string): Promise<Insi
   }));
 
   if (!group?.displayCurrency) {
-    return assembleView(entered, settlementRows, currentMemberIds, null);
+    return assembleView(entered, settlementRows, currentMemberIds, nameOf, null);
   }
 
   const ctx = await loadConversionContext(groupId, group.displayCurrency);
@@ -276,5 +364,5 @@ export async function getInsights(groupId: string, userId: string): Promise<Insi
     ...convertSettlementAmount(ctx, s.currency, s.amount),
   }));
 
-  return assembleView(converted, convertedSettlements, currentMemberIds, group.displayCurrency, ctx.pins);
+  return assembleView(converted, convertedSettlements, currentMemberIds, nameOf, group.displayCurrency, ctx.pins);
 }

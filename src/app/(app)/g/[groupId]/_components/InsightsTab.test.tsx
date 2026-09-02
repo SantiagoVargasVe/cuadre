@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { formatMoney } from "../../../../../lib/money/format";
 import { InsightsTab } from "./InsightsTab";
-import type { InsightsResult, MemberBreakdownView } from "./insightsTypes";
+import type { InsightsResult, MemberBreakdownView, SummaryView } from "./insightsTypes";
 import type { GroupMember } from "./types";
 
 const members: GroupMember[] = [
@@ -32,6 +32,17 @@ const row = (over: Partial<MemberBreakdownView> & { userId: string }): MemberBre
   ...over,
 });
 
+const summary = (over: Partial<SummaryView> = {}): SummaryView => ({
+  totalSpent: "40000",
+  expenseCount: 2,
+  firstExpenseDate: "2026-08-24",
+  lastExpenseDate: "2026-08-24",
+  averagePerExpense: "20000",
+  largestExpense: { title: "Cena", amount: "30000", currency: "COP", payers: ["Ana"] },
+  carrying: { userId: "ana", amount: "15000" },
+  ...over,
+});
+
 describe("InsightsTab", () => {
   it("shows a calm empty state when there is nothing to analyse", () => {
     renderTab({ displayCurrency: null, byCurrency: [] });
@@ -45,6 +56,7 @@ describe("InsightsTab", () => {
       byCurrency: [
         {
           currency: "COP",
+          summary: summary(),
           byDay: [{ key: "2026-08-24", amount: "40000" }],
           byMonth: [{ key: "2026-08", amount: "40000" }],
           byCategory: [
@@ -78,6 +90,7 @@ describe("InsightsTab", () => {
       byCurrency: [
         {
           currency: "USD",
+          summary: summary({ totalSpent: "3000", averagePerExpense: "3000", expenseCount: 1, largestExpense: null, carrying: null }),
           byDay: [{ key: "2026-08-24", amount: "3000" }],
           byMonth: [{ key: "2026-08", amount: "3000" }],
           byCategory: [{ category: "comida", amount: "3000" }],

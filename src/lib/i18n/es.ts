@@ -290,6 +290,22 @@ export const es = {
       netNote: "El balance actual incluye los pagos ya registrados; las barras, no.",
       chartDescription: "Dos barras por persona: lo que pagó y lo que consumió, en la misma escala.",
     },
+    /** The one-glance summary card (T084). */
+    summary: {
+      heading: "Resumen",
+      totalSpent: "Total gastado",
+      expenseCount: "Gastos",
+      expenses: (n: number) => (n === 1 ? "1 gasto" : `${n} gastos`),
+      span: "Periodo",
+      dateRange: (from: string, to: string) => (from === to ? from : `${from} – ${to}`),
+      average: "Promedio por gasto",
+      largest: "Gasto más grande",
+      paidBy: (names: string) => `pagó ${names}`,
+      carryingLead: (name: string) => `${name} ha puesto`,
+      carryingTail: "de más",
+      nobodyCarrying: "Por ahora nadie está fronteando el grupo.",
+      noExpenses: "Aún no hay gastos en esta moneda.",
+    },
     empty: {
       title: "Aún no hay nada que analizar",
       body: "Agrega algunos gastos y aquí verás en qué se va la plata.",

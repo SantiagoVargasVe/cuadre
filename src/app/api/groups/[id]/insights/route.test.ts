@@ -75,6 +75,15 @@ describe.skipIf(!hasTestDatabase)("GET /api/groups/[id]/insights", () => {
     expect(body.byCurrency).toEqual([
       {
         currency: "COP",
+        summary: {
+          totalSpent: "30000",
+          expenseCount: 1,
+          firstExpenseDate: "2026-08-24",
+          lastExpenseDate: "2026-08-24",
+          averagePerExpense: "30000",
+          largestExpense: { title: "Cena", amount: "30000", currency: "COP", payers: ["Ana"] },
+          carrying: null,
+        },
         byDay: [{ key: "2026-08-24", amount: "30000" }],
         byMonth: [{ key: "2026-08", amount: "30000" }],
         byCategory: [{ category: "comida", amount: "30000" }],

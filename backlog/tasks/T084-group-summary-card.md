@@ -2,7 +2,7 @@
 id: T084
 title: Group summary card — totals, biggest expense, who's carrying the trip
 epic: E9-insights
-status: todo
+status: done
 depends_on: [T082]
 size: M
 ---
@@ -23,7 +23,7 @@ Read [splitting.md](../../docs/context/splitting.md),
 
 ## Acceptance criteria
 
-- [ ] Reads from the existing T081/T082 insights endpoint — **no new endpoint and no client-side
+- [x] Reads from the existing T081/T082 insights endpoint — **no new endpoint and no client-side
       aggregation**. Extend that service server-side with a documented per-currency `summary`:
       `totalSpent`, `expenseCount`, `firstExpenseDate`, `lastExpenseDate`, `averagePerExpense`, and
       `largestExpense` (`title`, amount, currency, and the payer display names). All amounts are
@@ -31,22 +31,22 @@ Read [splitting.md](../../docs/context/splitting.md),
       unit. `totalSpent`, count, dates, average, and largest expense consider live expenses only;
       settlements are not spending. When a display currency is pinned, use T081/T054's per-expense
       conversion and re-apportionment before aggregating or selecting the largest expense
-- [ ] Shows the server-provided total spent, expense count, date span, average per expense, and
+- [x] Shows the server-provided total spent, expense count, date span, average per expense, and
       largest single expense. Never introduce client-side money arithmetic
-- [ ] "Who's carrying the trip" is the member with the largest positive **`currentNet` from T082**,
+- [x] "Who's carrying the trip" is the member with the largest positive **`currentNet` from T082**,
       which includes recorded settlements and therefore agrees with balances. Phrase it as a
       sentence, never a bare signed number. "Ana ha puesto $ 340.000 de más" beats "+340.000".
       Never show a negative amount as a payment direction (frontend/CLAUDE.md)
-- [ ] **One card per currency when the group has several**, with its own heading, and no combined
+- [x] **One card per currency when the group has several**, with its own heading, and no combined
       total anywhere. When a display currency is pinned, the card is in that currency and says so,
       with the pin date reachable
-- [ ] A group with zero expenses renders a calm empty state, not zeros in every slot
-- [ ] Ties are handled server-side and deterministically: for largest expense, earliest
+- [x] A group with zero expenses renders a calm empty state, not zeros in every slot
+- [x] Ties are handled server-side and deterministically: for largest expense, earliest
       `expense_date` then lexicographically lowest expense id; for carrying member,
       lexicographically lowest user id. The UI never depends on query/array order
-- [ ] Tabular figures; every amount through `<Money>`; every string through i18n keys; correct at
+- [x] Tabular figures; every amount through `<Money>`; every string through i18n keys; correct at
       375px in light and dark
-- [ ] Tests: the server summary's largest-expense pick including a tie; its rounded average; the
+- [x] Tests: the server summary's largest-expense pick including a tie; its rounded average; the
       carrying-member pick including a tie and an all-settled group (where every `currentNet` is
       zero, so nobody is carrying anything — say that, don't name someone at zero); a
       multi-currency group; and the empty state

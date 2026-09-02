@@ -276,4 +276,82 @@ describe.skipIf(!hasTestDatabase)("getInsights", () => {
     }
     expect(block!.members.reduce((sum, r) => sum + BigInt(r.currentNet), 0n)).toBe(0n);
   });
+
+  // ── Summary card (T084) ──────────────────────────────────────────────
+
+  it("summarises total, count, span, and rounded average", async () => {
+    const { groupId, memberIds } = await seedGroup(["Ana"]);
+    const [ana] = memberIds as [string];
+    await createExpense(groupId, ana, { title: "A", date: "2026-08-24", amount: "10000", currency: "COP", ...equal });
+    await createExpense(groupId, ana, { title: "B", date: "2026-08-20", amount: "10000", currency: "COP", ...equal });
+    await createExpense(groupId, ana, { title: "C", date: "2026-09-01", amount: "10001", currency: "COP", ...equal });
+
+    const { summary } = (await getInsights(groupId, ana)).byCurrency[0]!;
+    expect(summary).toMatchObject({
+      totalSpent: "30001",
+      expenseCount: 3,
+      firstExpenseDate: "2026-08-20",
+      lastExpenseDate: "2026-09-01",
+      averagePerExpense: "10000", // 30001 / 3, floored
+    });
+  });
+
+  it("picks the largest expense, breaking a total tie by earliest date then lowest id", async () => {
+    const { groupId, memberIds } = await seedGroup(["Ana", "Beto"]);
+    const [ana, beto] = memberIds as [string, string];
+    await createExpense(groupId, ana, { title: "Pequeño", date: "2026-08-24", amount: "5000", currency: "COP", ...equal });
+    await createExpense(groupId, ana, {
+      title: "Grande tarde", date: "2026-08-25", amount: "40000", currency: "COP",
+      paidBy: [{ userId: ana, amount: "40000" }], ...equal,
+    });
+    await createExpense(groupId, beto, {
+      title: "Grande temprano", date: "2026-08-24", amount: "40000", currency: "COP",
+      paidBy: [{ userId: beto, amount: "40000" }], ...equal,
+    });
+
+    const { summary } = (await getInsights(groupId, ana)).byCurrency[0]!;
+    expect(summary.largestExpense).toEqual({
+      title: "Grande temprano",
+      amount: "40000",
+      currency: "COP",
+      payers: ["Beto"],
+    });
+  });
+
+  it("names the member carrying the most, breaking a tie by lowest user id", async () => {
+    const { groupId, memberIds } = await seedGroup(["Ana", "Beto", "Caro"]);
+    const [ana, beto, caro] = memberIds as [string, string, string];
+    await createExpense(groupId, ana, {
+      title: "Cuenta", date: "2026-08-24", amount: "20000", currency: "COP",
+      paidBy: [{ userId: ana, amount: "10000" }, { userId: beto, amount: "10000" }],
+      split: { strategy: "equal_subset", members: [caro] },
+    });
+
+    const { summary } = (await getInsights(groupId, ana)).byCurrency[0]!;
+    expect(summary.carrying).toEqual({ userId: [ana, beto].sort()[0], amount: "10000" });
+  });
+
+  it("says nobody is carrying when every currentNet is zero", async () => {
+    const { groupId, memberIds } = await seedGroup(["Ana", "Beto"]);
+    const [ana, beto] = memberIds as [string, string];
+    await createExpense(groupId, ana, {
+      title: "Cena", date: "2026-08-24", amount: "20000", currency: "COP",
+      paidBy: [{ userId: ana, amount: "20000" }], ...equal,
+    });
+    await createSettlement(groupId, beto, { toUserId: ana, amount: "10000", currency: "COP", settledOn: "2026-08-25" });
+
+    const { summary } = (await getInsights(groupId, ana)).byCurrency[0]!;
+    expect(summary.carrying).toBeNull();
+  });
+
+  it("gives each currency its own summary, never a combined one", async () => {
+    const { groupId, memberIds } = await seedGroup(["Ana"]);
+    const [ana] = memberIds as [string];
+    await createExpense(groupId, ana, { title: "COP", date: "2026-08-24", amount: "30000", currency: "COP", ...equal });
+    await createExpense(groupId, ana, { title: "USD", date: "2026-08-24", amount: "800", currency: "USD", ...equal });
+
+    const { byCurrency } = await getInsights(groupId, ana);
+    expect(byCurrency.find((b) => b.currency === "COP")!.summary.totalSpent).toBe("30000");
+    expect(byCurrency.find((b) => b.currency === "USD")!.summary.totalSpent).toBe("800");
+  });
 });
