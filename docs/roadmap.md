@@ -149,6 +149,25 @@ What the first session actually surfaced, in priority order:
 These come before E9 and E10. Charts and categories on top of an interface people misread is the
 same mistake as charts on top of a ledger people don't trust.
 
+### E13 · Code health
+
+A `react-doctor` static-analysis pass over `main`, 2026-09-01 — 67 findings across 20 rules,
+triaged rather than swept because most don't apply here. `server-sequential-independent-await`
+fired 28 times and is almost entirely `await context.params` (already resolved in Next 15)
+followed by `await requireUserId` (synchronous crypto) — no wall-clock to reclaim; the one
+service that *looks* parallelisable, `exportExpensesCsv`, must not be, because its first `await`
+is the membership gate. `js-combine-iterations` and `async-await-in-loop` are micro-optimisations
+over arrays the size of a group or a once-a-day cron. The hydration-flicker hits are deliberate
+`nanoid` / `next-themes` guards with comments already explaining them.
+
+What survives triage is small and real, and is **T111**: the deprecated `z.string().email()`
+form (Zod is on v4), two plain `<a>` tags between `/login` and `/register`, a few dead exports,
+and three service reads that genuinely are independent of each other once the auth check has
+passed. One structural item earns its own change — `SplitEditor` mirrors its state up to the
+expense form through a callback inside a `useEffect`; lifting that state is **T112**, kept
+separate because it touches the money path. The task files carry the full list of dismissed
+findings so the pass doesn't get re-run from zero.
+
 ### E11 · Bigger questions
 
 Real design work, not backlog items. Written down so they're not rediscovered as bugs.
