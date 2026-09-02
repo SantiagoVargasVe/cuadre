@@ -224,6 +224,8 @@ in particular.
   a reroll, not a dropdown. App-generated seeds only, and **never an upload**
 - `T109` Grow `/cuenta` (the personal-settings surface T108 created) into a real settings page —
   display-name editing first. Spun off from T108 rather than growing it
+- `T110` Edit and delete expenses from the expense detail — complete the UI for T035's versioned
+  full-replacement edits and soft deletes
 
 Open design questions that are **not** backlog items — cross-group balances, user deletion,
 per-member display currency, password reset, multi-instance — are listed in

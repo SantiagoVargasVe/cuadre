@@ -493,6 +493,60 @@ export interface ExpenseSummary {
 
 export interface ExpenseDetail extends ExpenseSummary {
   version: number;
+  /** Original strategy inputs reconstructed from the stored split rows.
+   * Detail-only: the edit form fetches one expense on demand, while the
+   * feed stays a single paginated query with no extra per-row payload. */
+  split: SplitInput;
+}
+
+interface StoredSplitRow {
+  userId: string;
+  amount: bigint;
+  weight: bigint | null;
+}
+
+function weightsFrom(rows: StoredSplitRow[]): Record<string, number> {
+  return Object.fromEntries(
+    rows.map((row) => {
+      if (row.weight === null) throw new Error("Stored weighted split is missing a weight");
+      return [row.userId, Number(row.weight)];
+    }),
+  );
+}
+
+/** Reconstructs the client intent which `expense_splits.weight` exists to
+ * preserve (data-model.md § expense_splits). Resolved amounts remain the
+ * ledger truth; this shape is only for faithfully reopening the editor. */
+function toStoredSplitInput(strategy: string, rows: StoredSplitRow[]): SplitInput {
+  const memberIds = rows.map((row) => row.userId);
+  switch (strategy) {
+    case "equal":
+      return { strategy, members: memberIds };
+    case "equal_subset":
+      return { strategy, members: memberIds };
+    case "shares":
+      return { strategy, weights: weightsFrom(rows) };
+    case "percentage":
+      return { strategy, basisPoints: weightsFrom(rows) };
+    case "exact":
+      return { strategy, amounts: Object.fromEntries(rows.map((row) => [row.userId, row.amount.toString()])) };
+    case "loan": {
+      const beneficiary = memberIds[0];
+      if (!beneficiary) throw new Error("Stored loan split has no beneficiary");
+      return { strategy, to: beneficiary };
+    }
+    default:
+      throw new Error(`Unknown stored split strategy: ${strategy}`);
+  }
+}
+
+async function loadStoredSplitInput(expenseId: string, strategy: string): Promise<SplitInput> {
+  const rows = await db
+    .select({ userId: expenseSplits.userId, amount: expenseSplits.amount, weight: expenseSplits.weight })
+    .from(expenseSplits)
+    .where(eq(expenseSplits.expenseId, expenseId))
+    .orderBy(asc(expenseSplits.userId));
+  return toStoredSplitInput(strategy, rows);
 }
 
 interface PartyRow {
@@ -747,10 +801,11 @@ export async function getExpense(expenseId: string, userId: string): Promise<Exp
     .limit(1);
   await requireMembershipForRow(expense, userId);
 
-  const [{ payersByExpense, splitsByExpense }, ctx, editedByNames] = await Promise.all([
+  const [{ payersByExpense, splitsByExpense }, ctx, editedByNames, split] = await Promise.all([
     loadPartiesFor([expense!.id]),
     loadGroupConversionContext(expense!.groupId),
     loadEditedByNames([expense!]),
+    loadStoredSplitInput(expense!.id, expense!.splitStrategy),
   ]);
 
   return {
@@ -762,6 +817,7 @@ export async function getExpense(expenseId: string, userId: string): Promise<Exp
       editedByNames,
     ),
     version: expense!.version,
+    split,
   };
 }
 

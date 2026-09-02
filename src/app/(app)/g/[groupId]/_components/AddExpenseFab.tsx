@@ -40,7 +40,7 @@ export function AddExpenseFab({ groupId, members, defaultCurrency, myUserId, onC
           members={members}
           defaultCurrency={defaultCurrency}
           myUserId={myUserId}
-          onCreated={(expense) => {
+          onSaved={(expense) => {
             onCreated(expense);
             setOpen(false);
           }}

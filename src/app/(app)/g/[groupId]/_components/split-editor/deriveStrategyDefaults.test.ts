@@ -4,6 +4,8 @@ import type { SplitEditorState } from "./types";
 
 const baseState: SplitEditorState = {
   strategy: "equal",
+  equalStrategy: "equal",
+  equalMembersExplicit: false,
   selectedIds: ["ana", "beto", "caro"],
   weights: {},
   basisPoints: {},

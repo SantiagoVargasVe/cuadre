@@ -50,7 +50,7 @@ export function renderForm(onCreated = vi.fn()) {
   const invalidateSpy = vi.spyOn(client, "invalidateQueries");
   render(
     <QueryClientProvider client={client}>
-      <ExpenseForm groupId="g1" members={members} defaultCurrency="COP" myUserId="ana" onCreated={onCreated} />
+      <ExpenseForm groupId="g1" members={members} defaultCurrency="COP" myUserId="ana" onSaved={onCreated} />
     </QueryClientProvider>,
   );
   return { onCreated, invalidateSpy };

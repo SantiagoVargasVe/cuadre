@@ -2,25 +2,9 @@ import * as React from "react";
 import type { SplitInput } from "../../../../../../lib/schemas/expenses";
 import { buildSplitInput } from "./buildSplitInput";
 import { deriveStrategyDefaults } from "./deriveStrategyDefaults";
-import { equalDefault, resolveSplitPreview } from "./resolve";
+import { initialSplitState } from "./initialState";
+import { resolveSplitPreview } from "./resolve";
 import type { SplitEditorState, StrategyName } from "./types";
-
-function initialState(memberIds: string[], totalAmount: bigint, seed: string): SplitEditorState {
-  return {
-    strategy: "equal",
-    selectedIds: memberIds,
-    weights: Object.fromEntries(memberIds.map((id) => [id, 1])),
-    basisPoints:
-      totalAmount > 0n
-        ? Object.fromEntries([...equalDefault(10000n, memberIds, seed)].map(([id, v]) => [id, Number(v)]))
-        : {},
-    exactAmounts:
-      totalAmount > 0n
-        ? Object.fromEntries([...equalDefault(totalAmount, memberIds, seed)].map(([id, v]) => [id, v.toString()]))
-        : {},
-    loanBeneficiary: memberIds[0] ?? null,
-  };
-}
 
 export interface SplitEditorController {
   state: SplitEditorState;
@@ -43,11 +27,21 @@ export function useSplitEditorState(
   memberIds: string[],
   totalAmount: bigint,
   seed: string,
+  initialSplit?: SplitInput,
 ): SplitEditorController {
-  const [state, setState] = React.useState(() => initialState(memberIds, totalAmount, seed));
+  const [state, setState] = React.useState(() => initialSplitState(memberIds, totalAmount, seed, initialSplit));
 
   const setStrategy = (next: StrategyName) =>
-    setState((current) => deriveStrategyDefaults(next, current, totalAmount, seed));
+    setState((current) => {
+      const derived = deriveStrategyDefaults(next, current, totalAmount, seed);
+      return next === "equal"
+        ? {
+            ...derived,
+            equalStrategy: current.selectedIds.length === memberIds.length ? "equal" : "equal_subset",
+            equalMembersExplicit: current.selectedIds.length !== memberIds.length,
+          }
+        : derived;
+    });
 
   const toggleMember = (userId: string) =>
     setState((current) => {
@@ -56,7 +50,12 @@ export function useSplitEditorState(
       const selectedIds = has
         ? current.selectedIds.filter((id) => id !== userId)
         : [...current.selectedIds, userId];
-      return { ...current, selectedIds };
+      return {
+        ...current,
+        selectedIds,
+        equalStrategy: selectedIds.length === memberIds.length ? "equal" : "equal_subset",
+        equalMembersExplicit: selectedIds.length !== memberIds.length,
+      };
     });
 
   const setWeight = (userId: string, weight: number) =>

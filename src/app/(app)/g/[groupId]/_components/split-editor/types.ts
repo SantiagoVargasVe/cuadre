@@ -7,6 +7,12 @@ export type StrategyName = "equal" | "shares" | "percentage" | "exact" | "loan";
  * a single member's checkbox). */
 export interface SplitEditorState {
   strategy: StrategyName;
+  /** Keeps an untouched historical `equal` input distinct from
+   * `equal_subset`; the UI presents both through the same strategy tab. */
+  equalStrategy: "equal" | "equal_subset";
+  /** A stored equal expense names its historical participants explicitly;
+   * a new untouched equal split omits them for the minimal payload. */
+  equalMembersExplicit: boolean;
   selectedIds: string[];
   weights: Record<string, number>;
   basisPoints: Record<string, number>;

@@ -232,8 +232,10 @@ just the single-expense detail, so the feed can show its own "editado" marker wi
 fetch per row. `editedBy` can still be `null` on an edited expense if the editor's account no
 longer exists (`updated_by`'s FK is `ON DELETE SET NULL`) — "when" and "who" are independent.
 
-The single-expense detail (`GET /api/expenses/:id`, and the `PATCH`/`POST` responses) additionally
-carries `version`.
+The single-expense detail (`GET /api/expenses/:id`) additionally carries `version` and `split`.
+`split` is the original strategy input reconstructed from the stored rows (including raw shares
+or basis points), so an edit form can round-trip the expense without changing its meaning. It is
+detail-only: the feed does not carry editor state for every row.
 
 ### Revision history
 

@@ -3,16 +3,14 @@ import type { SplitEditorState } from "./types";
 
 /** Filters the (kept-for-everyone) raw state down to the currently
  * selected members and shapes it into the wire `SplitInput` for whichever
- * strategy is active. `equal` vs `equal_subset` is decided here: "all
- * checked" is `equal`, anything less is `equal_subset` — the same
- * strategy from the API's point of view, split.md § 3. */
+ * strategy is active. `equalStrategy` preserves the stored spelling until
+ * the member selection changes, so a title-only edit is a true round-trip. */
 export function buildSplitInput(state: SplitEditorState, allMemberIds: string[]): SplitInput {
   const { strategy, selectedIds } = state;
   switch (strategy) {
     case "equal":
-      return selectedIds.length === allMemberIds.length
-        ? { strategy: "equal" }
-        : { strategy: "equal_subset", members: selectedIds };
+      if (state.equalStrategy === "equal_subset") return { strategy: "equal_subset", members: selectedIds };
+      return state.equalMembersExplicit ? { strategy: "equal", members: selectedIds } : { strategy: "equal" };
     case "shares":
       return { strategy: "shares", weights: pick(state.weights, selectedIds) };
     case "percentage":

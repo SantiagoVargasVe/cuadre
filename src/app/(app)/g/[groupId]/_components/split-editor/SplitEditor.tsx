@@ -18,6 +18,7 @@ export interface SplitEditorProps {
   totalAmount: bigint;
   currency: string;
   seed: string;
+  initialSplit?: SplitInput;
   onChange: (split: SplitInput, valid: boolean) => void;
 }
 
@@ -25,10 +26,10 @@ export interface SplitEditorProps {
  * tapped" (design-system.md), same affordance as `PayerEditor`. The shell
  * owns the live total and the save gate (T065); each strategy component
  * owns only its own inputs. */
-export function SplitEditor({ members, totalAmount, currency, seed, onChange }: SplitEditorProps) {
+export function SplitEditor({ members, totalAmount, currency, seed, initialSplit, onChange }: SplitEditorProps) {
   const [open, setOpen] = React.useState(false);
   const memberIds = React.useMemo(() => members.map((m) => m.userId), [members]);
-  const c = useSplitEditorState(memberIds, totalAmount, seed);
+  const c = useSplitEditorState(memberIds, totalAmount, seed, initialSplit);
 
   const valid = c.preview !== null;
   React.useEffect(() => {

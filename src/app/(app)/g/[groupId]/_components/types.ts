@@ -1,5 +1,6 @@
 import type { AvatarChoice } from "../../../../../lib/avatar";
 import type { ExpenseCategoryKey } from "../../../../../lib/categories";
+import type { SplitInput } from "../../../../../lib/schemas/expenses";
 
 /**
  * Mirrors `ExpenseSummary`/`ExpenseListResult` (server/services/expenses.ts)
@@ -38,6 +39,12 @@ export interface ExpenseSummary {
   converted: ConvertedAmounts | null;
   editedAt: string | null;
   editedBy: EditedBy | null;
+}
+
+/** Detail-only editor state returned by `GET /api/expenses/:id`. */
+export interface ExpenseDetailResult extends ExpenseSummary {
+  version: number;
+  split: SplitInput;
 }
 
 export interface ExpenseListResult {

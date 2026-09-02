@@ -7,6 +7,8 @@ const allMembers = ["ana", "beto", "caro"];
 function state(overrides: Partial<SplitEditorState> = {}): SplitEditorState {
   return {
     strategy: "equal",
+    equalStrategy: "equal",
+    equalMembersExplicit: false,
     selectedIds: allMembers,
     weights: {},
     basisPoints: {},
@@ -22,7 +24,11 @@ describe("buildSplitInput", () => {
   });
 
   it("produces `equal_subset` once fewer than every member is selected", () => {
-    expect(buildSplitInput(state({ selectedIds: ["ana", "beto"] }), allMembers)).toEqual({
+    expect(buildSplitInput(state({
+      selectedIds: ["ana", "beto"],
+      equalStrategy: "equal_subset",
+      equalMembersExplicit: true,
+    }), allMembers)).toEqual({
       strategy: "equal_subset",
       members: ["ana", "beto"],
     });

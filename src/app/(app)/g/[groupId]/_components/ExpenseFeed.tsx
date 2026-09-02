@@ -59,6 +59,14 @@ export function ExpenseFeed({
     setItems((current) => [expense, ...current]);
   }
 
+  function handleUpdated(expense: ExpenseSummary) {
+    setItems((current) => current.map((item) => item.id === expense.id ? expense : item));
+  }
+
+  function handleDeleted(expenseId: string) {
+    setItems((current) => current.filter((item) => item.id !== expenseId));
+  }
+
   return (
     <div className="flex flex-col gap-3 pb-20">
       {items.length === 0 ? (
@@ -66,7 +74,15 @@ export function ExpenseFeed({
       ) : (
         <>
           {items.map((expense) => (
-            <ExpenseRow key={expense.id} expense={expense} myUserId={myUserId} members={members} />
+            <ExpenseRow
+              key={expense.id}
+              expense={expense}
+              groupId={groupId}
+              myUserId={myUserId}
+              members={members}
+              onUpdated={handleUpdated}
+              onDeleted={handleDeleted}
+            />
           ))}
           {cursor && (
             <Button variant="ghost" onClick={loadMore} disabled={loading}>
