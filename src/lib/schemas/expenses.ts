@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { EXPENSE_CATEGORY_KEYS } from "../categories";
 
 const memberId = z.string().uuid();
 const currencyCode = z.string().regex(/^[A-Z]{3}$/, "must be a 3-letter ISO-4217 code");
@@ -38,5 +39,10 @@ export const createExpenseSchema = z.object({
   currency: currencyCode,
   paidBy: z.array(paidByEntry).min(1).optional(),
   split: splitSchema,
+  // Fixed app-provided set (T090). Optional and nullable: omitted on a
+  // create means "uncategorised"; an explicit `null` on a PATCH clears a
+  // category that was set. An unknown key fails here → 400 VALIDATION_ERROR,
+  // never a silent null or a downstream FK error.
+  category: z.enum(EXPENSE_CATEGORY_KEYS).nullish(),
 });
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;

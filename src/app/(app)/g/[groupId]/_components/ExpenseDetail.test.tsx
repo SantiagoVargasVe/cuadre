@@ -19,6 +19,7 @@ const expense: ExpenseSummary = {
     { userId: "beto", amount: "15000000", displayName: "Beto" },
   ],
   strategy: "equal",
+  category: null,
   converted: null,
   editedAt: null,
   editedBy: null,

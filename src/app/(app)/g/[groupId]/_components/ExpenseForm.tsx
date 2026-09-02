@@ -5,12 +5,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { ApiError } from "../../../../../lib/api/client";
+import type { ExpenseCategoryKey } from "../../../../../lib/categories";
 import { es } from "../../../../../lib/i18n/es";
 import { parseAmountInput } from "../../../../../lib/money/format";
 import type { SplitInput } from "../../../../../lib/schemas/expenses";
 import { Button } from "../../../../_ui/Button";
 import { TextField } from "../../../../_ui/TextField";
 import { AmountCurrencyFields } from "./AmountCurrencyFields";
+import { CategoryPicker } from "./CategoryPicker";
 import { expenseFormSchema, todayIso, type ExpenseFormValues } from "./expenseFormSchema";
 import { PayerEditor, type Payer } from "./PayerEditor";
 import { SplitEditor } from "./split-editor/SplitEditor";
@@ -36,6 +38,7 @@ export function ExpenseForm({ groupId, members, defaultCurrency, myUserId, onCre
   const [payers, setPayers] = React.useState<Payer[] | null>(null);
   const [split, setSplit] = React.useState<SplitInput>({ strategy: "equal" });
   const [splitValid, setSplitValid] = React.useState(true);
+  const [category, setCategory] = React.useState<ExpenseCategoryKey | null>(null);
   const [formError, setFormError] = React.useState<string | null>(null);
   // A brand-new expense has no id yet — the server mints one at insert
   // time and uses it as the apportionment seed (splitting.md § 3.1). This
@@ -69,7 +72,7 @@ export function ExpenseForm({ groupId, members, defaultCurrency, myUserId, onCre
   async function onSubmit(data: ExpenseFormValues) {
     setFormError(null);
     try {
-      const expense = await submitExpense(groupId, data, payers, split);
+      const expense = await submitExpense(groupId, data, payers, split, category);
       queryClient.invalidateQueries({ queryKey: ["group", groupId, "expenses"] });
       queryClient.invalidateQueries({ queryKey: ["group", groupId, "balances"] });
       onCreated(expense);
@@ -83,6 +86,7 @@ export function ExpenseForm({ groupId, members, defaultCurrency, myUserId, onCre
       <TextField label={t.titleLabel} error={errors.title?.message} {...register("title")} />
       <AmountCurrencyFields register={register} control={control} currency={currency} amountRef={amountRef} />
       <TextField label={t.dateLabel} type="date" error={errors.date?.message} {...register("date")} />
+      <CategoryPicker value={category} onChange={setCategory} />
       <PayerEditor
         members={members}
         myUserId={myUserId}

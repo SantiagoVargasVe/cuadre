@@ -2,7 +2,7 @@
 id: T090
 title: Categories on an expense — a fixed, app-provided set
 epic: E10-quality-of-life
-status: todo
+status: done
 depends_on: [T034, T035, T080]
 size: M
 ---
@@ -27,34 +27,34 @@ Read [data-model.md](../../docs/context/data-model.md),
 
 ## Acceptance criteria
 
-- [ ] Migration adds an `expense_categories` lookup table — `key` (text, pk) and `sort_order`
+- [x] Migration adds an `expense_categories` lookup table — `key` (text, pk) and `sort_order`
       (smallint) — seeded in the migration with exactly:
       `comida, alojamiento, transporte, mercado, actividades, otro`.
       It mirrors how `currencies` is seeded (a lookup table, **not** a `pgEnum`) so a seventh
       category is an insert rather than an enum alter
-- [ ] **No user-facing label is stored in the database.** The table holds keys; the Spanish labels
+- [x] **No user-facing label is stored in the database.** The table holds keys; the Spanish labels
       live in `src/lib/i18n/es.ts` under `categories.*`, like every other string in the app
-- [ ] `expenses.category_key` is a **nullable** FK to `expense_categories.key`. Nullable is
+- [x] `expenses.category_key` is a **nullable** FK to `expense_categories.key`. Nullable is
       deliberate: it distinguishes "nobody categorised this" from an explicit `otro`, and every
       expense that predates this task is honestly the former. No backfill
-- [ ] The category round-trips through the whole expense lifecycle: `POST` accepts it, `PATCH`
+- [x] The category round-trips through the whole expense lifecycle: `POST` accepts it, `PATCH`
       replaces it (including clearing it back to `null`), it appears in the `expense_revisions`
       snapshot, and it comes back on the list and detail reads
-- [ ] Zod validates the key at the route boundary against the known set. An unknown key is a failed
+- [x] Zod validates the key at the route boundary against the known set. An unknown key is a failed
       Zod parse and therefore returns the repository-standard `400 VALIDATION_ERROR`, never a
       silent `null` or a database error
-- [ ] **The expense form's common case must not get slower.** The picker is optional, defaults to
+- [x] **The expense form's common case must not get slower.** The picker is optional, defaults to
       no category, and never blocks save. A horizontal row of chips in the already-open form is
       fine; a required step, a modal, or anything that adds a tap to "title, amount, save" is not.
       Re-read frontend/CLAUDE.md § *The expense form* — fifteen seconds is a hard requirement
-- [ ] The feed row shows the category compactly when one is set, and shows nothing when it isn't.
+- [x] The feed row shows the category compactly when one is set, and shows nothing when it isn't.
       **Not colour alone** — a label or an icon plus a text alternative, per design-system.md
-- [ ] The CSV export (T080) gains a `category` column carrying the **key**, not the Spanish label,
+- [x] The CSV export (T080) gains a `category` column carrying the **key**, not the Spanish label,
       so the file stays stable across a locale change. Empty when `null`
-- [ ] Tests: the FK rejects an unknown key; `POST`/`PATCH` round-trip including clearing to `null`;
+- [x] Tests: the FK rejects an unknown key; `POST`/`PATCH` round-trip including clearing to `null`;
       the revision snapshot records a category change; an uncategorised expense stays valid; the
       form still submits with no category touched
-- [ ] `docs/context/data-model.md` and `docs/context/api-contract.md` document the column
+- [x] `docs/context/data-model.md` and `docs/context/api-contract.md` document the column
 
 ## Out of scope
 

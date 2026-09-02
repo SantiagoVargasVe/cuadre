@@ -15,6 +15,7 @@ function expense(id: string, title: string): ExpenseSummary {
     payers: [{ userId: "ana", amount: "1000", displayName: "Ana" }],
     splits: [{ userId: "ana", amount: "1000", displayName: "Ana" }],
     strategy: "equal",
+    category: null,
     converted: null,
     editedAt: null,
     editedBy: null,

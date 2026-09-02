@@ -24,8 +24,18 @@ describe("createExpenseSchema", () => {
     ["a malformed date", { ...validBody, date: "24-08-2026" }],
     ["an unsupported-looking currency code", { ...validBody, currency: "cop" }],
     ["a blank title", { ...validBody, title: "" }],
+    ["an unknown category key", { ...validBody, category: "food" }],
+    ["a category in the wrong case", { ...validBody, category: "Comida" }],
   ])("rejects %s", (_label, body) => {
     expect(createExpenseSchema.safeParse(body).success).toBe(false);
+  });
+
+  it.each([
+    ["a known category key", { ...validBody, category: "comida" }],
+    ["an explicit null — a PATCH clearing the category", { ...validBody, category: null }],
+    ["an omitted category", validBody],
+  ])("accepts %s", (_label, body) => {
+    expect(createExpenseSchema.safeParse(body).success).toBe(true);
   });
 
   it("requires equal_subset to name at least one member", () => {

@@ -57,7 +57,7 @@ describe.skipIf(!hasTestDatabase)("GET /api/groups/[id]/expenses.csv", () => {
       /^attachment; filename="cartagena-2026-gastos-\d{4}-\d{2}-\d{2}\.csv"$/,
     );
     expect(await response.text()).toBe(
-      "expense_id,date,title,amount_minor,currency,split_strategy,payers,splits,created_at,updated_at\r\n",
+      "expense_id,date,title,amount_minor,currency,split_strategy,category,payers,splits,created_at,updated_at\r\n",
     );
   });
 

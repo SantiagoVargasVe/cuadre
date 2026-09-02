@@ -21,6 +21,9 @@ export const EXPENSE_CSV_COLUMNS = [
   "amount_minor",
   "currency",
   "split_strategy",
+  // The fixed-set key (T090), never the localised label — so the file stays
+  // stable across a locale change. Empty when the expense is uncategorised.
+  "category",
   "payers",
   "splits",
   "created_at",
@@ -47,6 +50,7 @@ function rowForExpense(expense: ExpenseForExport): string[] {
     expense.total.amount,
     expense.total.currency,
     expense.strategy,
+    expense.category ?? "",
     partyJson(expense.payers),
     partyJson(expense.splits),
     expense.createdAt,

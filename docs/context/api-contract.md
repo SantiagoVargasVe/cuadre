@@ -159,6 +159,12 @@ Multiple payers is just a longer `paidBy` array.
 **Percentages are basis points, integers, summing to exactly `10000`.** Not floats, and not
 "about 100". `60%` is `6000`.
 
+**`category`** is optional (T090): one of the fixed keys
+`comida | alojamiento | transporte | mercado | actividades | otro`, or omitted / `null` for an
+uncategorised expense. It is **not** a free-form tag. An unknown key is a `400 VALIDATION_ERROR`
+at the route boundary — never a silent `null`. A `PATCH` sends `null` (or omits it) to clear a
+category that was set.
+
 The response echoes the **resolved** per-member amounts, so the client never re-derives them and
 can never disagree with the server about who owes what:
 
@@ -171,7 +177,7 @@ can never disagree with the server about who owes what:
     { "userId": "…beto", "amount": "10000000" },
     { "userId": "…caro", "amount": "10000000" }
   ],
-  "strategy": "equal", "version": 1, "editedAt": null
+  "strategy": "equal", "category": null, "version": 1, "editedAt": null
 }
 ```
 
@@ -211,10 +217,14 @@ without a second round trip:
     { "userId": "…caro", "amount": "10000000", "displayName": "Caro" }
   ],
   "strategy": "equal",
+  "category": null,
   "editedAt": null, "editedBy": null,
   "converted": null
 }
 ```
+
+`category` is the fixed-set **key** (T090), or `null` when uncategorised — never a localised
+label; the client maps it through i18n. Present on every row, list and detail alike.
 
 `editedAt`/`editedBy` are `null` for a never-edited expense (`version === 1`); otherwise `editedAt`
 is the last edit's timestamp and `editedBy` is `{ userId, displayName }` — on **every** row, not
@@ -278,12 +288,15 @@ expense feed. A query string has no effect on the export.
 There is **one row per expense**, ordered `expense_date ASC, id ASC`. Columns, in order:
 
 ```
-expense_id,date,title,amount_minor,currency,split_strategy,payers,splits,created_at,updated_at
+expense_id,date,title,amount_minor,currency,split_strategy,category,payers,splits,created_at,updated_at
 ```
 
 - `amount_minor` and every nested `amount` are digits-only minor-unit strings, never floats or
   locale-formatted money. Each row retains its entered `currency`; no display-currency conversion
   or cross-currency aggregate is calculated.
+- `category` is the fixed-set **key** (`comida | alojamiento | transporte | mercado | actividades
+  | otro`), never the localised label, so the file is stable across a locale change. Empty when
+  the expense is uncategorised.
 - `payers` and `splits` are JSON arrays in one CSV cell. Each object preserves `userId`,
   `displayName`, and `amount`, so multiple payers and non-equal splits remain auditable.
 - Soft-deleted expenses are absent. A group with no expenses still gets its header row.

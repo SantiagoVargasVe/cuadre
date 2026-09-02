@@ -19,6 +19,18 @@ home and so every money-bearing column can carry a real foreign key.
 `COP` is seeded as `exponent 2, display_decimals 0` — see [currency.md](currency.md) for why
 those differ.
 
+### `expense_categories`
+
+Reference data, seeded by migration `0009` (T090). The same lookup-table shape as `currencies`,
+deliberately **not** a `pgEnum` — a seventh category is an `INSERT`, not an enum `ALTER`.
+
+`key text pk` · `sort_order smallint`
+
+Seeded with exactly `comida, alojamiento, transporte, mercado, actividades, otro`. **No label
+column** — the Spanish labels live in `src/lib/i18n/es.ts` under `categories.*`, so a locale change
+never touches stored data or an exported file. `sort_order` is the display order and mirrors
+`EXPENSE_CATEGORY_KEYS` in `src/lib/categories.ts`.
+
 ### `users`
 
 `id uuid pk` · `email citext unique` · `display_name` · `password_hash` ·
@@ -72,6 +84,7 @@ Consumed atomically with the user insert. A partially consumed code is a bug, no
 
 `id uuid pk` · `group_id → groups` · `title` · `expense_date date` ·
 `total_amount bigint` · `currency → currencies` · `split_strategy` ·
+`category_key → expense_categories` **nullable** ·
 `created_by → users` · `updated_by → users` · `version integer default 1` ·
 `deleted_at` nullable · timestamps
 
@@ -80,6 +93,10 @@ Consumed atomically with the user insert. A partially consumed code is a bug, no
 - `split_strategy` ∈ `equal | equal_subset | shares | percentage | exact | loan`. Kept so the
   edit form can reopen in the mode it was created in. **It is not read by the balance engine** —
   the resolved amounts in `expense_splits` are the truth.
+- `category_key` is **nullable on purpose** (T090): `null` means "nobody categorised this",
+  which is honestly what every expense predating T090 is — distinct from an explicit `otro`. No
+  backfill. An unknown key is rejected by the FK, and earlier by Zod at the route boundary
+  (`400 VALIDATION_ERROR`). It is carried in each `expense_revisions` snapshot.
 - `CHECK (total_amount > 0)`.
 - **There is no `paid_by` column.** [ADR-0005](../adr/0005-expense-as-balanced-ledger-entry.md).
 - Index on `(group_id, expense_date DESC) WHERE deleted_at IS NULL` — the group feed's only query.

@@ -64,6 +64,13 @@
       "when": 1788190551808,
       "tag": "0008_user_avatar_choice",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788307810749,
+      "tag": "0009_expense_categories",
+      "breakpoints": true
     }
   ]
 }
