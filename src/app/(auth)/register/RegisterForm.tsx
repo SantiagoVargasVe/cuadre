@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -84,9 +85,9 @@ export function RegisterForm({ defaultInviteCode }: RegisterFormProps = {}) {
       </Button>
       <p className="text-sm text-muted-foreground">
         {t.hasAccount}{" "}
-        <a href="/login" className="text-primary underline">
+        <Link href="/login" className="text-primary underline">
           {t.loginLink}
-        </a>
+        </Link>
       </p>
     </form>
   );

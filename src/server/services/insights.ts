@@ -306,13 +306,12 @@ function assembleView(
  */
 export async function getInsights(groupId: string, userId: string): Promise<InsightsView> {
   await requireMembership(groupId, userId);
-  const [group] = await db
-    .select({ displayCurrency: groups.displayCurrency })
-    .from(groups)
-    .where(eq(groups.id, groupId))
-    .limit(1);
-
-  const [expenseRows, memberRows, settlementRows] = await Promise.all([
+  const [[group], expenseRows, memberRows, settlementRows] = await Promise.all([
+    db
+      .select({ displayCurrency: groups.displayCurrency })
+      .from(groups)
+      .where(eq(groups.id, groupId))
+      .limit(1),
     liveExpenses(groupId),
     db
       .select({ userId: groupMembers.userId, displayName: users.displayName, removedAt: groupMembers.removedAt })

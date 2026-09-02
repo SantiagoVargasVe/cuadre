@@ -2,7 +2,7 @@
 id: T111
 title: React Doctor pass — the safe subset, and the list of verified non-issues
 epic: E13-code-health
-status: todo
+status: done
 depends_on: []
 size: M
 ---

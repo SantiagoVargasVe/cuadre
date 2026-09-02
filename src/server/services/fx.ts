@@ -274,8 +274,10 @@ export async function getDisplayCurrency(
   userId: string,
 ): Promise<{ currency: string | null; pins: Pin[]; source: string }> {
   await requireMembership(groupId, userId);
-  const [group] = await db.select({ displayCurrency: groups.displayCurrency }).from(groups).where(eq(groups.id, groupId)).limit(1);
-  const pinRows = await db.select().from(groupFxPins).where(eq(groupFxPins.groupId, groupId));
+  const [[group], pinRows] = await Promise.all([
+    db.select({ displayCurrency: groups.displayCurrency }).from(groups).where(eq(groups.id, groupId)).limit(1),
+    db.select().from(groupFxPins).where(eq(groupFxPins.groupId, groupId)),
+  ]);
   // `source` is the provider a conversion *would* pin from — surfaced so the
   // Ajustes tab's convert confirmation can name the rate's provenance
   // (source + today's date) before the write, not only after (T068).

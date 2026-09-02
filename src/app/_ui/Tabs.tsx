@@ -42,7 +42,7 @@ export function TabsIndicator({
   );
 }
 
-export function TabPanel({ className, ...props }: React.ComponentProps<typeof BaseTabs.Panel>) {
+function TabPanel({ className, ...props }: React.ComponentProps<typeof BaseTabs.Panel>) {
   return (
     <BaseTabs.Panel
       className={cn("focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", className)}

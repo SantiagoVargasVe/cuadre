@@ -6,7 +6,6 @@ export const DialogRoot = BaseDialog.Root;
 export const DialogTrigger = BaseDialog.Trigger;
 export const DialogClose = BaseDialog.Close;
 export const DialogTitle = BaseDialog.Title;
-export const DialogDescription = BaseDialog.Description;
 
 /**
  * Full-screen sheet below 768px (Tailwind's `md`), a centered card above it.

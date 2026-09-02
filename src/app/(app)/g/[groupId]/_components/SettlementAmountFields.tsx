@@ -46,17 +46,6 @@ export function SettlementAmountFields({
   const currency = watch("currency");
   const rawAmount = watch("amount");
 
-  // Re-run `formatAmountInput` when the currency changes so "40,50" entered as
-  // USD becomes "40" under COP — same major magnitude, new fraction rules.
-  const firstRun = React.useRef(true);
-  React.useEffect(() => {
-    if (firstRun.current) {
-      firstRun.current = false;
-      return;
-    }
-    setValue("amount", formatAmountInput(getValues("amount"), currency), { shouldValidate: true });
-  }, [currency, setValue, getValues]);
-
   const amountMinor = React.useMemo(() => {
     try {
       return parseAmountInput(rawAmount ?? "", currency);
@@ -81,7 +70,14 @@ export function SettlementAmountFields({
             name="currency"
             control={control}
             render={({ field }) => (
-              <SelectRoot value={field.value} onValueChange={(v) => v && field.onChange(v)}>
+              <SelectRoot
+                value={field.value}
+                onValueChange={(v) => {
+                  if (!v) return;
+                  setValue("amount", formatAmountInput(getValues("amount"), v), { shouldValidate: true });
+                  field.onChange(v);
+                }}
+              >
                 <SelectTrigger aria-label={t.currencyLabel} className="w-24">
                   <SelectValue />
                 </SelectTrigger>

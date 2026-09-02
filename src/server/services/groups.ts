@@ -73,19 +73,20 @@ export async function getGroupDetail(groupId: string, userId: string): Promise<G
   // Guaranteed to exist: a live group_members row FKs to groups(id) with no
   // way to outlive it (schema.ts), so requireMembership succeeding already
   // proves this row is there.
-  const [group] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
-
-  const memberRows = await db
-    .select({
-      userId: groupMembers.userId,
-      displayName: users.displayName,
-      role: groupMembers.role,
-      ...avatarColumns,
-    })
-    .from(groupMembers)
-    .innerJoin(users, eq(users.id, groupMembers.userId))
-    .where(and(eq(groupMembers.groupId, groupId), isNull(groupMembers.removedAt)))
-    .orderBy(asc(groupMembers.joinedAt), asc(groupMembers.userId));
+  const [[group], memberRows] = await Promise.all([
+    db.select().from(groups).where(eq(groups.id, groupId)).limit(1),
+    db
+      .select({
+        userId: groupMembers.userId,
+        displayName: users.displayName,
+        role: groupMembers.role,
+        ...avatarColumns,
+      })
+      .from(groupMembers)
+      .innerJoin(users, eq(users.id, groupMembers.userId))
+      .where(and(eq(groupMembers.groupId, groupId), isNull(groupMembers.removedAt)))
+      .orderBy(asc(groupMembers.joinedAt), asc(groupMembers.userId)),
+  ]);
 
   return {
     group: group!,
