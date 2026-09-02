@@ -2,7 +2,7 @@
 id: T083
 title: Expense revision history as a visible diff
 epic: E9-insights
-status: todo
+status: done
 depends_on: [T035, T036]
 size: M
 ---
@@ -25,35 +25,35 @@ Read [data-model.md](../../docs/context/data-model.md) § *expense_revisions*,
 
 ## Acceptance criteria
 
-- [ ] `GET /api/expenses/:id/revisions` → `200 { revisions[] }`, newest first, each carrying
+- [x] `GET /api/expenses/:id/revisions` → `200 { revisions[] }`, newest first, each carrying
       `version`, `action`, `changedAt`, and `changedBy` (`{ userId, displayName }` or `null` — the
       FK is `ON DELETE SET NULL`, so "when" and "who" are independent)
-- [ ] **This is an id-addressed route — the classic authorization trap.** The expense carries no
+- [x] **This is an id-addressed route — the classic authorization trap.** The expense carries no
       group id in the URL: load the row, read *its* `group_id`, then verify membership **inside the
       service**. Non-member and removed member get `404`. An unguessable UUID is not an
       authorization check. Add the test alongside the existing id-addressed route tests
-- [ ] The response never leaks an email address, in any nested snapshot field
-- [ ] The diff is computed **server-side** between consecutive snapshots and returned as structured
+- [x] The response never leaks an email address, in any nested snapshot field
+- [x] The diff is computed **server-side** between consecutive snapshots and returned as structured
       changes — the client renders, it does not diff. Cover, at minimum: `title`, `expenseDate`,
       `totalAmount`, `currency`, `splitStrategy`, the payer set, and the split set (per member:
       added, removed, or amount changed)
-- [ ] **Money in a diff goes through `<Money>` like money anywhere else** — old and new as
+- [x] **Money in a diff goes through `<Money>` like money anywhere else** — old and new as
       rendered amounts, never a raw minor-unit integer and never a formatted string built inline.
       A currency change renders both sides with their own currency
-- [ ] The `created` revision renders as "creó el gasto", not as a diff against nothing. A `deleted`
+- [x] The `created` revision renders as "creó el gasto", not as a diff against nothing. A `deleted`
       revision renders as a deletion. Neither is a special case the UI has to guess at
-- [ ] UI: a "Historial" section in the expense detail, collapsed by default so it never competes
+- [x] UI: a "Historial" section in the expense detail, collapsed by default so it never competes
       with the split breakdown T102 just made discoverable. Every string via i18n keys. Works at
       375px
-- [ ] A never-edited expense (`version === 1`) shows its creation entry, not an empty state that
+- [x] A never-edited expense (`version === 1`) shows its creation entry, not an empty state that
       reads like an error
-- [ ] Behaviour for a soft-deleted expense mirrors whatever `GET /api/expenses/:id` already does —
+- [x] Behaviour for a soft-deleted expense mirrors whatever `GET /api/expenses/:id` already does —
       do not invent a second rule here
-- [ ] Tests: authorization (non-member `404`, removed member `404`); a title-only edit produces
+- [x] Tests: authorization (non-member `404`, removed member `404`); a title-only edit produces
       exactly one field change; a split change lists per-member deltas; a multi-payer edit;
       `changedBy: null` renders without crashing; the money in a diff is asserted as `bigint`, not
       as a formatted string
-- [ ] `docs/context/api-contract.md` documents the endpoint
+- [x] `docs/context/api-contract.md` documents the endpoint
 
 ## Out of scope
 

@@ -3,6 +3,7 @@ import { es } from "../../../../../lib/i18n/es";
 import { Avatar } from "../../../../_ui/Avatar";
 import { Money } from "../../../../_ui/Money";
 import { buildMemberLookup, type MemberLookup } from "./memberLookup";
+import { ExpenseHistory } from "./ExpenseHistory";
 import { strategyPhrase } from "./strategyPhrase";
 import { resolveDisplayAmounts, type ExpenseParty, type ExpenseSummary, type GroupMember } from "./types";
 
@@ -65,6 +66,7 @@ export function ExpenseDetail({ expense, members = [] }: { expense: ExpenseSumma
             : t.editedUnknown(formatTimestamp(expense.editedAt))}
         </p>
       )}
+      <ExpenseHistory expenseId={expense.id} />
     </div>
   );
 }

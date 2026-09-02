@@ -214,6 +214,45 @@ export const es = {
       body: "Próximamente.",
     },
   },
+  expenseHistory: {
+    heading: "Historial",
+    loading: "Cargando historial…",
+    error: "No se pudo cargar el historial. Intenta de nuevo.",
+    unknownActor: "Alguien",
+    unknownMember: "Miembro anterior",
+    none: "sin monto",
+    created: (actor: string, date: string) => `${actor} creó el gasto el ${date}`,
+    updated: (actor: string, date: string) => `${actor} editó el gasto el ${date}`,
+    deleted: (actor: string, date: string) => `${actor} eliminó el gasto el ${date}`,
+    changed: (field: string) => `Cambió ${field}`,
+    total: "el monto total",
+    field: (field: "title" | "expenseDate" | "splitStrategy" | "currency") => {
+      const labels = {
+        title: "el título",
+        expenseDate: "la fecha",
+        splitStrategy: "la forma de dividir",
+        currency: "la moneda",
+      };
+      return labels[field];
+    },
+    value: (field: "title" | "expenseDate" | "splitStrategy" | "currency", value: string) => {
+      if (field !== "splitStrategy") return value;
+      const strategy = {
+        equal: "partes iguales",
+        equal_subset: "partes iguales",
+        shares: "participaciones",
+        percentage: "porcentaje",
+        exact: "montos exactos",
+        loan: "préstamo",
+      } as Record<string, string>;
+      return strategy[value] ?? value;
+    },
+    party: (field: "payers" | "splits", change: "added" | "removed" | "changed", member: string) => {
+      const subject = field === "payers" ? "quien pagó" : "la parte de";
+      const verb = { added: "Agregó", removed: "Quitó", changed: "Cambió" }[change];
+      return `${verb} ${subject} ${member}`;
+    },
+  },
   balances: {
     simplifyLabel: "Simplificar deudas",
     paidLabel: "Pagó",
