@@ -268,11 +268,10 @@ export const es = {
       return `${verb} ${subject} ${member}`;
     },
   },
-  /** The Análisis tab charts (T081). "Sin categoría" is its own bucket,
+  /** The Análisis tab (T081, T082). "Sin categoría" is its own bucket,
    * never folded into "Otro". */
   insights: {
     overTime: "Gasto en el tiempo",
-    byMember: "Gasto por persona",
     byCategory: "Gasto por categoría",
     uncategorised: "Sin categoría",
     noData: "Sin datos todavía.",
@@ -282,6 +281,15 @@ export const es = {
     amountColumn: "Monto",
     chartDescription: (n: number) =>
       n === 1 ? "1 barra, de mayor a menor." : `${n} barras, de mayor a menor.`,
+    /** Per-member paid-vs-consumed (T082). */
+    breakdown: {
+      title: "Pagó vs. consumió",
+      paid: "Pagó",
+      consumed: "Consumió",
+      currentNet: "Balance actual",
+      netNote: "El balance actual incluye los pagos ya registrados; las barras, no.",
+      chartDescription: "Dos barras por persona: lo que pagó y lo que consumió, en la misma escala.",
+    },
     empty: {
       title: "Aún no hay nada que analizar",
       body: "Agrega algunos gastos y aquí verás en qué se va la plata.",

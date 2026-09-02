@@ -357,10 +357,10 @@ for preview only** — it never writes. Flipping the toggle for real is
 GET /api/groups/:id/insights    → 200 { displayCurrency, byCurrency[] }
 ```
 
-Server-computed spending aggregates for the Análisis tab charts (T081). The client renders and
-**never re-aggregates money** — same rule as balances. Takes no query parameters; the buckets
-come from the group's own expense dates. Membership is checked in the service, so a non-member
-and a removed member both get `404`.
+Server-computed spending aggregates plus the per-member breakdown for the Análisis tab (T081,
+T082). The client renders and **never re-aggregates money** — same rule as balances. Takes no
+query parameters; the buckets come from the group's own expense dates. Membership is checked in
+the service, so a non-member and a removed member both get `404`.
 
 ```json
 {
@@ -370,21 +370,31 @@ and a removed member both get `404`.
       "currency": "COP",
       "byDay":   [ { "key": "2026-08-24", "amount": "40000" } ],
       "byMonth":  [ { "key": "2026-08", "amount": "40000" } ],
-      "byMember": [ { "userId": "…ana", "amount": "25000" } ],
       "byCategory": [ { "category": "comida", "amount": "30000" },
-                      { "category": null, "amount": "10000" } ]
+                      { "category": null, "amount": "10000" } ],
+      "members": [
+        { "userId": "…ana", "paid": "40000", "consumed": "25000",
+          "expenseContribution": "15000", "sent": "0", "received": "0", "currentNet": "15000" }
+      ]
     }
   ]
 }
 ```
 
 - **One block per currency, never summed.** `byDay`/`byMonth` are period buckets over
-  `expense_date`; `byMember` totals each member's resolved split; `byCategory` totals by T090's
-  keys with **`null` kept as its own bucket** — never folded into `otro`. Every amount is a
-  minor-unit string in `currency`; only buckets with a positive total are returned.
-- `byMember`/`byCategory` are ordered biggest-first (ties broken by id / key); `byDay`/`byMonth`
+  `expense_date`; `byCategory` totals by T090's keys with **`null` kept as its own bucket** —
+  never folded into `otro`. Every amount is a minor-unit string in `currency`; only buckets with
+  a positive total are returned. `byCategory` is biggest-first (ties broken by key); the periods
   are chronological.
-- Settlements are not spending and never appear here. Soft-deleted expenses are excluded.
+- `members` (T082) is one row per member: **`paid`** (Σ payer rows), **`consumed`** (Σ split
+  rows), **`expenseContribution` = paid − consumed** (what the paired bars show), **`sent`** /
+  **`received`** (settlement rows), and **`currentNet` = expenseContribution + sent − received**,
+  which equals the balances endpoint's `net` exactly and is asserted `Σ currentNet == 0` per
+  currency. `expenseContribution` and `currentNet` are never both called simply "net". A current
+  member with no activity in a currency is an honest all-zeros row, not an absent one; a removed
+  member with historical rows stays visible. Ordered by `consumed` then `paid`, descending.
+- Settlements are not spending and never appear in the period/category buckets. Soft-deleted
+  expenses are excluded.
 - When the group has a display currency, there is a single block in that currency, each expense
   converted with its own id as the re-apportionment seed (so the charts agree with the balances
   tab to the minor unit), and the block carries `pins` — the same
