@@ -103,6 +103,7 @@ export const es = {
   groupTabs: {
     expenses: "Gastos",
     balances: "Balances",
+    insights: "Análisis",
     settings: "Ajustes",
   },
   money: {
@@ -265,6 +266,25 @@ export const es = {
       const subject = field === "payers" ? "quien pagó" : "la parte de";
       const verb = { added: "Agregó", removed: "Quitó", changed: "Cambió" }[change];
       return `${verb} ${subject} ${member}`;
+    },
+  },
+  /** The Análisis tab charts (T081). "Sin categoría" is its own bucket,
+   * never folded into "Otro". */
+  insights: {
+    overTime: "Gasto en el tiempo",
+    byMember: "Gasto por persona",
+    byCategory: "Gasto por categoría",
+    uncategorised: "Sin categoría",
+    noData: "Sin datos todavía.",
+    periodColumn: "Fecha",
+    memberColumn: "Persona",
+    categoryColumn: "Categoría",
+    amountColumn: "Monto",
+    chartDescription: (n: number) =>
+      n === 1 ? "1 barra, de mayor a menor." : `${n} barras, de mayor a menor.`,
+    empty: {
+      title: "Aún no hay nada que analizar",
+      body: "Agrega algunos gastos y aquí verás en qué se va la plata.",
     },
   },
   balances: {

@@ -7,11 +7,12 @@ import { Tab, TabsIndicator, TabsList, TabsRoot } from "../_ui/Tabs";
 
 const t = es.groupTabs;
 
-type TabValue = "expenses" | "balances" | "settings";
+type TabValue = "expenses" | "balances" | "insights" | "settings";
 
 const TABS: { value: TabValue; label: string; segment: string | null }[] = [
   { value: "expenses", label: t.expenses, segment: null },
   { value: "balances", label: t.balances, segment: "balances" },
+  { value: "insights", label: t.insights, segment: "insights" },
   { value: "settings", label: t.settings, segment: "ajustes" },
 ];
 

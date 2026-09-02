@@ -2,7 +2,7 @@
 id: T081
 title: Insights — spend over time, by member, and by category
 epic: E9-insights
-status: todo
+status: done
 depends_on: [T080, T044, T054, T090]
 size: L
 ---
@@ -31,38 +31,38 @@ Read [design-system.md](../../docs/frontend/design-system.md) — especially *Mo
 
 ## Acceptance criteria
 
-- [ ] `GET /api/groups/:id/insights` returns **server-computed** aggregates. The client renders and
+- [x] `GET /api/groups/:id/insights` returns **server-computed** aggregates. The client renders and
       never aggregates money itself — same rule as balances (frontend/CLAUDE.md § *Data loading*).
       Membership verified inside the service; non-member and removed member get `404`
-- [ ] Aggregates returned, each in minor units with an explicit currency:
+- [x] Aggregates returned, each in minor units with an explicit currency:
       **by period** (day and month buckets over `expense_date`), **by member** (what each member's
       splits total), and **by category** (T090's keys, with `null` bucketed as its own
       "sin categoría" entry — never silently folded into `otro`)
-- [ ] **Never sum across currencies.** A group with COP and USD returns one block per currency and
+- [x] **Never sum across currencies.** A group with COP and USD returns one block per currency and
       renders one chart per currency with its own heading. No combined total, and no layout that
       implies one. When a display currency is pinned, the converted figures are used and are
       **labelled as converted**, with the pin's date and source reachable — an unlabelled converted
       chart is the same trust bug as an unlabelled converted amount
-- [ ] Charts are hand-rolled SVG in `src/app/_ui/charts/`, one component per file under the
+- [x] Charts are hand-rolled SVG in `src/app/_ui/charts/`, one component per file under the
       100-line limit, driven entirely by design tokens. **No hardcoded colour anywhere**, correct
       in light and dark
-- [ ] **Colour is never the only encoding.** Every series carries a label, and every bar its value
+- [x] **Colour is never the only encoding.** Every series carries a label, and every bar its value
       as text. The `--credit`/`--debit` pair is 1.08:1 against each other and near-identical under
       deuteranopia — design-system.md spells this out; a legend that only differs by hue is not
       acceptable in this app
-- [ ] Accessible: each chart is `role="img"` with a `<title>`/`<desc>`, **and** the same numbers are
+- [x] Accessible: each chart is `role="img"` with a `<title>`/`<desc>`, **and** the same numbers are
       available as a visually-hidden table. A screen-reader user gets the data, not "chart"
-- [ ] Money rendered through `<Money>` / `src/lib/money/format.ts` everywhere a number is shown —
+- [x] Money rendered through `<Money>` / `src/lib/money/format.ts` everywhere a number is shown —
       axis labels included. No `Intl` call in a chart component. Tabular figures in any column
-- [ ] Works at 375px: no horizontal scroll, no overlapping tick labels, touch targets ≥ 44px. The
+- [x] Works at 375px: no horizontal scroll, no overlapping tick labels, touch targets ≥ 44px. The
       month axis degrades to abbreviated labels rather than rotating text
-- [ ] Empty and single-expense groups render a calm empty state, not an axis with no bars
-- [ ] Deleted expenses are excluded (`liveExpenses`); settlements are **not** spending and never
+- [x] Empty and single-expense groups render a calm empty state, not an axis with no bars
+- [x] Deleted expenses are excluded (`liveExpenses`); settlements are **not** spending and never
       appear in these totals
-- [ ] Tests: the aggregation service (per period, per member, per category, multi-currency, with
+- [x] Tests: the aggregation service (per period, per member, per category, multi-currency, with
       and without a pin), authorization, the null-category bucket, and that a component renders the
       hidden table. **Do not** snapshot-test SVG path strings — assert the values
-- [ ] `docs/context/api-contract.md` documents the endpoint
+- [x] `docs/context/api-contract.md` documents the endpoint
 
 ## Out of scope
 

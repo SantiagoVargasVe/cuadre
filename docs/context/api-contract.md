@@ -351,6 +351,50 @@ for preview only** — it never writes. Flipping the toggle for real is
 
 ---
 
+## Insights
+
+```
+GET /api/groups/:id/insights    → 200 { displayCurrency, byCurrency[] }
+```
+
+Server-computed spending aggregates for the Análisis tab charts (T081). The client renders and
+**never re-aggregates money** — same rule as balances. Takes no query parameters; the buckets
+come from the group's own expense dates. Membership is checked in the service, so a non-member
+and a removed member both get `404`.
+
+```json
+{
+  "displayCurrency": null,
+  "byCurrency": [
+    {
+      "currency": "COP",
+      "byDay":   [ { "key": "2026-08-24", "amount": "40000" } ],
+      "byMonth":  [ { "key": "2026-08", "amount": "40000" } ],
+      "byMember": [ { "userId": "…ana", "amount": "25000" } ],
+      "byCategory": [ { "category": "comida", "amount": "30000" },
+                      { "category": null, "amount": "10000" } ]
+    }
+  ]
+}
+```
+
+- **One block per currency, never summed.** `byDay`/`byMonth` are period buckets over
+  `expense_date`; `byMember` totals each member's resolved split; `byCategory` totals by T090's
+  keys with **`null` kept as its own bucket** — never folded into `otro`. Every amount is a
+  minor-unit string in `currency`; only buckets with a positive total are returned.
+- `byMember`/`byCategory` are ordered biggest-first (ties broken by id / key); `byDay`/`byMonth`
+  are chronological.
+- Settlements are not spending and never appear here. Soft-deleted expenses are excluded.
+- When the group has a display currency, there is a single block in that currency, each expense
+  converted with its own id as the re-apportionment seed (so the charts agree with the balances
+  tab to the minor unit), and the block carries `pins` — the same
+  `{ fromCurrency, toCurrency, rate, asOf, source }` rows the balances endpoint returns — so the
+  UI can label the figures as converted.
+- `RATE_UNAVAILABLE` (`422`) if a currency present in the group's activity has no matching pin,
+  the same as the balances endpoint.
+
+---
+
 ## Settlements
 
 ```

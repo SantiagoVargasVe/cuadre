@@ -17,6 +17,22 @@ export function formatCalendarDate(isoDate: string): string {
 }
 
 /**
+ * A `YYYY-MM` month key → an abbreviated label (`"ago 2026"`), for the
+ * insights time axis (T081) — month buckets degrade to short labels
+ * rather than rotating text at 375px. UTC-anchored, same reasoning as
+ * `formatCalendarDate`.
+ */
+const MONTH_LABEL_FORMATTER = new Intl.DateTimeFormat("es-CO", {
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+export function formatMonthLabel(monthKey: string): string {
+  return MONTH_LABEL_FORMATTER.format(new Date(`${monthKey}-01T00:00:00Z`));
+}
+
+/**
  * Formats a real instant (`editedAt`, `createdAt` — RFC 3339 UTC,
  * api-contract.md § *Conventions*), as opposed to a calendar date. Shown
  * in the viewer's own local time, deliberately — unlike a calendar date,
