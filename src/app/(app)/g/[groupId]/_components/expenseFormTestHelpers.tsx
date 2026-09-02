@@ -26,6 +26,7 @@ export const detailResponse: ExpenseSummary = {
     { userId: "beto", amount: "5000000", displayName: "Beto" },
   ],
   strategy: "equal",
+  category: null,
   converted: null,
   editedAt: null,
   editedBy: null,

@@ -9,6 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../../../../_ui/Dialog";
+import { CategoryBadge } from "./CategoryBadge";
 import { ExpenseDetail } from "./ExpenseDetail";
 import { resolveDisplayAmounts, wireToMoney, type ExpenseParty } from "./types";
 import type { ExpenseSummary, GroupMember } from "./types";
@@ -54,6 +55,11 @@ export function ExpenseRow({
             <span className="font-medium">{expense.title}</span>
             <Money value={display.total} converted={display.convertedFrom} className="font-medium" />
           </div>
+          {expense.category && (
+            <div>
+              <CategoryBadge categoryKey={expense.category} />
+            </div>
+          )}
           <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
             <span>
               {formatCalendarDate(expense.date)} · {paidByLabel(display.payers, myUserId)}

@@ -109,6 +109,17 @@ export const es = {
     convertedMarkerLabel: "Monto convertido",
     convertedFrom: (original: string, date: string) => `Convertido de ${original} el ${date}`,
   },
+  /** Labels for the fixed expense-category set (T090). The keys match
+   * EXPENSE_CATEGORY_KEYS in src/lib/categories.ts; the app never stores
+   * these strings, so translating them never touches data. */
+  categories: {
+    comida: "Comida",
+    alojamiento: "Alojamiento",
+    transporte: "Transporte",
+    mercado: "Mercado",
+    actividades: "Actividades",
+    otro: "Otro",
+  },
   common: {
     loading: "Cargando…",
     genericError: "Ocurrió un error. Intenta de nuevo.",
@@ -167,6 +178,9 @@ export const es = {
     amountLabel: "Monto",
     dateLabel: "Fecha",
     currencyLabel: "Moneda",
+    categoryLabel: "Categoría",
+    categoryHint: "Opcional",
+    categoryClear: (label: string) => `Quitar la categoría ${label}`,
     paidByYou: "Pagado por: tú",
     paidBySummary: (names: string[]) => `Pagado por: ${names.join(", ")}`,
     payersHeading: "¿Quién pagó?",

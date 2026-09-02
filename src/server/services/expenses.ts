@@ -1,6 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { isExpenseCategoryKey, type ExpenseCategoryKey } from "../../lib/categories";
 import type { SplitInput } from "../../lib/schemas/expenses";
 import {
   ExactAmountsDoNotBalanceError,
@@ -153,6 +154,9 @@ export interface CreateExpenseInput {
   currency: string;
   paidBy?: { userId: string; amount: string }[];
   split: SplitInput;
+  /** Fixed app-provided set (T090). `undefined` or `null` → uncategorised;
+   * a PATCH sends `null` to clear a category that was set. */
+  category?: ExpenseCategoryKey | null;
 }
 
 export interface ExpenseParty {
@@ -166,12 +170,21 @@ export interface ExpenseResult {
   payers: ExpenseParty[];
   splits: ExpenseParty[];
   strategy: string;
+  /** The fixed-set key (T090), or `null` when uncategorised. Never a label. */
+  category: ExpenseCategoryKey | null;
   version: number;
   editedAt: string | null;
 }
 
 function toParties(map: Map<string, bigint>): ExpenseParty[] {
   return [...map].map(([userId, amount]) => ({ userId, amount: amount.toString() }));
+}
+
+/** The `category_key` column is a plain `text` FK, so Drizzle types it as
+ * `string | null`; the seeded lookup table guarantees it's a known key or
+ * null. Narrow it back rather than casting. */
+function toCategory(value: string | null): ExpenseCategoryKey | null {
+  return isExpenseCategoryKey(value) ? value : null;
 }
 
 function toResult(
@@ -186,6 +199,7 @@ function toResult(
     payers: toParties(payers),
     splits: toParties(splits),
     strategy: expense.splitStrategy,
+    category: toCategory(expense.categoryKey),
     version: expense.version,
     editedAt,
   };
@@ -198,6 +212,7 @@ function buildSnapshot(expense: typeof expenses.$inferSelect, payers: Map<string
     totalAmount: expense.totalAmount.toString(),
     currency: expense.currency,
     splitStrategy: expense.splitStrategy,
+    category: expense.categoryKey,
     payers: toParties(payers),
     splits: toParties(splits),
   };
@@ -288,6 +303,7 @@ export async function createExpense(
         totalAmount,
         currency: input.currency,
         splitStrategy: input.split.strategy,
+        categoryKey: input.category ?? null,
         createdBy: userId,
         updatedBy: userId,
       })
@@ -359,6 +375,9 @@ export async function updateExpense(
         totalAmount,
         currency: input.currency,
         splitStrategy: input.split.strategy,
+        // PATCH replaces the whole expense, so an omitted or null category
+        // clears one that was set (T090).
+        categoryKey: input.category ?? null,
         updatedBy: userId,
         version,
         updatedAt: new Date(),
@@ -460,6 +479,9 @@ export interface ExpenseSummary {
   payers: ExpensePartyWithName[];
   splits: ExpensePartyWithName[];
   strategy: string;
+  /** The fixed-set category key (T090), or `null` when uncategorised.
+   * Always a key, never a label — the client maps it through i18n. */
+  category: ExpenseCategoryKey | null;
   /** Present only when the group has a display currency different from this expense's own (T054). */
   converted: ConvertedAmounts | null;
   /** `null` for a never-edited expense (`version === 1`) — on the feed row
@@ -616,6 +638,7 @@ function toSummary(
     payers,
     splits,
     strategy: expense.splitStrategy,
+    category: toCategory(expense.categoryKey),
     converted: convertForFeed(expense, payers, splits, ctx),
     editedAt: wasEdited ? expense.updatedAt.toISOString() : null,
     editedBy: editorName ? { userId: expense.updatedBy!, displayName: editorName } : null,
@@ -753,6 +776,9 @@ export interface ExpenseForExport {
   payers: ExpensePartyWithName[];
   splits: ExpensePartyWithName[];
   strategy: string;
+  /** The fixed-set key (T090), or `null` when uncategorised. The CSV emits
+   * the key verbatim so the file survives a locale change. */
+  category: ExpenseCategoryKey | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -798,6 +824,7 @@ export async function listAllExpensesForExport(
     payers: payersByExpense.get(row.id) ?? [],
     splits: splitsByExpense.get(row.id) ?? [],
     strategy: row.splitStrategy,
+    category: toCategory(row.categoryKey),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   }));

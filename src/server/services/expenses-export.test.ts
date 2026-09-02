@@ -96,6 +96,22 @@ describe.skipIf(!hasTestDatabase)("exportExpensesCsv", () => {
     ]));
   });
 
+  it("carries the category key verbatim, and an empty cell when uncategorised (T090)", async () => {
+    const { groupId, memberIds } = await seedGroup(["Ana"]);
+    const userId = memberIds[0]!;
+    await createExpense(groupId, userId, {
+      title: "Con categoría", date: "2026-08-24", amount: "1000", currency: "COP",
+      split: { strategy: "equal" }, category: "comida",
+    });
+    await createExpense(groupId, userId, {
+      title: "Sin categoría", date: "2026-08-25", amount: "1000", currency: "COP",
+      split: { strategy: "equal" },
+    });
+
+    const result = await records(groupId, userId);
+    expect(result.records.map((row) => row.category)).toEqual(["comida", ""]);
+  });
+
   it("orders live rows by date then id and retains each entered currency", async () => {
     const { groupId, memberIds } = await seedGroup(["Ana"]);
     const userId = memberIds[0]!;

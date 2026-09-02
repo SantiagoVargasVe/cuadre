@@ -1,4 +1,5 @@
 import { apiFetch } from "../../../../../lib/api/client";
+import type { ExpenseCategoryKey } from "../../../../../lib/categories";
 import { parseAmountInput } from "../../../../../lib/money/format";
 import type { SplitInput } from "../../../../../lib/schemas/expenses";
 import type { ExpenseFormValues } from "./expenseFormSchema";
@@ -18,6 +19,7 @@ export async function submitExpense(
   data: ExpenseFormValues,
   payers: Payer[] | null,
   split: SplitInput,
+  category: ExpenseCategoryKey | null,
 ): Promise<ExpenseSummary> {
   const amount = parseAmountInput(data.amountRaw, data.currency);
   const created = await apiFetch<{ id: string }>(`/api/groups/${groupId}/expenses`, {
@@ -29,6 +31,7 @@ export async function submitExpense(
       currency: data.currency,
       ...(payers ? { paidBy: payers.map((p) => ({ userId: p.userId, amount: p.amount.toString() })) } : {}),
       split,
+      ...(category ? { category } : {}),
     },
   });
   return apiFetch<ExpenseSummary>(`/api/expenses/${created.id}`);

@@ -2,6 +2,7 @@ import { formatCalendarDate, formatTimestamp } from "../../../../../lib/date/for
 import { es } from "../../../../../lib/i18n/es";
 import { Avatar } from "../../../../_ui/Avatar";
 import { Money } from "../../../../_ui/Money";
+import { CategoryBadge } from "./CategoryBadge";
 import { buildMemberLookup, type MemberLookup } from "./memberLookup";
 import { ExpenseHistory } from "./ExpenseHistory";
 import { strategyPhrase } from "./strategyPhrase";
@@ -41,6 +42,7 @@ export function ExpenseDetail({ expense, members = [] }: { expense: ExpenseSumma
         <span className="text-sm text-muted-foreground">{formatCalendarDate(expense.date)}</span>
         <Money value={display.total} converted={display.convertedFrom} className="text-lg font-semibold" />
       </div>
+      {expense.category && <CategoryBadge categoryKey={expense.category} />}
       <div className="flex flex-col gap-1">
         <h3 className="text-sm font-medium text-muted-foreground">{t.payersHeading}</h3>
         {display.payers.map((payer) => (

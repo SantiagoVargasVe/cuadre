@@ -1,4 +1,5 @@
 import type { AvatarChoice } from "../../../../../lib/avatar";
+import type { ExpenseCategoryKey } from "../../../../../lib/categories";
 
 /**
  * Mirrors `ExpenseSummary`/`ExpenseListResult` (server/services/expenses.ts)
@@ -32,6 +33,8 @@ export interface ExpenseSummary {
   payers: ExpenseParty[];
   splits: ExpenseParty[];
   strategy: string;
+  /** Fixed-set category key (T090), or `null` when uncategorised — never a label. */
+  category: ExpenseCategoryKey | null;
   converted: ConvertedAmounts | null;
   editedAt: string | null;
   editedBy: EditedBy | null;

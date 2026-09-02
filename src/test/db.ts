@@ -26,13 +26,16 @@ let client: postgres.Sql | undefined;
 let db: ReturnType<typeof drizzle<typeof schema>> | undefined;
 
 /**
- * Reference data seeded by migration (currencies.ts § currencies), not a
- * per-test fixture. Truncating it between tests would wipe rows nothing
- * re-inserts, breaking every later test in the file that depends on a
- * `currencies` FK (e.g. groups.default_currency) — confirmed empirically
- * when T020 added the first such FK.
+ * Reference data seeded by migration, not a per-test fixture. Truncating
+ * it between tests would wipe rows nothing re-inserts, breaking every
+ * later test in the file that depends on the FK — confirmed empirically
+ * when T020 added the first such FK (`groups.default_currency`).
+ *
+ * - `currencies` — seeded by migration 0002.
+ * - `expense_categories` — seeded by migration 0009 (T090);
+ *   `expenses.category_key` references it.
  */
-const SEED_TABLES = new Set(["currencies"]);
+const SEED_TABLES = new Set(["currencies", "expense_categories"]);
 
 /**
  * Call at the top of an integration test file's `describe.skipIf(!hasTestDatabase)`

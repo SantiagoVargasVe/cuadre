@@ -164,6 +164,21 @@ export const inviteCodes = pgTable(
 );
 
 /**
+ * Reference data, seeded by migration (see 0009) — the same lookup-table
+ * shape as `currencies`, deliberately **not** a `pgEnum`, so a seventh
+ * category is an `INSERT` rather than an enum `ALTER` (T090).
+ *
+ * Keys only: no user-facing label is stored here. The Spanish labels live
+ * in `src/lib/i18n/es.ts` under `categories.*`. `sort_order` is the
+ * display order and mirrors `EXPENSE_CATEGORY_KEYS` in
+ * `src/lib/categories.ts`.
+ */
+export const expenseCategories = pgTable("expense_categories", {
+  key: text("key").primaryKey(),
+  sortOrder: smallint("sort_order").notNull(),
+});
+
+/**
  * Advisory only — the balance engine never reads this (ADR-0005). Stored
  * so the edit form reopens in the mode the expense was created in.
  */
@@ -199,6 +214,11 @@ export const expenses = pgTable(
       .notNull()
       .references(() => currencies.code),
     splitStrategy: splitStrategy("split_strategy").notNull(),
+    // Nullable on purpose (T090): `null` means "nobody categorised this",
+    // which is honestly what every expense predating T090 is — distinct
+    // from an explicit `otro`. No backfill. FK to the seeded lookup table
+    // makes an unknown key a database error, not a silent write.
+    categoryKey: text("category_key").references(() => expenseCategories.key),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
     updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
     version: integer("version").notNull().default(1),

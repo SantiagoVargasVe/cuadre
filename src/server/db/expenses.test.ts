@@ -1,7 +1,16 @@
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { EXPENSE_CATEGORY_KEYS } from "../../lib/categories";
 import { hasTestDatabase, setupTestDb, getTestDb } from "../../test/db";
-import { expensePayers, expenseSplits, expenses, groupMembers, groups, users } from "./schema";
+import {
+  expenseCategories,
+  expensePayers,
+  expenseSplits,
+  expenses,
+  groupMembers,
+  groups,
+  users,
+} from "./schema";
 
 const DATABASE_URL_TEST = process.env.DATABASE_URL_TEST;
 
@@ -331,6 +340,67 @@ describe.skipIf(!hasTestDatabase)("expenses ledger schema", () => {
 
       const results = await liveExpenses(groupId);
       expect(results.map((e) => e.id)).toEqual([newer.id, older.id]);
+    });
+  });
+
+  describe("expense categories (T090)", () => {
+    async function insertExpenseWithCategory(
+      groupId: string,
+      ownerId: string,
+      categoryKey: string | null,
+    ) {
+      return getTestDb().transaction(async (tx) => {
+        const [expense] = await tx
+          .insert(expenses)
+          .values({
+            groupId,
+            title: "Categorised",
+            expenseDate: "2026-08-24",
+            totalAmount: 100n,
+            currency: "COP",
+            splitStrategy: "equal",
+            categoryKey,
+            createdBy: ownerId,
+          })
+          .returning();
+        await tx
+          .insert(expensePayers)
+          .values({ expenseId: expense!.id, groupId, userId: ownerId, amount: 100n });
+        await tx
+          .insert(expenseSplits)
+          .values({ expenseId: expense!.id, groupId, userId: ownerId, amount: 100n });
+        return expense!;
+      });
+    }
+
+    it("seeds exactly the fixed taxonomy, in EXPENSE_CATEGORY_KEYS order", async () => {
+      const rows = await getTestDb()
+        .select()
+        .from(expenseCategories)
+        .orderBy(asc(expenseCategories.sortOrder));
+      expect(rows.map((r) => r.key)).toEqual([...EXPENSE_CATEGORY_KEYS]);
+    });
+
+    it("round-trips a known category key through the FK", async () => {
+      const { ownerId, groupId } = await seedGroupWithOwner();
+      const expense = await insertExpenseWithCategory(groupId, ownerId, "comida");
+      const [row] = await getTestDb().select().from(expenses).where(eq(expenses.id, expense.id));
+      expect(row?.categoryKey).toBe("comida");
+    });
+
+    it("stores null for an uncategorised expense", async () => {
+      const { ownerId, groupId } = await seedGroupWithOwner();
+      const expense = await insertExpenseWithCategory(groupId, ownerId, null);
+      const [row] = await getTestDb().select().from(expenses).where(eq(expenses.id, expense.id));
+      expect(row?.categoryKey).toBeNull();
+    });
+
+    it("rejects an unknown category key at the database, not silently", async () => {
+      const { ownerId, groupId } = await seedGroupWithOwner();
+      await expect(insertExpenseWithCategory(groupId, ownerId, "food")).rejects.toThrow();
+      expect(
+        await getTestDb().select().from(expenses).where(eq(expenses.groupId, groupId)),
+      ).toHaveLength(0);
     });
   });
 });
