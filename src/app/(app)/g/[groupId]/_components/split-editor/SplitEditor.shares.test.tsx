@@ -1,22 +1,19 @@
 import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { lastCall, renderOpenEditor } from "./splitEditorTestHelpers";
+import { renderOpenEditor } from "./splitEditorTestHelpers";
 
 describe("SplitEditor — shares", () => {
   it("defaults every member to 1 share and resolves an equal split", async () => {
-    const { onChange, user } = await renderOpenEditor(9000000n);
+    const { controller, user } = await renderOpenEditor(9000000n);
     await user.click(screen.getByRole("radio", { name: "Por partes" }));
 
     await waitFor(() =>
-      expect(lastCall(onChange)).toEqual([
-        { strategy: "shares", weights: { ana: 1, beto: 1, caro: 1 } },
-        true,
-      ]),
+      expect(controller().splitInput).toEqual({ strategy: "shares", weights: { ana: 1, beto: 1, caro: 1 } }),
     );
   });
 
   it("re-derives shares from the amounts when the couple counts as two", async () => {
-    const { onChange, user } = await renderOpenEditor(9000000n);
+    const { controller, user } = await renderOpenEditor(9000000n);
     await user.click(screen.getByRole("radio", { name: "Por partes" }));
 
     const anaStepper = screen.getByRole("textbox", { name: "Ana: partes" });
@@ -25,10 +22,7 @@ describe("SplitEditor — shares", () => {
     await user.tab();
 
     await waitFor(() =>
-      expect(lastCall(onChange)).toEqual([
-        { strategy: "shares", weights: { ana: 2, beto: 1, caro: 1 } },
-        true,
-      ]),
+      expect(controller().splitInput).toEqual({ strategy: "shares", weights: { ana: 2, beto: 1, caro: 1 } }),
     );
     // 9.000.000 minor units (90.000 COP) split 2:1:1 → Ana gets half.
     expect(screen.getByText(/^\$\s45\.000$/)).toBeInTheDocument();

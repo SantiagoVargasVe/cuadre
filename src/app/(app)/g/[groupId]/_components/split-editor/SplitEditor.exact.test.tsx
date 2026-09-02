@@ -1,18 +1,18 @@
 import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { lastCall, renderOpenEditor } from "./splitEditorTestHelpers";
+import { renderOpenEditor } from "./splitEditorTestHelpers";
 
 describe("SplitEditor — exact", () => {
   it("prefills an even split that already balances", async () => {
-    const { onChange, user } = await renderOpenEditor(9000000n);
+    const { controller, user } = await renderOpenEditor(9000000n);
     await user.click(screen.getByRole("radio", { name: "Monto exacto" }));
 
-    await waitFor(() => expect(lastCall(onChange)[1]).toBe(true));
+    await waitFor(() => expect(controller().preview).not.toBeNull());
     expect(screen.getByText("Balanceado")).toBeInTheDocument();
   });
 
   it("shows a live money remainder while amounts don't sum to the total", async () => {
-    const { onChange, user } = await renderOpenEditor(10000000n);
+    const { controller, user } = await renderOpenEditor(10000000n);
     await user.click(screen.getByRole("radio", { name: "Monto exacto" }));
 
     const anaAmount = screen.getByRole("textbox", { name: "Ana" });
@@ -20,11 +20,11 @@ describe("SplitEditor — exact", () => {
     await user.type(anaAmount, "1000");
 
     expect(await screen.findByText(/^Faltan /)).toBeInTheDocument();
-    await waitFor(() => expect(lastCall(onChange)[1]).toBe(false));
+    await waitFor(() => expect(controller().preview).toBeNull());
   });
 
   it("resolves exact amounts to precisely what was typed, e.g. 42.000", async () => {
-    const { onChange, user } = await renderOpenEditor(10000000n);
+    const { controller, user } = await renderOpenEditor(10000000n);
     await user.click(screen.getByRole("radio", { name: "Monto exacto" }));
     await user.click(screen.getByRole("checkbox", { name: "Caro" }));
 
@@ -36,10 +36,7 @@ describe("SplitEditor — exact", () => {
     await user.type(betoAmount, "58000");
 
     await waitFor(() =>
-      expect(lastCall(onChange)).toEqual([
-        { strategy: "exact", amounts: { ana: "4200000", beto: "5800000" } },
-        true,
-      ]),
+      expect(controller().splitInput).toEqual({ strategy: "exact", amounts: { ana: "4200000", beto: "5800000" } }),
     );
   });
 });

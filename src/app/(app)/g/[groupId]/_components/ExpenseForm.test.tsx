@@ -60,4 +60,23 @@ describe("ExpenseForm", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Los pagadores no suman el total");
   });
+
+  it("updates the save gate synchronously as an exact split becomes invalid and valid again", async () => {
+    renderForm();
+    const user = userEvent.setup();
+
+    await fillTitleAndAmount(user);
+    await user.click(screen.getByText("Dividido: entre todos"));
+    await user.click(screen.getByRole("radio", { name: "Monto exacto" }));
+
+    const anaAmount = screen.getByRole("textbox", { name: "Ana" });
+    const betoAmount = screen.getByRole("textbox", { name: "Beto" });
+    await user.clear(anaAmount);
+    await user.type(anaAmount, "40000");
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
+
+    await user.clear(betoAmount);
+    await user.type(betoAmount, "60000");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Guardar" })).toBeEnabled());
+  });
 });

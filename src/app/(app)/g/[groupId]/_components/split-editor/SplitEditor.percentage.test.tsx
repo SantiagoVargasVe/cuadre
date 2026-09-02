@@ -1,14 +1,14 @@
 import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { lastCall, renderOpenEditor } from "./splitEditorTestHelpers";
+import { renderOpenEditor } from "./splitEditorTestHelpers";
 
 describe("SplitEditor — percentage", () => {
   it("derives an even split summing to exactly 10000 basis points", async () => {
-    const { onChange, user } = await renderOpenEditor();
+    const { controller, user } = await renderOpenEditor();
     await user.click(screen.getByRole("radio", { name: "Porcentaje" }));
 
     await waitFor(() => {
-      const [split] = lastCall(onChange);
+      const split = controller().splitInput;
       const sum = Object.values((split as { basisPoints: Record<string, number> }).basisPoints).reduce(
         (total, bp) => total + bp,
         0,
@@ -18,7 +18,7 @@ describe("SplitEditor — percentage", () => {
   });
 
   it("shows a live remainder in percentage points while it doesn't sum to 100%", async () => {
-    const { onChange, user } = await renderOpenEditor(10000n);
+    const { controller, user } = await renderOpenEditor(10000n);
     await user.click(screen.getByRole("radio", { name: "Porcentaje" }));
 
     const anaPercent = screen.getByRole("textbox", { name: "Ana: %" });
@@ -27,11 +27,11 @@ describe("SplitEditor — percentage", () => {
     await user.tab();
 
     expect(await screen.findByText(/^Falta /)).toBeInTheDocument();
-    await waitFor(() => expect(lastCall(onChange)[1]).toBe(false));
+    await waitFor(() => expect(controller().preview).toBeNull());
   });
 
   it("resolves 60/40 to exactly 6000/4000 basis points, never a float", async () => {
-    const { onChange, user } = await renderOpenEditor(10000n);
+    const { controller, user } = await renderOpenEditor(10000n);
     await user.click(screen.getByRole("radio", { name: "Porcentaje" }));
     await user.click(screen.getByRole("checkbox", { name: "Caro" }));
 
@@ -44,10 +44,7 @@ describe("SplitEditor — percentage", () => {
     await user.tab();
 
     await waitFor(() =>
-      expect(lastCall(onChange)).toEqual([
-        { strategy: "percentage", basisPoints: { ana: 6000, beto: 4000 } },
-        true,
-      ]),
+      expect(controller().splitInput).toEqual({ strategy: "percentage", basisPoints: { ana: 6000, beto: 4000 } }),
     );
   });
 });
