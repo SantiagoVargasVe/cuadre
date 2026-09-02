@@ -357,10 +357,10 @@ for preview only** — it never writes. Flipping the toggle for real is
 GET /api/groups/:id/insights    → 200 { displayCurrency, byCurrency[] }
 ```
 
-Server-computed spending aggregates plus the per-member breakdown for the Análisis tab (T081,
-T082). The client renders and **never re-aggregates money** — same rule as balances. Takes no
-query parameters; the buckets come from the group's own expense dates. Membership is checked in
-the service, so a non-member and a removed member both get `404`.
+Server-computed spending aggregates, the per-member breakdown, and a one-glance summary for the
+Análisis tab (T081, T082, T084). The client renders and **never re-aggregates money** — same rule
+as balances. Takes no query parameters; the buckets come from the group's own expense dates.
+Membership is checked in the service, so a non-member and a removed member both get `404`.
 
 ```json
 {
@@ -368,6 +368,14 @@ the service, so a non-member and a removed member both get `404`.
   "byCurrency": [
     {
       "currency": "COP",
+      "summary": {
+        "totalSpent": "120000", "expenseCount": 3,
+        "firstExpenseDate": "2026-08-20", "lastExpenseDate": "2026-09-01",
+        "averagePerExpense": "40000",
+        "largestExpense": { "title": "Hotel", "amount": "80000", "currency": "COP",
+                            "payers": ["Ana", "Beto"] },
+        "carrying": { "userId": "…ana", "amount": "34000" }
+      },
       "byDay":   [ { "key": "2026-08-24", "amount": "40000" } ],
       "byMonth":  [ { "key": "2026-08", "amount": "40000" } ],
       "byCategory": [ { "category": "comida", "amount": "30000" },
@@ -381,6 +389,14 @@ the service, so a non-member and a removed member both get `404`.
 }
 ```
 
+- `summary` (T084) considers **live expenses only** — settlements are not spending.
+  `averagePerExpense` is `totalSpent / expenseCount` floored to a minor unit (`"0"` with no
+  expenses). `largestExpense` breaks a total tie by the earliest `expense_date`, then the lowest
+  expense id, and lists payer **display names**; it is `null` for a currency with no expenses.
+  `carrying` is the member with the largest **positive `currentNet`** (settlement-aware, so it
+  agrees with balances), tie broken by lowest user id, and **`null` when nobody is up** — an
+  all-settled group. When a display currency is pinned, every figure (largest expense included)
+  is computed from the converted, re-apportioned amounts.
 - **One block per currency, never summed.** `byDay`/`byMonth` are period buckets over
   `expense_date`; `byCategory` totals by T090's keys with **`null` kept as its own bucket** —
   never folded into `otro`. Every amount is a minor-unit string in `currency`; only buckets with

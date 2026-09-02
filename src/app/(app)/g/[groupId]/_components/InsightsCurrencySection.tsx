@@ -7,6 +7,7 @@ import { BarSeries } from "../../../../_ui/charts/BarSeries";
 import { ChartFrame } from "../../../../_ui/charts/ChartFrame";
 import { HiddenDataTable } from "../../../../_ui/charts/HiddenDataTable";
 import { MemberBreakdown } from "../insights/_components/MemberBreakdown";
+import { SummaryCard } from "../insights/_components/SummaryCard";
 import { categoryChartData, periodChartData, type ChartData } from "./insightsBars";
 import type { CurrencyInsightsView } from "./insightsTypes";
 
@@ -73,6 +74,7 @@ export function InsightsCurrencySection({
           </TooltipRoot>
         )}
       </div>
+      <SummaryCard summary={block.summary} currency={block.currency} nameOf={nameOf} />
       <Chart title={t.overTime} unit={t.periodColumn} data={overTime} />
       <MemberBreakdown members={block.members} currency={block.currency} nameOf={nameOf} />
       <Chart title={t.byCategory} unit={t.categoryColumn} data={categoryChartData(block.byCategory, block.currency)} />
