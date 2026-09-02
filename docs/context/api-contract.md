@@ -123,6 +123,7 @@ GET    /api/groups/:id/expenses.csv                       → 200 text/csv
 GET    /api/expenses/:id                                  → 200 { expense }
 PATCH  /api/expenses/:id                                  → 200 { expense }
 DELETE /api/expenses/:id                                  → 204
+GET    /api/expenses/:id/revisions                        → 200 { revisions[] }
 ```
 
 ### Creating an expense
@@ -223,6 +224,21 @@ longer exists (`updated_by`'s FK is `ON DELETE SET NULL`) — "when" and "who" a
 
 The single-expense detail (`GET /api/expenses/:id`, and the `PATCH`/`POST` responses) additionally
 carries `version`.
+
+### Revision history
+
+`GET /api/expenses/:id/revisions` returns revisions newest first. It is an id-addressed read:
+the service loads the expense, checks the acting user is a current member of *that row's* group,
+and returns `404` for a non-member, removed member, soft-deleted expense, or unknown id.
+
+Each revision carries `version`, `action` (`created`, `updated`, or `deleted`), `changedAt`, and
+`changedBy` (`{ userId, displayName }` or `null`). `changedBy` may be null when an account no
+longer exists; its timestamp remains intact. `created` and `deleted` revisions have `changes: []`.
+For `updated`, `changes[]` is a server-computed diff against the preceding snapshot: scalar title,
+expense date, total, currency, and split strategy changes plus payer/split member additions,
+removals, and amount changes. Money values use the standard wire shape (`{ amount, currency }`),
+with each side retaining its own currency. Snapshots themselves — and therefore email addresses —
+are never returned.
 
 ### Reading, with a display currency set
 

@@ -1,8 +1,21 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ExpenseRow } from "./ExpenseRow";
 import type { ExpenseSummary } from "./types";
+
+/** ExpenseDetail nests ExpenseHistory, which calls useQuery — the dialog
+ * needs a client in context even though history stays collapsed and fetches
+ * nothing in these tests. */
+function renderRow(ui: ReactNode) {
+  return render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      {ui}
+    </QueryClientProvider>,
+  );
+}
 
 /** The T102 concern: the row is a discoverable, network-free dialog trigger. */
 const expense: ExpenseSummary = {
@@ -25,7 +38,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("ExpenseRow — discoverable detail (T102)", () => {
   it("announces itself as a dialog trigger whose name is the expense, not 'button'", () => {
-    render(<ExpenseRow expense={expense} myUserId="ana" />);
+    renderRow(<ExpenseRow expense={expense} myUserId="ana" />);
     const trigger = screen.getByRole("button");
     expect(trigger).toHaveAttribute("aria-haspopup", "dialog");
     expect(trigger).toHaveAccessibleName(/Cena en Cartagena/);
@@ -36,7 +49,7 @@ describe("ExpenseRow — discoverable detail (T102)", () => {
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
 
-    render(<ExpenseRow expense={expense} myUserId="ana" />);
+    renderRow(<ExpenseRow expense={expense} myUserId="ana" />);
     await user.click(screen.getByRole("button"));
 
     // payers/splits on the row are complete — a per-expense fetch would fan

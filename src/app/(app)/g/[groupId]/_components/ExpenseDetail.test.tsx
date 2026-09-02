@@ -1,4 +1,6 @@
 import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { ExpenseDetail } from "./ExpenseDetail";
 import type { ExpenseSummary } from "./types";
@@ -22,15 +24,23 @@ const expense: ExpenseSummary = {
   editedBy: null,
 };
 
+function renderDetail(ui: ReactNode) {
+  return render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      {ui}
+    </QueryClientProvider>,
+  );
+}
+
 describe("ExpenseDetail", () => {
   it("states how the expense was divided, in words, from the strategy", () => {
-    render(<ExpenseDetail expense={expense} />);
+    renderDetail(<ExpenseDetail expense={expense} />);
     // strategy "equal", 2 splits.
     expect(screen.getByText("En partes iguales entre 2 personas")).toBeInTheDocument();
   });
 
   it("names the beneficiary for a loan", () => {
-    render(
+    renderDetail(
       <ExpenseDetail
         expense={{
           ...expense,
@@ -52,14 +62,14 @@ describe("ExpenseDetail", () => {
       loan: /Préstamo a/,
     };
     for (const [strategy, re] of Object.entries(phrases)) {
-      const { unmount } = render(<ExpenseDetail expense={{ ...expense, strategy }} />);
+      const { unmount } = renderDetail(<ExpenseDetail expense={{ ...expense, strategy }} />);
       expect(screen.getByText(re)).toBeInTheDocument();
       unmount();
     }
   });
 
   it("renders the full payer and split breakdown", () => {
-    render(<ExpenseDetail expense={expense} />);
+    renderDetail(<ExpenseDetail expense={expense} />);
 
     // The total and Ana's payer line both read $300.000, since she paid
     // the whole thing — asserting the count keeps this honest either way.
@@ -70,7 +80,7 @@ describe("ExpenseDetail", () => {
   });
 
   it("marks a converted total with the original amount reachable", () => {
-    render(
+    renderDetail(
       <ExpenseDetail
         expense={{
           ...expense,
