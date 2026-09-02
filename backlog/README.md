@@ -79,6 +79,7 @@ establish that.
 | **E9** insights | Charts, CSV export, revision diffs | T080–T084 | post-MVP |
 | **E10** quality-of-life | Categories, receipts, recurring, comments, notifications, PWA | T090–T095 | post-MVP |
 | **E12** first-use | Fixes and clarity from the first real use of the deployed app | T100–T109 | post-MVP |
+| **E13** code health | The real subset of a static-analysis pass, plus the list of non-issues | T111–T112 | post-MVP |
 
 Sequencing rationale is in [docs/roadmap.md](../docs/roadmap.md). The short version: the ledger
 has to be trustworthy before anything is built on top of it, so the money math lands in M3–M4 and
@@ -226,6 +227,21 @@ in particular.
   display-name editing first. Spun off from T108 rather than growing it
 - `T110` Edit and delete expenses from the expense detail — complete the UI for T035's versioned
   full-replacement edits and soft deletes
+
+**E13 — Code health** · post-MVP
+
+From a `react-doctor` pass over `main` on 2026-09-01 — 67 findings, 20 rules. Triaged, not swept:
+most don't apply here. `server-sequential-independent-await` fired 28 times and is almost all
+`await params` (free in Next 15) plus synchronous `requireUserId`; `js-combine-iterations` is
+two-pass array work over group-size lists; the hydration-flicker hits are deliberate
+`nanoid` / `next-themes` guards that already carry explaining comments. The task files keep the
+full "checked, not changing, why" list so it isn't re-triaged later.
+
+- `T111` The safe subset — Zod-4 string formats (Zod is on v4), `next/link` on the two auth
+  pages, dead exports, and the three service reads that genuinely are independent once the auth
+  gate has passed. Plus the non-issues list.
+- `T112` Lift the split-editor's state into the expense form, dropping the `onChange`-inside-
+  `useEffect` mirror. Real, but money-path — kept out of T111 on purpose.
 
 Open design questions that are **not** backlog items — cross-group balances, user deletion,
 per-member display currency, password reset, multi-instance — are listed in
