@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import type { AvatarChoice } from "../../lib/avatar";
 import { requireMembership, requireOwner } from "../auth/membership";
 import { avatarColumns, toAvatarChoice } from "../db/avatar";
@@ -43,7 +43,13 @@ export interface MemberSummary {
   avatar: AvatarChoice | null;
 }
 
-/** Never emails (security.md § Privacy) — display name, id, avatar choice only. */
+/**
+ * Never emails (security.md § Privacy) — display name, id, avatar choice
+ * only. Ordered by `joined_at` (oldest first, matching the join dates the
+ * settings UI renders), then `user_id` as a deterministic tiebreak for
+ * members added in the same statement — without it Postgres returns heap
+ * order, which flips between runs.
+ */
 export async function listMembers(groupId: string, userId: string): Promise<MemberSummary[]> {
   await requireMembership(groupId, userId);
 
@@ -57,7 +63,8 @@ export async function listMembers(groupId: string, userId: string): Promise<Memb
     })
     .from(groupMembers)
     .innerJoin(users, eq(users.id, groupMembers.userId))
-    .where(and(eq(groupMembers.groupId, groupId), isNull(groupMembers.removedAt)));
+    .where(and(eq(groupMembers.groupId, groupId), isNull(groupMembers.removedAt)))
+    .orderBy(asc(groupMembers.joinedAt), asc(groupMembers.userId));
 
   return rows.map((row) => ({
     userId: row.userId,

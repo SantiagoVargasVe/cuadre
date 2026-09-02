@@ -37,7 +37,7 @@ describe.skipIf(!hasTestDatabase)("members service", () => {
 
   afterAll(() => vi.unstubAllEnvs());
 
-  async function seedGroup(roles: ("owner" | "member")[]) {
+  async function seedUsersAndGroup(roles: ("owner" | "member")[]) {
     const db = getTestDb();
     const memberIds: string[] = [];
     for (let i = 0; i < roles.length; i++) {
@@ -51,10 +51,24 @@ describe.skipIf(!hasTestDatabase)("members service", () => {
       .insert(groups)
       .values({ title: "Trip", defaultCurrency: "COP", createdBy: memberIds[0] })
       .returning();
+    return { db, groupId: group!.id, memberIds };
+  }
+
+  async function seedGroup(roles: ("owner" | "member")[]) {
+    const { db, groupId, memberIds } = await seedUsersAndGroup(roles);
     for (let i = 0; i < memberIds.length; i++) {
-      await db.insert(groupMembers).values({ groupId: group!.id, userId: memberIds[i]!, role: roles[i]! });
+      await db.insert(groupMembers).values({ groupId, userId: memberIds[i]!, role: roles[i]! });
     }
-    return { groupId: group!.id, memberIds };
+    return { groupId, memberIds };
+  }
+
+  /** One insert statement => one transaction timestamp => identical joined_at. */
+  async function seedGroupSameJoinTime(roles: ("owner" | "member")[]) {
+    const { db, groupId, memberIds } = await seedUsersAndGroup(roles);
+    await db
+      .insert(groupMembers)
+      .values(memberIds.map((userId, i) => ({ groupId, userId, role: roles[i]! })));
+    return { groupId, memberIds };
   }
 
   it("lists current members without email addresses", async () => {
@@ -64,6 +78,45 @@ describe.skipIf(!hasTestDatabase)("members service", () => {
     expect(members).toHaveLength(2);
     expect(members.map((m) => m.role).sort()).toEqual(["member", "owner"]);
     for (const member of members) expect(member).not.toHaveProperty("email");
+  });
+
+  it("orders members by join time — oldest first — not insertion or heap order", async () => {
+    const db = getTestDb();
+    const ids: string[] = [];
+    for (const name of ["Cee", "Ay", "Bee"]) {
+      const [user] = await db
+        .insert(users)
+        .values({ email: `${crypto.randomUUID()}@example.com`, displayName: name, passwordHash: "x" })
+        .returning();
+      ids.push(user!.id);
+    }
+    const [group] = await db
+      .insert(groups)
+      .values({ title: "Trip", defaultCurrency: "COP", createdBy: ids[0] })
+      .returning();
+    // Insert in one order; set joined_at in a deliberately different one so
+    // this fails if the read falls back to insertion/heap order.
+    await db.insert(groupMembers).values([
+      { groupId: group!.id, userId: ids[0]!, role: "owner", joinedAt: new Date("2026-03-01T00:00:00Z") },
+      { groupId: group!.id, userId: ids[1]!, role: "member", joinedAt: new Date("2026-01-01T00:00:00Z") },
+      { groupId: group!.id, userId: ids[2]!, role: "member", joinedAt: new Date("2026-02-01T00:00:00Z") },
+    ]);
+
+    const byJoinTime = [ids[1], ids[2], ids[0]];
+    expect((await listMembers(group!.id, ids[0]!)).map((m) => m.userId)).toEqual(byJoinTime);
+    expect((await getGroupDetail(group!.id, ids[0]!)).members.map((m) => m.userId)).toEqual(byJoinTime);
+  });
+
+  it("breaks join-time ties on user_id, stably across calls", async () => {
+    // A single insert => one transaction timestamp => identical joined_at,
+    // so the user_id tiebreak is the only thing keeping this deterministic.
+    const { groupId, memberIds } = await seedGroupSameJoinTime(["owner", "member", "member"]);
+
+    const first = (await listMembers(groupId, memberIds[0]!)).map((m) => m.userId);
+    const second = (await listMembers(groupId, memberIds[0]!)).map((m) => m.userId);
+    expect(first).toEqual(second);
+    expect(first).toEqual([...memberIds].sort());
+    expect((await getGroupDetail(groupId, memberIds[0]!)).members.map((m) => m.userId)).toEqual(first);
   });
 
   it("removes a member with a zero balance", async () => {

@@ -100,6 +100,24 @@ describe.skipIf(!hasTestDatabase)("groups service", () => {
       expect(JSON.stringify(members)).not.toContain("@");
     });
 
+    it("returns members in a stable order — by join time, then user_id", async () => {
+      const owner = await seedUser("Ana");
+      const group = await createGroup(owner, { title: "Trip" });
+      const later = await seedUser("Zoe");
+      const evenLater = await seedUser("Bea");
+      // Two members added in one statement share a joined_at; the owner's
+      // is older. Expected order: owner, then the pair by user_id.
+      await getTestDb()
+        .insert(groupMembers)
+        .values([
+          { groupId: group.id, userId: later, role: "member" },
+          { groupId: group.id, userId: evenLater, role: "member" },
+        ]);
+
+      const { members } = await getGroupDetail(group.id, owner);
+      expect(members.map((m) => m.userId)).toEqual([owner, ...[later, evenLater].sort()]);
+    });
+
     it("surfaces displayCurrency and simplifyDebts as their own settings object", async () => {
       const owner = await seedUser();
       const group = await createGroup(owner, { title: "Trip" });

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import type { AvatarChoice } from "../../lib/avatar";
 import { config } from "../config";
 import { avatarColumns, toAvatarChoice } from "../db/avatar";
@@ -59,7 +59,9 @@ export interface GroupDetail {
 
 /**
  * Members are returned as display name + id only — **never email
- * addresses** (security.md § Privacy) — regardless of who's asking.
+ * addresses** (security.md § Privacy) — regardless of who's asking,
+ * ordered by `joined_at` then `user_id` so the list is stable run to run
+ * (same tiebreak reasoning as `listMembers`).
  * `settings` duplicates `displayCurrency`/`simplifyDebts` out of `group`
  * as their own object (api-contract.md § Groups) so the UI can read the
  * two things that decide *how* it renders — display currency, simplify
@@ -82,7 +84,8 @@ export async function getGroupDetail(groupId: string, userId: string): Promise<G
     })
     .from(groupMembers)
     .innerJoin(users, eq(users.id, groupMembers.userId))
-    .where(and(eq(groupMembers.groupId, groupId), isNull(groupMembers.removedAt)));
+    .where(and(eq(groupMembers.groupId, groupId), isNull(groupMembers.removedAt)))
+    .orderBy(asc(groupMembers.joinedAt), asc(groupMembers.userId));
 
   return {
     group: group!,
