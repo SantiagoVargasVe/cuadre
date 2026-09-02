@@ -187,6 +187,7 @@ export const es = {
     addExpense: "Agregar gasto",
     loadMore: "Cargar más",
     loading: "Cargando…",
+    export: "Exportar CSV",
     paidByYou: "Pagado por ti",
     paidBy: (name: string) => `Pagado por ${name}`,
     paidByMultiple: (n: number) => `Pagado por ${n} personas`,

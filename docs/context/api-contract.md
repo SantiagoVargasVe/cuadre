@@ -117,11 +117,12 @@ non-zero in any currency. You cannot walk out mid-trip.
 ## Expenses
 
 ```
-GET    /api/groups/:id/expenses    ?cursor=&limit=  → 200 { items[], nextCursor }
-POST   /api/groups/:id/expenses                     → 201 { expense }
-GET    /api/expenses/:id                            → 200 { expense }
-PATCH  /api/expenses/:id                            → 200 { expense }
-DELETE /api/expenses/:id                            → 204
+GET    /api/groups/:id/expenses          ?cursor=&limit=  → 200 { items[], nextCursor }
+POST   /api/groups/:id/expenses                           → 201 { expense }
+GET    /api/groups/:id/expenses.csv                       → 200 text/csv
+GET    /api/expenses/:id                                  → 200 { expense }
+PATCH  /api/expenses/:id                                  → 200 { expense }
+DELETE /api/expenses/:id                                  → 204
 ```
 
 ### Creating an expense
@@ -241,6 +242,39 @@ display currency:
 `converted` is `null` when there's no display currency, or the expense is already in it — nothing
 to add to what `total`/`payers`/`splits` already show. `RATE_UNAVAILABLE` (`422`) for the same
 reason as the balances endpoint: a currency present with no matching pin.
+
+### CSV export
+
+`GET /api/groups/:id/expenses.csv` is the one endpoint that doesn't return JSON.
+
+```
+200 Content-Type:        text/csv; charset=utf-8
+    Content-Disposition: attachment; filename="cartagena-2026-gastos-2026-09-01.csv"
+```
+
+Available to **every member** — the escape hatch is not an owner privilege. Membership is checked
+inside the service, so a non-member and a removed member both get `404`, never a `403` and never
+an empty file.
+
+**Un-paginated on purpose.** It returns the complete live ledger and does not reuse the paginated
+expense feed. A query string has no effect on the export.
+
+There is **one row per expense**, ordered `expense_date ASC, id ASC`. Columns, in order:
+
+```
+expense_id,date,title,amount_minor,currency,split_strategy,payers,splits,created_at,updated_at
+```
+
+- `amount_minor` and every nested `amount` are digits-only minor-unit strings, never floats or
+  locale-formatted money. Each row retains its entered `currency`; no display-currency conversion
+  or cross-currency aggregate is calculated.
+- `payers` and `splits` are JSON arrays in one CSV cell. Each object preserves `userId`,
+  `displayName`, and `amount`, so multiple payers and non-equal splits remain auditable.
+- Soft-deleted expenses are absent. A group with no expenses still gets its header row.
+- RFC 4180 quoting protects commas, quotes, CR/LF, and Unicode. Plain user-controlled cells whose
+  first non-whitespace character is `=`, `+`, `-`, or `@` receive a leading apostrophe so they do
+  not execute as spreadsheet formulas. JSON cells retain their original nested values and begin
+  with `[`.
 
 ---
 

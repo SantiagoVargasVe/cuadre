@@ -1,6 +1,7 @@
 import { apiFetchServer } from "../../../../lib/api/server";
 import { getGroupDetail, getMe } from "./_data";
 import { ExpenseFeed } from "./_components/ExpenseFeed";
+import { ExpenseExport } from "./_components/ExpenseExport";
 import type { ExpenseListResult } from "./_components/types";
 
 /** Gastos tab — server-rendered first page (T063), "load more" from there.
@@ -22,13 +23,16 @@ export default async function ExpensesTabPage({
   ]);
 
   return (
-    <ExpenseFeed
-      groupId={groupId}
-      myUserId={user.id}
-      initialItems={items}
-      initialCursor={nextCursor}
-      members={members}
-      defaultCurrency={group.defaultCurrency}
-    />
+    <div className="flex flex-col gap-3">
+      <ExpenseExport groupId={groupId} />
+      <ExpenseFeed
+        groupId={groupId}
+        myUserId={user.id}
+        initialItems={items}
+        initialCursor={nextCursor}
+        members={members}
+        defaultCurrency={group.defaultCurrency}
+      />
+    </div>
   );
 }
