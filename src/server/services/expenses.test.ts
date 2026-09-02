@@ -9,6 +9,7 @@ describe.skipIf(!hasTestDatabase)("createExpense", () => {
   setupTestDb();
 
   let createExpense: typeof import("./expenses").createExpense;
+  let getExpense: typeof import("./expenses").getExpense;
   let PayersDoNotBalanceError: typeof import("./expenses").PayersDoNotBalanceError;
   let SplitsDoNotBalanceError: typeof import("./expenses").SplitsDoNotBalanceError;
   let PercentagesDoNotSumTo10000Error: typeof import("./expenses").PercentagesDoNotSumTo10000Error;
@@ -30,6 +31,7 @@ describe.skipIf(!hasTestDatabase)("createExpense", () => {
 
     ({
       createExpense,
+      getExpense,
       PayersDoNotBalanceError,
       SplitsDoNotBalanceError,
       PercentagesDoNotSumTo10000Error,
@@ -208,6 +210,32 @@ describe.skipIf(!hasTestDatabase)("createExpense", () => {
       split: { strategy: "loan", to: memberIds[1]! },
     });
     expect(result.splits).toEqual([{ userId: memberIds[1], amount: "5000" }]);
+  });
+
+  it("reconstructs every stored split strategy for the detail editor", async () => {
+    const { groupId, memberIds } = await seedGroup(2);
+    const [ana, beto] = memberIds as [string, string];
+    const create = (title: string, amount: string, split: Parameters<typeof createExpense>[2]["split"]) =>
+      createExpense(groupId, ana, { title, date: "2026-08-24", amount, currency: "COP", split });
+
+    const equal = await create("Equal", "100", { strategy: "equal" });
+    expect((await getExpense(equal.id, ana)).split).toEqual({ strategy: "equal", members: [ana, beto].sort() });
+    const subset = await create("Subset", "100", { strategy: "equal_subset", members: [beto] });
+    expect((await getExpense(subset.id, ana)).split).toEqual({ strategy: "equal_subset", members: [beto] });
+    const shares = await create("Shares", "300", { strategy: "shares", weights: { [ana]: 2, [beto]: 1 } });
+    expect((await getExpense(shares.id, ana)).split).toEqual({ strategy: "shares", weights: { [ana]: 2, [beto]: 1 } });
+    const percentage = await create("Percentage", "10000", {
+      strategy: "percentage", basisPoints: { [ana]: 6000, [beto]: 4000 },
+    });
+    expect((await getExpense(percentage.id, ana)).split).toEqual({
+      strategy: "percentage", basisPoints: { [ana]: 6000, [beto]: 4000 },
+    });
+    const exact = await create("Exact", "100", { strategy: "exact", amounts: { [ana]: "40", [beto]: "60" } });
+    expect((await getExpense(exact.id, ana)).split).toEqual({
+      strategy: "exact", amounts: { [ana]: "40", [beto]: "60" },
+    });
+    const loan = await create("Loan", "100", { strategy: "loan", to: beto });
+    expect((await getExpense(loan.id, ana)).split).toEqual({ strategy: "loan", to: beto });
   });
 
   it("wraps any other money-module error (e.g. no shares members at all) as a generic 422", async () => {

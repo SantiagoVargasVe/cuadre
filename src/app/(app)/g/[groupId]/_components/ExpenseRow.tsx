@@ -2,15 +2,13 @@
 
 import { formatCalendarDate, formatTimestamp } from "../../../../../lib/date/format";
 import { es } from "../../../../../lib/i18n/es";
+import * as React from "react";
 import { Money } from "../../../../_ui/Money";
-import {
-  DialogContent,
-  DialogRoot,
-  DialogTitle,
-  DialogTrigger,
-} from "../../../../_ui/Dialog";
+import { DialogContent, DialogRoot, DialogTitle, DialogTrigger } from "../../../../_ui/Dialog";
 import { CategoryBadge } from "./CategoryBadge";
+import { ChevronRightIcon } from "./ChevronRightIcon";
 import { ExpenseDetail } from "./ExpenseDetail";
+import { ExpenseDetailActions } from "./ExpenseDetailActions";
 import { resolveDisplayAmounts, wireToMoney, type ExpenseParty } from "./types";
 import type { ExpenseSummary, GroupMember } from "./types";
 
@@ -28,18 +26,25 @@ function paidByLabel(payers: ExpenseParty[], myUserId: string): string {
  * the list endpoint, so tapping a row never triggers a second fetch. */
 export function ExpenseRow({
   expense,
+  groupId,
   myUserId,
   members = [],
+  onUpdated = () => undefined,
+  onDeleted = () => undefined,
 }: {
   expense: ExpenseSummary;
+  groupId?: string;
   myUserId: string;
   members?: GroupMember[];
+  onUpdated?: (expense: ExpenseSummary) => void;
+  onDeleted?: (id: string) => void;
 }) {
+  const [open, setOpen] = React.useState(false);
   const display = resolveDisplayAmounts(expense);
   const yourSplit = display.splits.find((split) => split.userId === myUserId);
 
   return (
-    <DialogRoot>
+    <DialogRoot open={open} onOpenChange={setOpen}>
       {/* A tappable card, not a static one: hover/active states, a persistent
        * chevron (the only affordance at 375px, where there is no hover), and
        * the pointer cursor from T100. Base UI's DialogTrigger already sets
@@ -83,21 +88,23 @@ export function ExpenseRow({
       <DialogContent>
         <DialogTitle className="text-lg font-semibold text-foreground">{expense.title}</DialogTitle>
         <ExpenseDetail expense={expense} members={members} />
+        {groupId && (
+          <ExpenseDetailActions
+            expense={expense}
+            groupId={groupId}
+            members={members}
+            myUserId={myUserId}
+            onUpdated={(saved) => {
+              onUpdated(saved);
+              setOpen(false);
+            }}
+            onDeleted={(id) => {
+              onDeleted(id);
+              setOpen(false);
+            }}
+          />
+        )}
       </DialogContent>
     </DialogRoot>
-  );
-}
-
-/** Decorative — the "there is more behind this" cue. Nudges on hover. */
-function ChevronRightIcon() {
-  return (
-    <svg
-      viewBox="0 0 8 12"
-      className="mt-1 size-3 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
-      fill="none"
-      aria-hidden
-    >
-      <path d="M1.5 1.5L6 6l-4.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }

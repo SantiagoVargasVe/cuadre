@@ -74,6 +74,7 @@ describe.skipIf(!hasTestDatabase)("GET /api/expenses/[id]", () => {
     expect(body.version).toBe(1);
     expect(body.editedAt).toBeNull();
     expect(body.payers[0]).toMatchObject({ displayName: "Ana" });
+    expect(body.split).toEqual({ strategy: "equal", members: [body.payers[0].userId] });
   });
 
   it("404s for a non-member", async () => {

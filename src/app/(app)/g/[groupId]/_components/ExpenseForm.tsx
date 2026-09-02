@@ -13,11 +13,12 @@ import { Button } from "../../../../_ui/Button";
 import { TextField } from "../../../../_ui/TextField";
 import { AmountCurrencyFields } from "./AmountCurrencyFields";
 import { CategoryPicker } from "./CategoryPicker";
-import { expenseFormSchema, todayIso, type ExpenseFormValues } from "./expenseFormSchema";
+import { expenseFormDefaults, expensePayerDefaults } from "./expenseFormDefaults";
+import { expenseFormSchema, type ExpenseFormValues } from "./expenseFormSchema";
 import { PayerEditor, type Payer } from "./PayerEditor";
 import { SplitEditor } from "./split-editor/SplitEditor";
 import { submitExpense } from "./submitExpense";
-import type { ExpenseSummary, GroupMember } from "./types";
+import type { ExpenseDetailResult, ExpenseSummary, GroupMember } from "./types";
 
 const t = es.expenseForm;
 
@@ -26,19 +27,21 @@ export interface ExpenseFormProps {
   members: GroupMember[];
   defaultCurrency: string;
   myUserId: string;
-  onCreated: (expense: ExpenseSummary) => void;
+  expense?: ExpenseDetailResult;
+  onCancel?: () => void;
+  onSaved: (expense: ExpenseSummary) => void;
 }
 
 /** "Title, amount, save" — that path requires no other interaction
  * (frontend/CLAUDE.md § *The expense form*). Payers default to you alone
  * and the split to `equal` among everyone. */
-export function ExpenseForm({ groupId, members, defaultCurrency, myUserId, onCreated }: ExpenseFormProps) {
+export function ExpenseForm({ groupId, members, defaultCurrency, myUserId, expense, onCancel, onSaved }: ExpenseFormProps) {
   const queryClient = useQueryClient();
   const amountRef = React.useRef<HTMLInputElement>(null);
-  const [payers, setPayers] = React.useState<Payer[] | null>(null);
-  const [split, setSplit] = React.useState<SplitInput>({ strategy: "equal" });
+  const [payers, setPayers] = React.useState<Payer[] | null>(() => expensePayerDefaults(expense));
+  const [split, setSplit] = React.useState<SplitInput>(expense?.split ?? { strategy: "equal" });
   const [splitValid, setSplitValid] = React.useState(true);
-  const [category, setCategory] = React.useState<ExpenseCategoryKey | null>(null);
+  const [category, setCategory] = React.useState<ExpenseCategoryKey | null>(expense?.category ?? null);
   const [formError, setFormError] = React.useState<string | null>(null);
   // A brand-new expense has no id yet — the server mints one at insert
   // time and uses it as the apportionment seed (splitting.md § 3.1). This
@@ -46,18 +49,12 @@ export function ExpenseForm({ groupId, members, defaultCurrency, myUserId, onCre
   // are guaranteed correct in total, but which member absorbs a leftover
   // minor unit on a tie can differ from what the server ultimately
   // stores, since the two seeds are never the same value for a create.
-  const [previewSeed] = React.useState(() => crypto.randomUUID());
+  const [previewSeed] = React.useState(() => expense?.id ?? crypto.randomUUID());
 
-  const {
-    register,
-    handleSubmit,
-    control,
-    watch,
-    formState: { errors, isSubmitting, isValid },
-  } = useForm<ExpenseFormValues>({
+  const { register, handleSubmit, control, watch, formState: { errors, isSubmitting, isValid } } = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseFormSchema),
     mode: "onChange",
-    defaultValues: { title: "", amountRaw: "", currency: defaultCurrency, date: todayIso() },
+    defaultValues: expenseFormDefaults(expense, defaultCurrency),
   });
 
   React.useEffect(() => amountRef.current?.focus(), []);
@@ -72,10 +69,9 @@ export function ExpenseForm({ groupId, members, defaultCurrency, myUserId, onCre
   async function onSubmit(data: ExpenseFormValues) {
     setFormError(null);
     try {
-      const expense = await submitExpense(groupId, data, payers, split, category);
-      queryClient.invalidateQueries({ queryKey: ["group", groupId, "expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["group", groupId, "balances"] });
-      onCreated(expense);
+      const saved = await submitExpense(groupId, data, payers, split, category, expense?.id);
+      queryClient.invalidateQueries({ queryKey: ["group", groupId] });
+      onSaved(saved);
     } catch (error) {
       setFormError(error instanceof ApiError ? error.message : t.errors.generic);
     }
@@ -87,19 +83,14 @@ export function ExpenseForm({ groupId, members, defaultCurrency, myUserId, onCre
       <AmountCurrencyFields register={register} control={control} currency={currency} amountRef={amountRef} />
       <TextField label={t.dateLabel} type="date" error={errors.date?.message} {...register("date")} />
       <CategoryPicker value={category} onChange={setCategory} />
-      <PayerEditor
-        members={members}
-        myUserId={myUserId}
-        currency={currency}
-        totalAmount={totalAmount}
-        value={payers}
-        onChange={setPayers}
-      />
+      <PayerEditor members={members} myUserId={myUserId} currency={currency} totalAmount={totalAmount}
+        value={payers} onChange={setPayers} />
       <SplitEditor
         members={members}
         totalAmount={totalAmount}
         currency={currency}
         seed={previewSeed}
+        initialSplit={expense?.split}
         onChange={(nextSplit, valid) => {
           setSplit(nextSplit);
           setSplitValid(valid);
@@ -110,9 +101,12 @@ export function ExpenseForm({ groupId, members, defaultCurrency, myUserId, onCre
           {formError}
         </p>
       )}
-      <Button type="submit" disabled={!canSubmit}>
-        {isSubmitting ? t.submitting : t.submit}
-      </Button>
+      <div className="flex justify-end gap-2">
+        {onCancel && <Button type="button" variant="ghost" onClick={onCancel}>{t.cancel}</Button>}
+        <Button type="submit" disabled={!canSubmit}>
+          {isSubmitting ? t.submitting : expense ? t.updateSubmit : t.submit}
+        </Button>
+      </div>
     </form>
   );
 }

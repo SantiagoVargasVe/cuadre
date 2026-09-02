@@ -12,7 +12,10 @@ const compat = new FlatCompat({
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
-    ignores: [".next/**", "coverage/**", "node_modules/**", "next-env.d.ts"],
+    // Agent-created worktrees contain complete sibling checkouts; linting
+    // them from this checkout duplicates the repo and can report failures
+    // from another branch as if they belonged to the active task.
+    ignores: [".next/**", ".claude/worktrees/**", "coverage/**", "node_modules/**", "next-env.d.ts"],
   },
   {
     rules: {

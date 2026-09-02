@@ -42,8 +42,7 @@ describe("ExpenseForm", () => {
     expect(body.paidBy).toBeUndefined();
 
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith(detailResponse));
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["group", "g1", "expenses"] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["group", "g1", "balances"] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["group", "g1"] });
   });
 
   it("renders the API's error message on a 422", async () => {
