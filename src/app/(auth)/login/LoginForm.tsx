@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -67,9 +68,9 @@ export function LoginForm() {
       </Button>
       <p className="text-sm text-muted-foreground">
         {t.noAccount}{" "}
-        <a href="/register" className="text-primary underline">
+        <Link href="/register" className="text-primary underline">
           {t.registerLink}
-        </a>
+        </Link>
       </p>
     </form>
   );

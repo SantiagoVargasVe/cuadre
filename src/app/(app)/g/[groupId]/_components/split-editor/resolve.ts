@@ -1,7 +1,5 @@
 import {
-  EmptyApportionmentError,
   ExactAmountsDoNotBalanceError,
-  NonPositiveWeightError,
   PercentagesDoNotSumError,
 } from "../../../../../../lib/money/errors";
 import { apportion } from "../../../../../../lib/money/apportion";
@@ -62,8 +60,6 @@ export function equalDefault(total: bigint, ids: string[], seed: string): Map<st
 }
 
 export {
-  EmptyApportionmentError,
   ExactAmountsDoNotBalanceError,
-  NonPositiveWeightError,
   PercentagesDoNotSumError,
 };

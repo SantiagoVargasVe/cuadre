@@ -16,12 +16,10 @@ const emptyToUndefined = (value: unknown) => (value === "" ? undefined : value);
 export const envSchema = z
   .object({
     APP_URL: z
-      .string()
       .url("must be an absolute URL")
       .refine((v) => !v.endsWith("/"), "must not have a trailing slash"),
 
     DATABASE_URL: z
-      .string()
       .url("must be a postgres connection string")
       .startsWith("postgres://", "must start with postgres://"),
 

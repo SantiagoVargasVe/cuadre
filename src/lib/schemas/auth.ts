@@ -12,7 +12,7 @@ const v = es.auth.validation;
  * so embedding them here costs the server nothing.
  */
 export const registerSchema = z.object({
-  email: z.string().email(v.emailInvalid),
+  email: z.email(v.emailInvalid),
   displayName: z.string().min(1, v.displayNameRequired).max(200),
   // 8 is OWASP's minimum baseline when hashing is done properly (Argon2id
   // here) — no exact number is mandated in docs/context/security.md.
@@ -22,7 +22,7 @@ export const registerSchema = z.object({
 export type RegisterInput = z.infer<typeof registerSchema>;
 
 export const loginSchema = z.object({
-  email: z.string().email(v.emailInvalid),
+  email: z.email(v.emailInvalid),
   password: z.string().min(1, v.passwordTooShort),
 });
 export type LoginInput = z.infer<typeof loginSchema>;

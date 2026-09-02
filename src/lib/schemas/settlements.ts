@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const memberId = z.string().uuid();
+const memberId = z.uuid();
 const currencyCode = z.string().regex(/^[A-Z]{3}$/, "must be a 3-letter ISO-4217 code");
 // Mirrors src/lib/money/parse.ts's own digits-only check — money is never
 // a JSON number (api-contract.md), and this is the shape the wire uses.
