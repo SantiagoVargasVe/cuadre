@@ -18,6 +18,7 @@ import {
   requireMembershipForRow,
 } from "../auth/membership";
 import { db, withTransaction } from "../db/client";
+import { liveExpenses } from "../db/helpers";
 import {
   expensePayers,
   expenseRevisions,
@@ -734,4 +735,65 @@ export async function getExpense(expenseId: string, userId: string): Promise<Exp
     ),
     version: expense!.version,
   };
+}
+
+/** The live-ledger shape used only for CSV export (T080). It intentionally
+ * does not reuse `ExpenseSummary`: an export preserves entered amounts and
+ * must not load display-currency conversion data or fail on an FX pin. */
+export interface ExpenseForExport {
+  id: string;
+  title: string;
+  date: string;
+  total: { amount: string; currency: string };
+  payers: ExpensePartyWithName[];
+  splits: ExpensePartyWithName[];
+  strategy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Every live expense in the group, **un-paginated** — the read behind the
+ * CSV export (T080). Deliberately not `listExpenses` with a huge `limit`:
+ * an export that silently stopped at a page boundary would be worse than
+ * no export, so this path has no cursor and no limit to get wrong.
+ *
+ * Reads through the shared `liveExpenses` helper (data-model.md § *Query
+ * rules*) rather than filtering `deleted_at` by hand. It then loads all
+ * payers and all splits in two bounded queries, rather than a query per
+ * expense. CSV is the entered ledger, so it deliberately does not load the
+ * display-currency conversion context used by the UI feed.
+ *
+ * `liveExpenses` orders newest first by date alone; re-sort ascending by
+ * date then id so unchanged exports are stable and spreadsheet-friendly.
+ */
+export async function listAllExpensesForExport(
+  groupId: string,
+  userId: string,
+): Promise<ExpenseForExport[]> {
+  await requireMembership(groupId, userId);
+
+  const rows = await liveExpenses(groupId);
+  // `expense_date ASC, id ASC` — plain codepoint comparison, not
+  // `localeCompare`, so the tiebreak matches Postgres' own `uuid`/`date`
+  // ordering exactly and two exports of unchanged data stay byte-identical.
+  const ordered = [...rows].sort((a, b) => {
+    if (a.expenseDate !== b.expenseDate) return a.expenseDate < b.expenseDate ? -1 : 1;
+    if (a.id === b.id) return 0;
+    return a.id < b.id ? -1 : 1;
+  });
+
+  const { payersByExpense, splitsByExpense } = await loadPartiesFor(ordered.map((row) => row.id));
+
+  return ordered.map((row) => ({
+    id: row.id,
+    title: row.title,
+    date: row.expenseDate,
+    total: { amount: row.totalAmount.toString(), currency: row.currency },
+    payers: payersByExpense.get(row.id) ?? [],
+    splits: splitsByExpense.get(row.id) ?? [],
+    strategy: row.splitStrategy,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  }));
 }
