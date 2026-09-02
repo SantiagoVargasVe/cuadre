@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { SplitInput } from "../../lib/schemas/expenses";
 import {
   ExactAmountsDoNotBalanceError,
@@ -494,6 +494,9 @@ function groupByExpenseId(rows: PartyRow[]): Map<string, ExpensePartyWithName[]>
  * Payers and splits for a page of expense ids in exactly two queries,
  * regardless of how many expenses or how many parties each has — never
  * one query per expense (testing.md, architecture.md § no N+1 per member).
+ * Each expense's parties come back ordered by `user_id` so the feed
+ * renders them the same way every time — otherwise the order is heap
+ * order and flips between runs.
  */
 async function loadPartiesFor(
   expenseIds: string[],
@@ -510,7 +513,8 @@ async function loadPartiesFor(
       })
       .from(expensePayers)
       .innerJoin(users, eq(users.id, expensePayers.userId))
-      .where(inArray(expensePayers.expenseId, expenseIds)),
+      .where(inArray(expensePayers.expenseId, expenseIds))
+      .orderBy(asc(expensePayers.userId)),
     db
       .select({
         expenseId: expenseSplits.expenseId,
@@ -520,7 +524,8 @@ async function loadPartiesFor(
       })
       .from(expenseSplits)
       .innerJoin(users, eq(users.id, expenseSplits.userId))
-      .where(inArray(expenseSplits.expenseId, expenseIds)),
+      .where(inArray(expenseSplits.expenseId, expenseIds))
+      .orderBy(asc(expenseSplits.userId)),
   ]);
 
   return { payersByExpense: groupByExpenseId(payerRows), splitsByExpense: groupByExpenseId(splitRows) };

@@ -96,7 +96,11 @@ describe.skipIf(!hasTestDatabase)("PATCH /api/auth/profile (T109)", () => {
     const renamedParties = [...expenses.items[0]!.payers, ...expenses.items[0]!.splits]
       .filter((party) => party.userId === aliceId);
 
-    expect([...detail.members, ...members].map((m) => m.displayName)).toEqual(["Alicia", "Bob", "Alicia", "Bob"]);
+    // Propagation check, not an ordering one — `.sort()` so it doesn't ride on
+    // whatever order the members reads return (that order is pinned by its own
+    // tests in the members/groups service suites).
+    const shownNames = [...detail.members, ...members].map((m) => m.displayName).sort();
+    expect(shownNames).toEqual(["Alicia", "Alicia", "Bob", "Bob"]);
     expect(renamedParties.every((party) => party.displayName === "Alicia")).toBe(true);
     expect(settlements.items[0]).toMatchObject({ fromUserId: aliceId, toUserId: bob.id });
     expect(detail.members.find((member) => member.userId === settlements.items[0]!.fromUserId)?.displayName).toBe("Alicia");

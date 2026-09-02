@@ -116,6 +116,29 @@ describe.skipIf(!hasTestDatabase)("listExpenses / getExpense", () => {
       expect(item?.splits.map((s) => s.displayName).sort()).toEqual(["Ana", "Beto"]);
     });
 
+    it("returns each expense's payers and splits ordered by user_id, not insertion order", async () => {
+      const { groupId, memberIds } = await seedGroup(3);
+      const byId = [...memberIds].sort();
+      // Feed payers in the reverse of the expected order so this fails if
+      // the read just echoes insertion order.
+      const created = await createExpense(groupId, memberIds[0]!, {
+        title: "Split three ways",
+        date: "2026-08-24",
+        amount: "3000",
+        currency: "COP",
+        paidBy: [...byId].reverse().map((userId) => ({ userId, amount: "1000" })),
+        split: { strategy: "equal" },
+      });
+
+      const listed = (await listExpenses(groupId, memberIds[0]!, {})).items.find((i) => i.id === created.id);
+      expect(listed?.payers.map((p) => p.userId)).toEqual(byId);
+      expect(listed?.splits.map((s) => s.userId)).toEqual(byId);
+
+      const detail = await getExpense(created.id, memberIds[0]!);
+      expect(detail.payers.map((p) => p.userId)).toEqual(byId);
+      expect(detail.splits.map((s) => s.userId)).toEqual(byId);
+    });
+
     it("excludes soft-deleted expenses", async () => {
       const { groupId, memberIds } = await seedGroup(1);
       const kept = await seedExpense(groupId, memberIds[0]!, "2026-08-24");
