@@ -2,7 +2,7 @@
 id: T082
 title: Per-member breakdown — what they paid for vs. what they consumed
 epic: E9-insights
-status: todo
+status: done
 depends_on: [T081]
 size: M
 ---
@@ -26,36 +26,36 @@ Read [splitting.md](../../docs/context/splitting.md) — **mandatory**, this is 
 
 ## Acceptance criteria
 
-- [ ] Extend T081's insights response — **no second endpoint** — with one row per member and
+- [x] Extend T081's insights response — **no second endpoint** — with one row per member and
       currency. Each row has all-bigint-minor-unit fields (serialized as strings): **paid** (Σ live
       `expense_payers` rows), **consumed** (Σ live `expense_splits` rows),
       **expenseContribution = paid − consumed**, **sent** and **received** (live settlement rows),
       and **currentNet = expenseContribution + sent − received**. `expenseContribution` describes
       the paired bars; `currentNet` is the settlement-aware position. They must never both be
       called simply "net" in the API or UI
-- [ ] **`Σ paid == Σ consumed == Σ expense totals` for the group, per currency** — assert it
+- [x] **`Σ paid == Σ consumed == Σ expense totals` for the group, per currency** — assert it
       server-side before responding and throw if it fails, exactly as the balances endpoint asserts
       `Σ net == 0`. That assertion is the canary; a plausible-looking wrong number is the failure
       mode this whole app is designed against
-- [ ] **`Σ currentNet == 0` per currency** is asserted server-side, and every member's
+- [x] **`Σ currentNet == 0` per currency** is asserted server-side, and every member's
       `currentNet` agrees exactly with the balances endpoint for the same ledger and currency.
       The UI labels it as the current balance and explicitly says it includes recorded payments;
       the paired bars and `expenseContribution` intentionally do not
-- [ ] With a display currency pinned, use T054's conversion order: convert and re-apportion every
+- [x] With a display currency pinned, use T054's conversion order: convert and re-apportion every
       expense before accumulating payer/split fields, and convert each settlement before accumulating
       `sent`/`received`. Never convert an already-netted member total — rounding would make
       `currentNet` diverge from balances
-- [ ] Paired bars per member (paid vs. consumed), sharing one scale so the two are comparable at a
+- [x] Paired bars per member (paid vs. consumed), sharing one scale so the two are comparable at a
       glance. Labelled, valued as text, **never distinguished by colour alone**
-- [ ] Uses `--credit` / `--debit` only for the *net* figure, with a sign and a word alongside —
+- [x] Uses `--credit` / `--debit` only for the *net* figure, with a sign and a word alongside —
       and never `--destructive` for a debit amount (design-system.md is explicit: it fails AA as
       body text)
-- [ ] One block per currency, never summed across them. Converted figures labelled as converted
+- [x] One block per currency, never summed across them. Converted figures labelled as converted
       when a display currency is pinned
-- [ ] A current member with no expense or settlement activity renders honestly as zero, not as an
+- [x] A current member with no expense or settlement activity renders honestly as zero, not as an
       absent row — "Ana hasn't paid for anything" is information. A removed member with historical
       rows follows the balances endpoint's member set and remains visible
-- [ ] Tests: the paid/consumed/total identity over a random ledger (extend the property harness in
+- [x] Tests: the paid/consumed/total identity over a random ledger (extend the property harness in
       `src/lib/money/__tests__/` rather than writing a one-off); a settled case where
       `expenseContribution` differs from `currentNet` and the latter matches balances; the
       `Σ currentNet == 0` assertion; a multi-payer expense attributing correctly to each payer; a

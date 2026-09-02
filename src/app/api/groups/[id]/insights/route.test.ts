@@ -77,8 +77,10 @@ describe.skipIf(!hasTestDatabase)("GET /api/groups/[id]/insights", () => {
         currency: "COP",
         byDay: [{ key: "2026-08-24", amount: "30000" }],
         byMonth: [{ key: "2026-08", amount: "30000" }],
-        byMember: [{ userId, amount: "30000" }],
         byCategory: [{ category: "comida", amount: "30000" }],
+        members: [
+          { userId, paid: "30000", consumed: "30000", expenseContribution: "0", sent: "0", received: "0", currentNet: "0" },
+        ],
       },
     ]);
   });

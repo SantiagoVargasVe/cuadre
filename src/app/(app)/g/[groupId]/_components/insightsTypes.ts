@@ -8,13 +8,21 @@ export interface PeriodBucketView {
   key: string;
   amount: string;
 }
-export interface MemberBucketView {
-  userId: string;
-  amount: string;
-}
 export interface CategoryBucketView {
   category: string | null;
   amount: string;
+}
+
+/** Per-member breakdown row (T082). `expenseContribution` describes the
+ * paired bars; `currentNet` is the settlement-aware balance. */
+export interface MemberBreakdownView {
+  userId: string;
+  paid: string;
+  consumed: string;
+  expenseContribution: string;
+  sent: string;
+  received: string;
+  currentNet: string;
 }
 
 export interface PinView {
@@ -29,8 +37,8 @@ export interface CurrencyInsightsView {
   currency: string;
   byDay: PeriodBucketView[];
   byMonth: PeriodBucketView[];
-  byMember: MemberBucketView[];
   byCategory: CategoryBucketView[];
+  members: MemberBreakdownView[];
   pins?: PinView[];
 }
 

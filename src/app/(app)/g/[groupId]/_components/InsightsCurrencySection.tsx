@@ -6,7 +6,8 @@ import { TooltipContent, TooltipRoot, TooltipTrigger } from "../../../../_ui/Too
 import { BarSeries } from "../../../../_ui/charts/BarSeries";
 import { ChartFrame } from "../../../../_ui/charts/ChartFrame";
 import { HiddenDataTable } from "../../../../_ui/charts/HiddenDataTable";
-import { categoryChartData, memberChartData, periodChartData, type ChartData } from "./insightsBars";
+import { MemberBreakdown } from "../insights/_components/MemberBreakdown";
+import { categoryChartData, periodChartData, type ChartData } from "./insightsBars";
 import type { CurrencyInsightsView } from "./insightsTypes";
 
 const t = es.insights;
@@ -73,7 +74,7 @@ export function InsightsCurrencySection({
         )}
       </div>
       <Chart title={t.overTime} unit={t.periodColumn} data={overTime} />
-      <Chart title={t.byMember} unit={t.memberColumn} data={memberChartData(block.byMember, block.currency, nameOf)} />
+      <MemberBreakdown members={block.members} currency={block.currency} nameOf={nameOf} />
       <Chart title={t.byCategory} unit={t.categoryColumn} data={categoryChartData(block.byCategory, block.currency)} />
     </section>
   );

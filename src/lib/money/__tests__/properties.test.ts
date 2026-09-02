@@ -6,6 +6,7 @@ import {
   computePairwise as realComputePairwise,
   type PairwiseLedger,
 } from "../pairwise";
+import { perMemberBreakdown } from "../insights";
 import { explainSimplifiedPlan, simplify as realSimplify } from "../simplify";
 import { type GeneratedExpense, type GeneratedLedger, genLedger } from "./generators";
 
@@ -311,6 +312,83 @@ describe("currency conversion (enabled by T054)", () => {
           const converted = convertExpense(expense, rateScaled);
           expect(sum(converted.splits.values())).toBe(converted.total);
           expect(sum(converted.payers.values())).toBe(converted.total);
+        }
+      }),
+      { numRuns: NUM_RUNS },
+    );
+  });
+});
+
+/**
+ * T082 added `perMemberBreakdown` — a read-side reshape of `computeBalances`
+ * into paid / consumed / expenseContribution / sent / received / currentNet
+ * per member per currency. These check that reshape never diverges from the
+ * balance engine, and that the paid/consumed/total identity holds.
+ */
+function totalsByCurrency(ledger: GeneratedLedger): Map<string, bigint> {
+  const totals = new Map<string, bigint>();
+  for (const expense of ledger.expenses) {
+    totals.set(expense.currency, (totals.get(expense.currency) ?? 0n) + expense.total);
+  }
+  return totals;
+}
+
+describe("per-member breakdown (enabled by T082)", () => {
+  it("Σ paid == Σ consumed == Σ expense totals, per currency", () => {
+    fc.assert(
+      fc.property(fc.gen(), (g) => {
+        const ledger = genLedger(g);
+        const breakdown = perMemberBreakdown(toLedgerInput(ledger));
+        const totals = totalsByCurrency(ledger);
+
+        for (const [currency, rows] of breakdown) {
+          const paid = sum(rows.map((r) => r.paid));
+          expect(paid).toBe(sum(rows.map((r) => r.consumed)));
+          expect(paid).toBe(totals.get(currency) ?? 0n);
+        }
+        for (const [currency, total] of totals) {
+          if (total > 0n) expect(breakdown.has(currency)).toBe(true);
+        }
+      }),
+      { numRuns: NUM_RUNS },
+    );
+  });
+
+  it("currentNet matches the balance engine, sums to 0, and its parts reconcile", () => {
+    fc.assert(
+      fc.property(fc.gen(), (g) => {
+        const ledger = genLedger(g);
+        const breakdown = perMemberBreakdown(toLedgerInput(ledger));
+        const nets = computeNet(ledger);
+
+        for (const [currency, rows] of breakdown) {
+          expect(sum(rows.map((r) => r.currentNet))).toBe(0n);
+          const engineNet = nets.find((n) => n.currency === currency)!.net;
+          for (const row of rows) {
+            expect(row.currentNet).toBe(engineNet.get(row.userId) ?? 0n);
+            expect(row.expenseContribution).toBe(row.paid - row.consumed);
+            expect(row.currentNet).toBe(row.expenseContribution + row.sent - row.received);
+          }
+        }
+      }),
+      { numRuns: NUM_RUNS },
+    );
+  });
+
+  it("still balances after every expense is converted at a pinned rate", () => {
+    fc.assert(
+      fc.property(fc.gen(), (g) => {
+        const ledger = genLedger(g);
+        const rateScaled = g(fc.bigInt, { min: 1n, max: 10n ** 15n });
+        const convertedLedger: GeneratedLedger = {
+          ...ledger,
+          expenses: ledger.expenses.map((expense) => convertExpense(expense, rateScaled)),
+        };
+        // computeBalances (inside perMemberBreakdown) throws unless Σ net == 0;
+        // reaching here at all means the converted ledger still balances.
+        const breakdown = perMemberBreakdown(toLedgerInput(convertedLedger));
+        for (const [, rows] of breakdown) {
+          expect(sum(rows.map((r) => r.paid))).toBe(sum(rows.map((r) => r.consumed)));
         }
       }),
       { numRuns: NUM_RUNS },
