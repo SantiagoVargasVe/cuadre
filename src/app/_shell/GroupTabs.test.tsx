@@ -53,6 +53,7 @@ describe("GroupTabs", () => {
     expect(prefetchMock.mock.calls.map(([href]) => href)).toEqual([
       "/g/abc",
       "/g/abc/balances",
+      "/g/abc/insights",
       "/g/abc/ajustes",
     ]);
   });
