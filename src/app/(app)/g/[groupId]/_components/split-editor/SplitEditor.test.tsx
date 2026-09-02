@@ -1,15 +1,16 @@
 import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { lastCall, renderOpenEditor } from "./splitEditorTestHelpers";
+import { renderOpenEditor } from "./splitEditorTestHelpers";
 
 /** `\s` rather than a literal space — Intl's `es-CO` currency literal
  * uses a non-breaking space (U+00A0), not U+0020. */
 const RESOLVED_33_OR_34 = /^\$\s3[34]$/;
 
 describe("SplitEditor — equal / equal_subset", () => {
-  it("starts collapsed and reports the plain equal split", async () => {
-    const { onChange } = await renderOpenEditor();
-    await waitFor(() => expect(onChange).toHaveBeenCalledWith({ strategy: "equal" }, true));
+  it("starts collapsed with the plain equal split", async () => {
+    const { controller } = await renderOpenEditor();
+    expect(controller().splitInput).toEqual({ strategy: "equal" });
+    expect(controller().preview).not.toBeNull();
   });
 
   it("shows every member checked and their resolved share", async () => {
@@ -26,11 +27,11 @@ describe("SplitEditor — equal / equal_subset", () => {
   });
 
   it("switches to equal_subset once a member is unchecked, updating the summary", async () => {
-    const { onChange, user } = await renderOpenEditor();
+    const { controller, user } = await renderOpenEditor();
     await user.click(screen.getByRole("checkbox", { name: "Caro" }));
 
     await waitFor(() =>
-      expect(lastCall(onChange)).toEqual([{ strategy: "equal_subset", members: ["ana", "beto"] }, true]),
+      expect(controller().splitInput).toEqual({ strategy: "equal_subset", members: ["ana", "beto"] }),
     );
     expect(screen.getByText("Dividido: entre 2 personas")).toBeInTheDocument();
   });

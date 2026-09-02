@@ -4,7 +4,7 @@ import { ExactStrategy } from "./ExactStrategy";
 import { LoanStrategy } from "./LoanStrategy";
 import { PercentageStrategy } from "./PercentageStrategy";
 import { SharesStrategy } from "./SharesStrategy";
-import type { useSplitEditorState } from "./useSplitEditorState";
+import type { SplitEditorController } from "./useSplitEditorState";
 
 /** Dispatches to the one component that owns the active strategy's own
  * inputs (T065: "the shell owns the live total and the save gate; each
@@ -15,7 +15,7 @@ export function StrategyPanel({
   currency,
 }: {
   members: GroupMember[];
-  controller: ReturnType<typeof useSplitEditorState>;
+  controller: SplitEditorController;
   currency: string;
 }) {
   switch (c.state.strategy) {

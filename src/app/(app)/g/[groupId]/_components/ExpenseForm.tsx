@@ -17,6 +17,7 @@ import { expenseFormDefaults, expensePayerDefaults } from "./expenseFormDefaults
 import { expenseFormSchema, type ExpenseFormValues } from "./expenseFormSchema";
 import { PayerEditor, type Payer } from "./PayerEditor";
 import { SplitEditor } from "./split-editor/SplitEditor";
+import { useSplitEditorState } from "./split-editor/useSplitEditorState";
 import { submitExpense } from "./submitExpense";
 import type { ExpenseDetailResult, ExpenseSummary, GroupMember } from "./types";
 
@@ -39,8 +40,6 @@ export function ExpenseForm({ groupId, members, defaultCurrency, myUserId, expen
   const queryClient = useQueryClient();
   const amountRef = React.useRef<HTMLInputElement>(null);
   const [payers, setPayers] = React.useState<Payer[] | null>(() => expensePayerDefaults(expense));
-  const [split, setSplit] = React.useState<SplitInput>(expense?.split ?? { strategy: "equal" });
-  const [splitValid, setSplitValid] = React.useState(true);
   const [category, setCategory] = React.useState<ExpenseCategoryKey | null>(expense?.category ?? null);
   const [formError, setFormError] = React.useState<string | null>(null);
   // A brand-new expense has no id yet — the server mints one at insert
@@ -62,6 +61,10 @@ export function ExpenseForm({ groupId, members, defaultCurrency, myUserId, expen
   const currency = watch("currency");
   const amountRaw = watch("amountRaw");
   const totalAmount = amountRaw ? parseAmountInput(amountRaw, currency) : 0n;
+  const memberIds = React.useMemo(() => members.map((member) => member.userId), [members]);
+  const splitEditor = useSplitEditorState(memberIds, totalAmount, previewSeed, expense?.split);
+  const split: SplitInput = splitEditor.splitInput;
+  const splitValid = splitEditor.preview !== null;
   const payersBalanced =
     !payers || payers.length <= 1 || payers.reduce((sum, p) => sum + p.amount, 0n) === totalAmount;
   const canSubmit = isValid && payersBalanced && splitValid && totalAmount > 0n && !isSubmitting;
@@ -87,14 +90,8 @@ export function ExpenseForm({ groupId, members, defaultCurrency, myUserId, expen
         value={payers} onChange={setPayers} />
       <SplitEditor
         members={members}
-        totalAmount={totalAmount}
         currency={currency}
-        seed={previewSeed}
-        initialSplit={expense?.split}
-        onChange={(nextSplit, valid) => {
-          setSplit(nextSplit);
-          setSplitValid(valid);
-        }}
+        controller={splitEditor}
       />
       {formError && (
         <p role="alert" className="text-sm text-destructive">

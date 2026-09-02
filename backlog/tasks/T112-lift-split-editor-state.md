@@ -2,7 +2,7 @@
 id: T112
 title: Lift the split-editor's state into the expense form
 epic: E13-code-health
-status: todo
+status: done
 depends_on: []
 size: M
 ---

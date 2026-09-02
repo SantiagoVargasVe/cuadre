@@ -2,45 +2,28 @@
 
 import * as React from "react";
 import { es } from "../../../../../../lib/i18n/es";
-import type { SplitInput } from "../../../../../../lib/schemas/expenses";
 import { RadioGroup, RadioItem } from "../../../../../_ui/RadioGroup";
 import type { GroupMember } from "../types";
 import { RemainderText } from "./RemainderText";
 import { StrategyPanel } from "./StrategyPanel";
 import { summaryText } from "./summaryText";
 import type { StrategyName } from "./types";
-import { useSplitEditorState } from "./useSplitEditorState";
+import type { SplitEditorController } from "./useSplitEditorState";
 
 const t = es.splitEditor;
 
 export interface SplitEditorProps {
   members: GroupMember[];
-  totalAmount: bigint;
   currency: string;
-  seed: string;
-  initialSplit?: SplitInput;
-  onChange: (split: SplitInput, valid: boolean) => void;
+  controller: SplitEditorController;
 }
 
 /** Collapsed by default — "two lines of text that open editors when
  * tapped" (design-system.md), same affordance as `PayerEditor`. The shell
  * owns the live total and the save gate (T065); each strategy component
  * owns only its own inputs. */
-export function SplitEditor({ members, totalAmount, currency, seed, initialSplit, onChange }: SplitEditorProps) {
+export function SplitEditor({ members, currency, controller: c }: SplitEditorProps) {
   const [open, setOpen] = React.useState(false);
-  const memberIds = React.useMemo(() => members.map((m) => m.userId), [members]);
-  const c = useSplitEditorState(memberIds, totalAmount, seed, initialSplit);
-
-  const valid = c.preview !== null;
-  React.useEffect(() => {
-    onChange(c.splitInput, valid);
-    // c.splitInput is a fresh object every render; stringify keeps this
-    // effect from firing every keystroke it doesn't actually need to. It
-    // still needs `valid` explicitly — the total can flip a strategy like
-    // `equal` between valid and not (total <= 0) with no change to the
-    // split's own shape at all.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(c.splitInput), valid]);
 
   return (
     <div className="flex flex-col gap-2">
