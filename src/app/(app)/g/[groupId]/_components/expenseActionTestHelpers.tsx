@@ -39,6 +39,24 @@ export function response(status: number, body?: unknown): Response {
   });
 }
 
+/**
+ * A fetch stub that answers by method and path rather than by call order.
+ * Since T117 a write is followed by the feed's own re-read, so a fixed
+ * queue of responses no longer lines up — and ordering was never what these
+ * tests were about. Each route returns a *fresh* Response: bodies are
+ * single-use.
+ */
+export function stubRoutes(routes: Record<string, () => Response>) {
+  const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+    const key = `${init?.method ?? "GET"} ${String(url).split("?")[0]}`;
+    const route = routes[key];
+    if (!route) return Promise.reject(new Error(`unstubbed request: ${key}`));
+    return Promise.resolve(route());
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
 export function renderActionFeed() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const invalidate = vi.spyOn(client, "invalidateQueries");

@@ -1,7 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { renderActionFeed, response } from "./expenseActionTestHelpers";
+import { renderActionFeed, response, stubRoutes } from "./expenseActionTestHelpers";
 
 // The feed renders the search/filter bar, which navigates (T115).
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
@@ -16,8 +16,11 @@ async function openDelete(user: ReturnType<typeof userEvent.setup>) {
 
 describe("expense delete flow", () => {
   it("removes the row after confirmation and invalidates expenses and balances", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(response(204));
-    vi.stubGlobal("fetch", fetchMock);
+    const fetchMock = stubRoutes({
+      "DELETE /api/expenses/e1": () => response(204),
+      // The feed re-reads rather than dropping the row locally (T117).
+      "GET /api/groups/g1/expenses": () => response(200, { items: [], nextCursor: null }),
+    });
     const invalidate = renderActionFeed();
     const user = userEvent.setup();
     await openDelete(user);
@@ -30,9 +33,10 @@ describe("expense delete flow", () => {
   });
 
   it("keeps the row and shows an error when deletion fails", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response(500, {
-      error: { code: "INTERNAL_ERROR", message: "No" },
-    })));
+    stubRoutes({
+      "DELETE /api/expenses/e1": () =>
+        response(500, { error: { code: "INTERNAL_ERROR", message: "No" } }),
+    });
     renderActionFeed();
     const user = userEvent.setup();
     await openDelete(user);

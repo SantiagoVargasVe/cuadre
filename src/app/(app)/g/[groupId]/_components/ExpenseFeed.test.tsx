@@ -1,44 +1,25 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ExpenseFeed } from "./ExpenseFeed";
-import type { ExpenseSummary, GroupMember } from "./types";
+import {
+  feedExpense as expense,
+  feedMembers as members,
+  jsonResponse,
+  renderWithClient,
+} from "./expenseFeedTestHelpers";
 
-// The feed now renders the search/filter bar, which navigates (T115).
+// The feed renders the search/filter bar, which navigates (T115).
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
-
-const members: GroupMember[] = [{ userId: "ana", displayName: "Ana", role: "owner" }];
-
-function expense(id: string, title: string): ExpenseSummary {
-  return {
-    id,
-    title,
-    date: "2026-08-24",
-    total: { amount: "1000", currency: "COP" },
-    payers: [{ userId: "ana", amount: "1000", displayName: "Ana" }],
-    splits: [{ userId: "ana", amount: "1000", displayName: "Ana" }],
-    strategy: "equal",
-    category: null,
-    converted: null,
-    editedAt: null,
-    editedBy: null,
-  };
-}
-
-function jsonResponse(status: number, body: unknown) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+
 describe("ExpenseFeed", () => {
   it("renders the empty state when there are no expenses", () => {
-    render(
+    renderWithClient(
       <ExpenseFeed
         groupId="g1"
         myUserId="ana"
@@ -55,7 +36,7 @@ describe("ExpenseFeed", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    render(
+    renderWithClient(
       <ExpenseFeed
         groupId="g1"
         myUserId="ana"
@@ -71,7 +52,7 @@ describe("ExpenseFeed", () => {
   });
 
   it("hides 'load more' once there's no next cursor", () => {
-    render(
+    renderWithClient(
       <ExpenseFeed
         groupId="g1"
         myUserId="ana"
@@ -91,7 +72,7 @@ describe("ExpenseFeed", () => {
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
 
-    render(
+    renderWithClient(
       <ExpenseFeed
         groupId="g1"
         myUserId="ana"

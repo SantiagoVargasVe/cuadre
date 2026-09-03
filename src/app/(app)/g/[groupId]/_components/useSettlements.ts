@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../../../../../lib/api/client";
+import { liveGroupRead } from "../../../../../lib/query/liveGroupQuery";
 import { es } from "../../../../../lib/i18n/es";
 import type { CreateSettlementInput } from "../../../../../lib/schemas/settlements";
 import { toastManager } from "../../../../_ui/Toast";
@@ -29,7 +30,7 @@ export function useSettlements(groupId: string, myUserId: string, initialData: S
     queryKey: key,
     queryFn: () => apiFetch<SettlementListResult>(`/api/groups/${groupId}/settlements`),
     initialData,
-    staleTime: Infinity,
+    ...liveGroupRead,
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["group", groupId] });

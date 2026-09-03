@@ -1,7 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { actionDetail, renderActionFeed, response } from "./expenseActionTestHelpers";
+import { actionDetail, renderActionFeed, response, stubRoutes } from "./expenseActionTestHelpers";
 
 // The feed renders the search/filter bar, which navigates (T115).
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
@@ -17,11 +17,16 @@ describe("expense edit flow", () => {
       editedAt: "2026-08-25T10:00:00.000Z",
       editedBy: { userId: "ana", displayName: "Ana" },
     };
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(response(200, actionDetail))
-      .mockResolvedValueOnce(response(200, { id: "e1" }))
-      .mockResolvedValueOnce(response(200, updated));
-    vi.stubGlobal("fetch", fetchMock);
+    let detailReads = 0;
+    const fetchMock = stubRoutes({
+      // Read once to prefill the form, then again for the saved summary.
+      "GET /api/expenses/e1": () => response(200, detailReads++ === 0 ? actionDetail : updated),
+      "PATCH /api/expenses/e1": () => response(200, { id: "e1" }),
+      // The row's new title arrives from the feed's own re-read (T117),
+      // not from a local patch of the list.
+      "GET /api/groups/g1/expenses": () =>
+        response(200, { items: [updated], nextCursor: null }),
+    });
     const invalidate = renderActionFeed();
     const user = userEvent.setup();
 
@@ -35,8 +40,12 @@ describe("expense edit flow", () => {
     await user.type(screen.getByLabelText("Título"), "Hotel y desayuno");
     await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-    const [patchUrl, patchInit] = fetchMock.mock.calls[1] as [string, RequestInit];
+    const patchCall = await waitFor(() => {
+      const call = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === "PATCH");
+      expect(call).toBeDefined();
+      return call as [string, RequestInit];
+    });
+    const [patchUrl, patchInit] = patchCall;
     expect(patchUrl).toBe("/api/expenses/e1");
     expect(JSON.parse(patchInit.body as string)).toEqual({
       title: "Hotel y desayuno",

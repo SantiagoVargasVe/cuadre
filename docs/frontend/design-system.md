@@ -237,6 +237,39 @@ Optimistic updates are for toggles and settlement recording. **Never optimistic 
 editing an expense** — the server resolves the split, and guessing at its answer is how the client
 and server end up disagreeing about who owes what.
 
+### Staleness — what refreshes, and what must not
+
+A group is used by several people at once, so any read that shows something another member can
+change is a **live read**: spread `liveGroupRead` from `src/lib/query/liveGroupQuery.ts` into it
+rather than setting `staleTime` or `refetchInterval` by hand.
+
+```ts
+useQuery({ queryKey, queryFn, initialData, ...liveGroupRead })
+```
+
+It sets a finite `staleTime` (30s) and a `refetchInterval` (2 min), and deliberately leaves
+`refetchIntervalInBackground` at its default `false`, so a hidden tab stops polling and catches up
+on focus. Only the mounted tab's queries poll — the group tabs are separate routes, so a device
+polls one or two endpoints, never all of them.
+
+**Never `staleTime: Infinity` on a group read.** It doesn't only disable polling — it disables
+refetch-on-focus, *and* it makes the server's freshly rendered `initialData` get discarded: the
+`QueryClient` lives in the root `Providers`, so its cache outlives tab navigation, and a cache
+entry that already holds data ignores the `initialData` it is handed. Balances used to re-compute
+on the server and then render the previous visit's numbers, self-correcting only once the entry
+was garbage-collected five idle minutes later. That's T117, and
+`BalancesTab.staleness.test.tsx` is the regression test.
+
+Two things stay out of this policy:
+
+- **FX.** `fx-quote` keeps its own 5-minute `staleTime` and no interval, and nothing may refresh a
+  group's pinned rate on a timer — a pinned rate is never silently refreshed (CLAUDE.md
+  non-negotiable 5). A poll that moved a pinned total would break a product promise, not a cache.
+- **`maxPages` on an infinite query.** It evicts the *first* pages, which in a `(date, id)`
+  descending feed are the newest expenses, so the top of the list would silently vanish as
+  someone paged into the past; it is only usable with bidirectional pagination. The feed caps its
+  *timer* instead (`livePollInterval`), since a refetch re-reads every retained page.
+
 ## Layout
 
 Mobile-first. A single content column with a max width; the group feed is a list, not a grid.

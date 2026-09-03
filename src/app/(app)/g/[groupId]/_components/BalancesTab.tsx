@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../../../../../lib/api/client";
+import { liveGroupRead } from "../../../../../lib/query/liveGroupQuery";
 import { es } from "../../../../../lib/i18n/es";
 import type { BalancesResult } from "./balancesTypes";
 import { BalancesToolbar } from "./BalancesToolbar";
@@ -49,7 +50,7 @@ export function BalancesTab({
     queryKey: ["group", groupId, "balances"],
     queryFn: () => apiFetch<BalancesResult>(`/api/groups/${groupId}/balances`),
     initialData,
-    staleTime: Infinity,
+    ...liveGroupRead,
   });
 
   const settlements = useSettlements(groupId, myUserId, initialSettlements);
