@@ -7,7 +7,7 @@ export interface Bar {
   valueText: string;
 }
 
-const ROW_HEIGHT = 34;
+const ROW_HEIGHT = 60;
 
 /**
  * A horizontal bar list, hand-rolled SVG (T081) — the shared primitive
@@ -42,23 +42,23 @@ export function BarSeries({
         const fillPercent = max > 0 ? (bar.value / max) * 100 : 0;
         return (
           <g key={bar.label}>
-            <text x={0} y={top + 12} fontSize={11} className="text-foreground" fill="currentColor">
+            <text x={0} y={top + 14} fontSize={12} className="text-foreground" fill="currentColor">
               {bar.label}
             </text>
             <text
               x="100%"
-              y={top + 12}
-              fontSize={11}
+              y={top + 34}
+              fontSize={12}
               textAnchor="end"
               className="text-foreground [font-variant-numeric:tabular-nums]"
               fill="currentColor"
             >
               {bar.valueText}
             </text>
-            <rect x={0} y={top + 18} width="100%" height={8} rx={4} className="text-muted" fill="currentColor" />
+            <rect x={0} y={top + 46} width="100%" height={8} rx={4} className="text-muted" fill="currentColor" />
             <rect
               x={0}
-              y={top + 18}
+              y={top + 46}
               width={`${fillPercent}%`}
               height={8}
               rx={4}
