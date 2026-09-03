@@ -122,6 +122,16 @@ hand-rolled SVG does not. T081 owns the shared primitives; T082 and T084 consume
 - **Notifications** — needs SMTP or push, neither of which this repo owns today
 - **PWA / offline add** — expenses get added in restaurants with bad wifi; a queued offline write
   is genuinely useful and genuinely fiddly
+- **Search and filter Gastos** — selected next on 2026-09-02. Search titles and filter by category,
+  participant, currency, and date on the server before cursor pagination; a client-only filter of
+  the loaded page would return incomplete answers
+- **Copy the payment plan** — selected after expense search. Produce neutral Spanish text from the
+  current server-provided plan, with separate currency blocks and pinned-rate provenance, ready to
+  paste into WhatsApp without adding a messaging integration
+
+An expense-duplication shortcut was considered with those two improvements and rejected for now:
+it adds another expense-row action without enough evidence that the common case needs it. Revisit
+only if real usage says otherwise.
 
 ### E12 · First use
 
