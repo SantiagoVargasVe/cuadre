@@ -4,6 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ExpenseFeed } from "./ExpenseFeed";
 import type { ExpenseSummary, GroupMember } from "./types";
 
+// The feed now renders the search/filter bar, which navigates (T115).
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+
 const members: GroupMember[] = [{ userId: "ana", displayName: "Ana", role: "owner" }];
 
 function expense(id: string, title: string): ExpenseSummary {

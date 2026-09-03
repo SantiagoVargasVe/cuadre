@@ -1,13 +1,14 @@
 "use client";
 
-import * as React from "react";
-import { apiFetch } from "../../../../../lib/api/client";
 import { es } from "../../../../../lib/i18n/es";
+import type { ExpenseFilters as ExpenseFiltersValue } from "../../../../../lib/schemas/expenseFilters";
 import { Button } from "../../../../_ui/Button";
 import { AddExpenseFab } from "./AddExpenseFab";
-import { EmptyState } from "./EmptyState";
+import { EmptyState, NoMatchesState } from "./EmptyState";
+import { ExpenseFilters } from "./ExpenseFilters";
 import { ExpenseRow } from "./ExpenseRow";
-import type { ExpenseListResult, ExpenseSummary, GroupMember } from "./types";
+import type { ExpenseSummary, GroupMember } from "./types";
+import { useExpenseFeed } from "./useExpenseFeed";
 
 const t = es.expenseFeed;
 
@@ -18,13 +19,16 @@ export interface ExpenseFeedProps {
   initialCursor: string | null;
   members: GroupMember[];
   defaultCurrency: string;
+  /** Server-parsed from the URL (T115). The page keys this component by
+   * them, so a filter change arrives as a remount with a fresh page. */
+  filters?: ExpenseFiltersValue;
 }
 
 /**
  * The first page is server-rendered (frontend/CLAUDE.md § *Data loading*:
  * "renders from GET /api/groups/:id plus the tab's own endpoint") — this
- * component just owns "load more" and prepending a freshly-created expense,
- * the real interactivity a read-heavy feed needs.
+ * component owns the search/filter surface, "load more", and reflecting a
+ * write, which is the real interactivity a read-heavy feed needs.
  */
 export function ExpenseFeed({
   groupId,
@@ -33,60 +37,31 @@ export function ExpenseFeed({
   initialCursor,
   members,
   defaultCurrency,
+  filters = {},
 }: ExpenseFeedProps) {
-  const [items, setItems] = React.useState(initialItems);
-  const [cursor, setCursor] = React.useState(initialCursor);
-  const [loading, setLoading] = React.useState(false);
-
-  async function loadMore() {
-    if (!cursor) return;
-    setLoading(true);
-    try {
-      const page = await apiFetch<ExpenseListResult>(
-        `/api/groups/${groupId}/expenses?cursor=${encodeURIComponent(cursor)}`,
-      );
-      // The cursor is (date, id) descending — appending never revisits an
-      // id already on the page, so this can't duplicate a row even on a
-      // day with several expenses (services/expenses.ts § listExpenses).
-      setItems((current) => [...current, ...page.items]);
-      setCursor(page.nextCursor);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function handleCreated(expense: ExpenseSummary) {
-    setItems((current) => [expense, ...current]);
-  }
-
-  function handleUpdated(expense: ExpenseSummary) {
-    setItems((current) => current.map((item) => item.id === expense.id ? expense : item));
-  }
-
-  function handleDeleted(expenseId: string) {
-    setItems((current) => current.filter((item) => item.id !== expenseId));
-  }
+  const feed = useExpenseFeed({ groupId, initialItems, initialCursor, filters });
 
   return (
     <div className="flex flex-col gap-3 pb-20">
-      {items.length === 0 ? (
-        <EmptyState />
+      <ExpenseFilters groupId={groupId} filters={filters} members={members} />
+      {feed.items.length === 0 ? (
+        feed.isFiltered ? <NoMatchesState groupId={groupId} /> : <EmptyState />
       ) : (
         <>
-          {items.map((expense) => (
+          {feed.items.map((expense) => (
             <ExpenseRow
               key={expense.id}
               expense={expense}
               groupId={groupId}
               myUserId={myUserId}
               members={members}
-              onUpdated={handleUpdated}
-              onDeleted={handleDeleted}
+              onUpdated={feed.onUpdated}
+              onDeleted={feed.onDeleted}
             />
           ))}
-          {cursor && (
-            <Button variant="ghost" onClick={loadMore} disabled={loading}>
-              {loading ? t.loading : t.loadMore}
+          {feed.cursor && (
+            <Button variant="ghost" onClick={feed.loadMore} disabled={feed.loading}>
+              {feed.loading ? t.loading : t.loadMore}
             </Button>
           )}
         </>
@@ -96,7 +71,7 @@ export function ExpenseFeed({
         members={members}
         defaultCurrency={defaultCurrency}
         myUserId={myUserId}
-        onCreated={handleCreated}
+        onCreated={feed.onCreated}
       />
     </div>
   );

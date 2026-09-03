@@ -1,7 +1,8 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lte, sql, type SQL } from "drizzle-orm";
 import { isExpenseCategoryKey, type ExpenseCategoryKey } from "../../lib/categories";
+import { UNCATEGORISED_FILTER, type ExpenseFilters } from "../../lib/schemas/expenseFilters";
 import type { SplitInput } from "../../lib/schemas/expenses";
 import {
   ExactAmountsDoNotBalanceError,
@@ -723,7 +724,9 @@ function clampLimit(limit: number | undefined): number {
   return Math.min(limit, MAX_PAGE_SIZE);
 }
 
-export interface ListExpensesOptions {
+/** Pagination plus the T115 filter set, which the route has already
+ * validated — the service takes typed values, never raw query strings. */
+export interface ListExpensesOptions extends ExpenseFilters {
   cursor?: string;
   limit?: number;
 }
@@ -737,6 +740,54 @@ export interface ExpenseListResult {
 async function loadGroupConversionContext(groupId: string): Promise<ConversionContext | null> {
   const [group] = await db.select({ displayCurrency: groups.displayCurrency }).from(groups).where(eq(groups.id, groupId)).limit(1);
   return group?.displayCurrency ? loadConversionContext(groupId, group.displayCurrency) : null;
+}
+
+/**
+ * The T115 filter set as SQL, AND-ed together and applied *before* the
+ * cursor and the page limit. Filtering the loaded page instead would drop
+ * valid matches and make the result depend on how many times someone
+ * pressed "Cargar más".
+ */
+function filterConditions(filters: ExpenseFilters): SQL[] {
+  const conditions: SQL[] = [];
+
+  if (filters.q) {
+    // ILIKE reads %, _ and the escape character as syntax. Escaping all
+    // three keeps a title search literal: "50%" finds "50%", and a lone
+    // "%" finds a percent sign rather than every expense in the group.
+    const literal = filters.q.replace(/[\\%_]/g, "\\$&");
+    conditions.push(sql`${expenses.title} ILIKE ${`%${literal}%`} ESCAPE '\\'`);
+  }
+
+  if (filters.category === UNCATEGORISED_FILTER) {
+    conditions.push(sql`${expenses.categoryKey} IS NULL`);
+  } else if (filters.category) {
+    conditions.push(sql`${expenses.categoryKey} = ${filters.category}`);
+  }
+
+  if (filters.currency) conditions.push(sql`${expenses.currency} = ${filters.currency}`);
+
+  if (filters.member) {
+    // "Participated in" is either side of the ledger entry. Two EXISTS
+    // subqueries rather than a join: an expense where the member both paid
+    // and owes a split still comes back exactly once. Historical rows stay
+    // discoverable after a member is removed from the group — the acting
+    // user's own membership is checked separately, above.
+    conditions.push(sql`(
+      EXISTS (SELECT 1 FROM ${expensePayers}
+              WHERE ${expensePayers.expenseId} = ${expenses.id}
+                AND ${expensePayers.userId} = ${filters.member})
+      OR EXISTS (SELECT 1 FROM ${expenseSplits}
+                 WHERE ${expenseSplits.expenseId} = ${expenses.id}
+                   AND ${expenseSplits.userId} = ${filters.member})
+    )`);
+  }
+
+  // Both bounds inclusive — "del 1 al 31 de agosto" includes both days.
+  if (filters.from) conditions.push(gte(expenses.expenseDate, filters.from));
+  if (filters.to) conditions.push(lte(expenses.expenseDate, filters.to));
+
+  return conditions;
 }
 
 /**
@@ -755,7 +806,11 @@ export async function listExpenses(
   const limit = clampLimit(options.limit);
   const cursor = options.cursor ? decodeCursor(options.cursor) : null;
 
-  const conditions = [eq(expenses.groupId, groupId), isNull(expenses.deletedAt)];
+  const conditions = [
+    eq(expenses.groupId, groupId),
+    isNull(expenses.deletedAt),
+    ...filterConditions(options),
+  ];
   if (cursor) {
     conditions.push(
       sql`(${expenses.expenseDate}, ${expenses.id}) < (${cursor.date}::date, ${cursor.id}::uuid)`,

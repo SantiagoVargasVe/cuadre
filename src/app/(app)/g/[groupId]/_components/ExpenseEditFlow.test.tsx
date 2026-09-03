@@ -3,6 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { actionDetail, renderActionFeed, response } from "./expenseActionTestHelpers";
 
+// The feed renders the search/filter bar, which navigates (T115).
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+
 afterEach(() => vi.unstubAllGlobals());
 
 describe("expense edit flow", () => {
