@@ -3,11 +3,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../../../../../lib/api/client";
 import { es } from "../../../../../lib/i18n/es";
-import { Button } from "../../../../_ui/Button";
-import { Switch } from "../../../../_ui/Switch";
 import type { BalancesResult } from "./balancesTypes";
+import { BalancesToolbar } from "./BalancesToolbar";
 import { CurrencyBalanceBlock } from "./CurrencyBalanceBlock";
-import { SettleUpDialog } from "./SettleUpDialog";
+import { formatPaymentPlanForClipboard } from "./formatPaymentPlanForClipboard";
+import { buildMemberLookup } from "./memberLookup";
 import { SettlementList } from "./SettlementList";
 import type { SettlementListResult } from "./settlementTypes";
 import type { GroupMember } from "./types";
@@ -17,6 +17,9 @@ const t = es.balances;
 
 export interface BalancesTabProps {
   groupId: string;
+  /** From the server-rendered page, so the copied message names the group
+   * it belongs to without another request (T116). */
+  groupTitle: string;
   myUserId: string;
   members: GroupMember[];
   defaultCurrency: string;
@@ -33,6 +36,7 @@ export interface BalancesTabProps {
  */
 export function BalancesTab({
   groupId,
+  groupTitle,
   myUserId,
   members,
   defaultCurrency,
@@ -64,25 +68,29 @@ export function BalancesTab({
   const presentCurrencies = Array.from(
     new Set([defaultCurrency, ...data.byCurrency.map((b) => b.currency)]),
   );
+  // Built from `data`, the live query result — a simplify toggle or a
+  // recorded settlement invalidates ["group", groupId] and this rebuilds.
+  // Empty for a settled group, which is what hides the action entirely.
+  const planText = formatPaymentPlanForClipboard({
+    groupTitle,
+    balances: data,
+    nameOf: buildMemberLookup(members).nameOf,
+  });
 
   return (
     <div className="flex flex-col gap-4 pb-20">
-      <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-card p-4">
-        <label className="flex items-center gap-2">
-          <span className="text-sm font-medium text-foreground">{t.simplifyLabel}</span>
-          <Switch checked={simplified} onCheckedChange={(c) => toggle.mutate(c)} disabled={toggle.isPending} />
-        </label>
-        <SettleUpDialog
-          trigger={<Button size="sm" type="button">{es.settlements.record}</Button>}
-          title={es.settlements.recordTitle}
-          groupId={groupId}
-          members={members}
-          myUserId={myUserId}
-          currency={defaultCurrency}
-          presentCurrencies={presentCurrencies}
-          mutations={settlements}
-        />
-      </div>
+      <BalancesToolbar
+        groupId={groupId}
+        members={members}
+        myUserId={myUserId}
+        defaultCurrency={defaultCurrency}
+        presentCurrencies={presentCurrencies}
+        mutations={settlements}
+        simplified={simplified}
+        togglePending={toggle.isPending}
+        onToggle={(simplify) => toggle.mutate(simplify)}
+        planText={planText}
+      />
 
       {data.byCurrency.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border p-8 text-center">

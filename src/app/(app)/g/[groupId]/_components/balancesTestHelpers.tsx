@@ -43,6 +43,7 @@ export function renderBalancesTab(initialData: BalancesResult = unsimplified) {
     <QueryClientProvider client={client}>
       <BalancesTab
         groupId="g1"
+        groupTitle="Cartagena 2026"
         myUserId="ana"
         members={members}
         defaultCurrency="COP"

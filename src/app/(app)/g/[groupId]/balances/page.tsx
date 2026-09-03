@@ -26,6 +26,7 @@ export default async function BalancesTabPage({
   return (
     <BalancesTab
       groupId={groupId}
+      groupTitle={group.title}
       myUserId={user.id}
       members={members}
       defaultCurrency={group.defaultCurrency}

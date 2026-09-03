@@ -375,6 +375,19 @@ export const es = {
       body: "No hay gastos todavía en este grupo.",
     },
     convertedMarkerLabel: "Tasas de conversión",
+    /** The shareable plan (T116). Neutral third person throughout: one
+     * message has to read correctly for everyone in the chat, not only for
+     * whoever pressed copy. */
+    copyPlan: {
+      action: "Copiar plan de pagos",
+      copied: "¡Copiado!",
+      error: "No se pudo copiar. Intenta de nuevo.",
+      heading: (groupTitle: string) => `Plan de pagos — ${groupTitle}`,
+      edge: (fromName: string, toName: string, formatted: string) =>
+        `${fromName} le paga a ${toName} ${formatted}`,
+      convertedNote: (currency: string) =>
+        `Montos convertidos a ${currency} con tasas fijas:`,
+    },
     pinLine: (from: string, to: string, date: string, source: string) =>
       `${from} → ${to}: tasa del ${date} (${source})`,
   },
