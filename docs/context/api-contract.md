@@ -117,7 +117,8 @@ non-zero in any currency. You cannot walk out mid-trip.
 ## Expenses
 
 ```
-GET    /api/groups/:id/expenses          ?cursor=&limit=  → 200 { items[], nextCursor }
+GET    /api/groups/:id/expenses          ?cursor=&limit=&q=&category=&currency=&member=&from=&to=
+                                                          → 200 { items[], nextCursor }
 POST   /api/groups/:id/expenses                           → 201 { expense }
 GET    /api/groups/:id/expenses.csv                       → 200 text/csv
 GET    /api/expenses/:id                                  → 200 { expense }
@@ -125,6 +126,37 @@ PATCH  /api/expenses/:id                                  → 200 { expense }
 DELETE /api/expenses/:id                                  → 204
 GET    /api/expenses/:id/revisions                        → 200 { revisions[] }
 ```
+
+### Searching and filtering the feed (T115)
+
+Every parameter is optional and they combine with **AND**. All of them are applied in SQL
+*before* the cursor and the page limit, so a filtered feed paginates exactly like an unfiltered
+one — `?cursor=` carries the same filters on each *Cargar más*, and a match on page four is
+still a match.
+
+| Parameter | Value | Matches |
+|---|---|---|
+| `q` | free text, trimmed, capped at 200 chars | case-insensitive **literal substring** of the expense title |
+| `category` | one of the fixed T090 keys, or `uncategorised` | that category, or rows with none |
+| `currency` | ISO-4217 code | the currency the expense was **entered** in, never a converted display value |
+| `member` | `userId` | the member appears among the expense's payers **or** its splits |
+| `from` / `to` | `YYYY-MM-DD` | inclusive calendar-date bounds |
+
+`q` is literal: `%`, `_`, and `\` search for themselves rather than becoming wildcards.
+
+The `member` filter is participation on either side of the ledger entry, and an expense where
+the member both paid and owes a split is returned **once**. It keeps matching after that member
+is removed from the group — the history of who owed what doesn't disappear with the membership.
+The *acting* user is unaffected by this: `listExpenses` still requires their own current
+membership, so a removed member reading the feed gets `404` like any other non-member.
+
+A malformed value is a `400 VALIDATION_ERROR` — an unknown `category`, a non-UUID `member`, a
+`currency` that isn't three uppercase letters, an impossible date such as `2026-02-31`, a `from`
+later than `to`, or an unrecognised parameter. As everywhere else, the body carries no `details`.
+`cursor` and `limit` keep their existing forgiving behaviour: a malformed cursor reads as "no
+cursor", and a limit outside 1–200 falls back to the default.
+
+**`expenses.csv` takes none of these.** The export is deliberately the complete live ledger.
 
 ### Creating an expense
 

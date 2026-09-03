@@ -205,6 +205,7 @@ export const es = {
     loadMore: "Cargar más",
     loading: "Cargando…",
     export: "Exportar CSV",
+    exportHint: "Incluye todos los gastos del grupo, sin filtros.",
     paidByYou: "Pagado por ti",
     paidBy: (name: string) => `Pagado por ${name}`,
     paidByMultiple: (n: number) => `Pagado por ${n} personas`,
@@ -239,6 +240,29 @@ export const es = {
     comingSoon: {
       title: "Agregar gasto",
       body: "Próximamente.",
+    },
+  },
+  /** Search and filters over the Gastos feed (T115). */
+  expenseFilters: {
+    searchLabel: "Buscar gastos",
+    searchPlaceholder: "Por ejemplo: hotel",
+    apply: "Buscar",
+    filters: "Filtros",
+    filtersWithCount: (count: number) =>
+      `Filtros (${count} ${count === 1 ? "activo" : "activos"})`,
+    clear: "Limpiar filtros",
+    categoryLabel: "Categoría",
+    memberLabel: "Persona",
+    currencyLabel: "Moneda",
+    fromLabel: "Desde",
+    toLabel: "Hasta",
+    allCategories: "Todas las categorías",
+    uncategorised: "Sin categoría",
+    allMembers: "Todas las personas",
+    allCurrencies: "Todas las monedas",
+    empty: {
+      title: "Ningún gasto coincide",
+      body: "Prueba con otra búsqueda o quita algún filtro.",
     },
   },
   expenseHistory: {

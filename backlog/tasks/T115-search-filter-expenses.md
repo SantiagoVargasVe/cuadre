@@ -2,7 +2,7 @@
 id: T115
 title: Search and filter the expense feed
 epic: E10-quality-of-life
-status: todo
+status: done
 depends_on: [T036, T063, T090]
 size: L
 ---
