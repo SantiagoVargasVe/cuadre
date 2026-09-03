@@ -4,7 +4,7 @@ export interface PairedRow {
   b: { value: number; valueText: string };
 }
 
-const ROW_HEIGHT = 52;
+const ROW_HEIGHT = 94;
 
 /**
  * Two bars per row on one shared scale — paid vs. consumed per member
@@ -39,19 +39,19 @@ export function PairedBars({
         const top = index * ROW_HEIGHT;
         return (
           <g key={row.label}>
-            <text x={0} y={top + 10} fontSize={11} className="text-foreground" fill="currentColor">
+            <text x={0} y={top + 14} fontSize={12} className="text-foreground" fill="currentColor">
               {row.label}
             </text>
-            <text x="100%" y={top + 23} fontSize={10} textAnchor="end" className="text-foreground [font-variant-numeric:tabular-nums]" fill="currentColor">
+            <text x="100%" y={top + 35} fontSize={12} textAnchor="end" className="text-foreground [font-variant-numeric:tabular-nums]" fill="currentColor">
               {aLabel} {row.a.valueText}
             </text>
-            <rect x={0} y={top + 26} width="100%" height={7} rx={3} className="text-muted" fill="currentColor" />
-            <rect x={0} y={top + 26} width={`${pct(row.a.value)}%`} height={7} rx={3} className="text-chart-1" fill="currentColor" />
-            <text x="100%" y={top + 41} fontSize={10} textAnchor="end" className="text-foreground [font-variant-numeric:tabular-nums]" fill="currentColor">
+            <rect x={0} y={top + 47} width="100%" height={8} rx={4} className="text-muted" fill="currentColor" />
+            <rect x={0} y={top + 47} width={`${pct(row.a.value)}%`} height={8} rx={4} className="text-chart-1" fill="currentColor" />
+            <text x="100%" y={top + 69} fontSize={12} textAnchor="end" className="text-foreground [font-variant-numeric:tabular-nums]" fill="currentColor">
               {bLabel} {row.b.valueText}
             </text>
-            <rect x={0} y={top + 44} width="100%" height={7} rx={3} className="text-muted" fill="currentColor" />
-            <rect x={0} y={top + 44} width={`${pct(row.b.value)}%`} height={7} rx={3} className="text-chart-2" fill="currentColor" />
+            <rect x={0} y={top + 81} width="100%" height={8} rx={4} className="text-muted" fill="currentColor" />
+            <rect x={0} y={top + 81} width={`${pct(row.b.value)}%`} height={8} rx={4} className="text-chart-2" fill="currentColor" />
           </g>
         );
       })}

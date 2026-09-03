@@ -2,7 +2,7 @@
 id: T113
 title: Give insight chart labels room to breathe
 epic: E12-first-use
-status: todo
+status: done
 depends_on: [T081, T082]
 size: S
 ---
