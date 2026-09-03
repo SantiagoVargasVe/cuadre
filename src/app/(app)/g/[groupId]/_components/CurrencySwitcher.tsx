@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../../../../../lib/api/client";
+import { liveGroupRead } from "../../../../../lib/query/liveGroupQuery";
 import { formatCalendarDate } from "../../../../../lib/date/format";
 import { es } from "../../../../../lib/i18n/es";
 import { KNOWN_CURRENCIES } from "../../../../../lib/money/format";
@@ -26,14 +27,14 @@ export function CurrencySwitcher({ groupId, initial }: { groupId: string; initia
     queryKey: ["group", groupId, "display-currency"],
     queryFn: () => apiFetch<DisplayCurrencyState>(`/api/groups/${groupId}/display-currency`),
     initialData: initial,
-    staleTime: Infinity,
+    ...liveGroupRead,
   });
   // The currencies the convert preview quotes rates for — shared cache key
   // with the Balances tab (T106).
   const { data: balances } = useQuery({
     queryKey: ["group", groupId, "balances"],
     queryFn: () => apiFetch<{ byCurrency: { currency: string }[] }>(`/api/groups/${groupId}/balances`),
-    staleTime: Infinity,
+    ...liveGroupRead,
   });
   const presentCurrencies = balances?.byCurrency.map((c) => c.currency) ?? [];
 

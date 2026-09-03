@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../../../../../lib/api/client";
+import { liveGroupRead } from "../../../../../lib/query/liveGroupQuery";
 import { es } from "../../../../../lib/i18n/es";
 import { InsightsCurrencySection } from "./InsightsCurrencySection";
 import type { InsightsResult } from "./insightsTypes";
@@ -29,7 +30,7 @@ export function InsightsTab({
     queryKey: ["group", groupId, "insights"],
     queryFn: () => apiFetch<InsightsResult>(`/api/groups/${groupId}/insights`),
     initialData,
-    staleTime: Infinity,
+    ...liveGroupRead,
   });
   const { nameOf } = buildMemberLookup(members);
 

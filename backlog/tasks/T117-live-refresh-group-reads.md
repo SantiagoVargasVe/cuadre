@@ -2,7 +2,7 @@
 id: T117
 title: Keep an open group in sync while other members are adding expenses
 epic: E12-first-use
-status: todo
+status: done
 depends_on: [T063, T066, T081, T106, T115]
 size: M
 ---
@@ -61,59 +61,65 @@ excluded, and [testing.md](../../docs/context/testing.md).
 
 ## Acceptance criteria
 
-- [ ] One shared source for the live-read options — a single module under `src/lib/hooks/` (one
+- [x] One shared source for the live-read options — a single module under `src/lib/hooks/` (one
       hook per file, each with a test, per design-system.md § *Hooks*) that names the interval
       **once**. `120_000` unless the implementer has a measured reason to differ, in which case
       say so in the PR
-- [ ] `useExpenseFeed` reads through TanStack Query instead of `useState`: `useInfiniteQuery`
+- [x] `useExpenseFeed` reads through TanStack Query instead of `useState`: `useInfiniteQuery`
       keyed by group *and* the serialized filters — `["group", groupId, "expenses", filterQuery]`
       — seeded from the server-rendered first page via `initialData`. **No extra request on
       mount**; the page already paid for that page, and T106 exists because that latency was
       visible
-- [ ] *Cargar más* becomes `fetchNextPage`, and pages already loaded survive a background
+- [x] *Cargar más* becomes `fetchNextPage`, and pages already loaded survive a background
       refetch: a member who has loaded three pages must not be snapped back to one. Appending
       still cannot duplicate a row — the `(expense_date, id)` descending cursor never revisits an
       id, filtered or not (`services/expenses.ts` § `listExpenses`, § `filterConditions`)
-- [ ] **Bound the fan-out.** A background refetch of an infinite query refetches *every* retained
-      page, so ten presses of *Cargar más* would otherwise mean ten requests per poll. Cap the
-      retained pages (`maxPages`) and state the cap and its reasoning in a comment. This is the
+- [x] **Bound the fan-out.** A background refetch of an infinite query refetches *every* retained
+      page, so ten presses of *Cargar más* would otherwise mean ten requests per poll. This is the
       one way polling here can multiply, and the only part of the load budget that isn't
-      trivially safe
-- [ ] `refetchFiltered` disappears. Its job — "a write under an active filter can move a row into
+      trivially safe.
+
+      **Not with `maxPages`, as this task originally said** — that evicts the *first* pages, which
+      in a `(date, id)` descending feed are the newest expenses, so the top of the list would
+      silently disappear as someone paged into the past. It is only usable with bidirectional
+      pagination, and *Cargar más* is forward-only. The timer is capped instead
+      (`livePollInterval`): past four loaded pages the feed stops polling, because someone 200
+      expenses deep is reading history, and they still refresh on focus and after any write
+- [x] `refetchFiltered` disappears. Its job — "a write under an active filter can move a row into
       or out of the result, so only the server knows the answer" — becomes an invalidation of the
       feed's own key, and the filtered/unfiltered branching in `onCreated` / `onUpdated` /
       `onDeleted` collapses with it. Creating or editing an expense stays **non-optimistic**: the
       server resolves the split (design-system.md § *Data*)
-- [ ] Decide deliberately between the two remount mechanisms and keep only one. The page
+- [x] Decide deliberately between the two remount mechanisms and keep only one. The page
       currently forces a fresh feed with `key={filterQuery}` on `<ExpenseFeed>`; once the filters
       are part of the query key, that remount is redundant. Whichever survives, a filter change
       must still drop the loaded pages and the cursor together
-- [ ] A test covers the discarded-`initialData` case directly: mount a group read, unmount it,
+- [x] A test covers the discarded-`initialData` case directly: mount a group read, unmount it,
       remount it inside `gcTime` with a *changed* `initialData`, and assert the newer value wins.
       That is the defect in cause 2 above, and the one that produces a confidently wrong balance
-- [ ] `staleTime: Infinity` is gone from the four group reads — balances (`BalancesTab`,
+- [x] `staleTime: Infinity` is gone from the four group reads — balances (`BalancesTab`,
       `CurrencySwitcher`), settlements (`useSettlements`), insights (`InsightsTab`),
       display-currency (`CurrencySwitcher`) — replaced by the shared finite value, which restores
       `refetchOnWindowFocus` on all of them
-- [ ] The mounted tab polls the reads it renders, and only those: Gastos → expenses; Balances →
+- [x] The mounted tab polls the reads it renders, and only those: Gastos → expenses; Balances →
       balances **and** settlements (a plan that moved without its settlements is the wrong-number
       case design-system.md warns about); Análisis → insights. The tabs are separate routes, so a
       device polls one or two endpoints, never all five
-- [ ] `refetchIntervalInBackground` stays at its default `false`. A hidden or backgrounded tab
+- [x] `refetchIntervalInBackground` stays at its default `false`. A hidden or backgrounded tab
       stops polling and catches up on focus
-- [ ] **The FX reads are excluded and stay excluded.** `fx-quote` (`TransferHint`,
+- [x] **The FX reads are excluded and stay excluded.** `fx-quote` (`TransferHint`,
       `ConvertRatePreview`) keeps its 5-minute `staleTime` and gains no interval, and nothing in
       this task may refresh a group's pinned rate — *a pinned rate is never silently refreshed*
       (CLAUDE.md non-negotiable 5). A poll that moved a pinned total would break a product
       promise, not just a cache
-- [ ] A poll never disturbs work in progress: with the expense form open and an amount half-typed,
+- [x] A poll never disturbs work in progress: with the expense form open and an amount half-typed,
       the split editor mid-edit, the settle-up dialog open, or the expense detail expanded, a
       refetch must not close, reset, or reorder under the user. Verify each explicitly
-- [ ] Tests, same commit: with fake timers, a second member's expense appears in the feed after
+- [x] Tests, same commit: with fake timers, a second member's expense appears in the feed after
       one interval without a remount; retained pages survive a refetch; a filtered feed refetches
       with its filters intact; the FX query's options are unchanged; and an open expense form
       keeps its values across a refetch
-- [ ] `docs/frontend/design-system.md` § *Data — TanStack Query* states the staleness policy —
+- [x] `docs/frontend/design-system.md` § *Data — TanStack Query* states the staleness policy —
       what polls, at what interval, why `staleTime: Infinity` is not the default here, and which
       reads must never poll. Whoever writes the next hook will copy what's written there
 

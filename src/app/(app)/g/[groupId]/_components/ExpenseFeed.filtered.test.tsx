@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -26,7 +27,9 @@ function expense(id: string, title: string): ExpenseSummary {
 }
 
 function renderFeed(filters: ExpenseFilters, items: ExpenseSummary[], cursor: string | null) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
+    <QueryClientProvider client={client}>
     <ExpenseFeed
       groupId="g1"
       myUserId="ana"
@@ -35,7 +38,8 @@ function renderFeed(filters: ExpenseFilters, items: ExpenseSummary[], cursor: st
       filters={filters}
       members={members}
       defaultCurrency="COP"
-    />,
+    />
+    </QueryClientProvider>,
   );
 }
 
