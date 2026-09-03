@@ -77,7 +77,7 @@ establish that.
 | **E7** frontend | Shell, groups, feed, expense form, split editor, balances, settle up | T060–T068 | M6 |
 | **E8** deploy | Dockerfile, CI, GHCR, compose, timers, tunnel | T070–T076 | M7 |
 | **E9** insights | Charts, CSV export, revision diffs | T080–T084 | post-MVP |
-| **E10** quality-of-life | Categories, receipts, recurring, comments, notifications, PWA | T090–T095 | post-MVP |
+| **E10** quality-of-life | Categories, receipts, recurring, comments, notifications, PWA, expense discovery and sharing | T090–T095, T115–T116 | post-MVP |
 | **E12** first-use | Fixes and clarity from real use of the deployed app | T100–T110, T113–T114 | post-MVP |
 | **E13** code health | The real subset of a static-analysis pass, plus the list of non-issues | T111–T112 | post-MVP |
 
@@ -194,6 +194,17 @@ task file when it is picked up, following [_template.md](_template.md).
 create-expense queue is genuinely useful and genuinely fiddly; it sits behind categories (T090)
 and the whole of E12. Its task file exists so the idempotency and service-worker cache-safety
 constraints are captured while they're fresh — not because it's next in line.
+
+*Selected from the next product review, in order (2026-09-02):*
+
+- `T115` Search and filter Gastos across title, category, person, currency, and date without
+  breaking server-side pagination
+- `T116` Copy the current server-provided payment plan as Spanish text ready to paste into
+  WhatsApp. It follows T115 by explicit product priority
+
+An expense-duplication shortcut was considered in the same review and deliberately not selected:
+the common case does not justify another row action yet. Do not turn it into a task without new
+usage evidence.
 
 **E12 — First use** · post-MVP
 
