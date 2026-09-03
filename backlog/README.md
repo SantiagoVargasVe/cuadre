@@ -78,7 +78,7 @@ establish that.
 | **E8** deploy | Dockerfile, CI, GHCR, compose, timers, tunnel | T070–T076 | M7 |
 | **E9** insights | Charts, CSV export, revision diffs | T080–T084 | post-MVP |
 | **E10** quality-of-life | Categories, receipts, recurring, comments, notifications, PWA, expense discovery and sharing | T090–T095, T115–T116 | post-MVP |
-| **E12** first-use | Fixes and clarity from real use of the deployed app | T100–T110, T113–T114 | post-MVP |
+| **E12** first-use | Fixes and clarity from real use of the deployed app | T100–T110, T113–T114, T117 | post-MVP |
 | **E13** code health | The real subset of a static-analysis pass, plus the list of non-issues | T111–T112 | post-MVP |
 
 Sequencing rationale is in [docs/roadmap.md](../docs/roadmap.md). The short version: the ledger
@@ -244,6 +244,13 @@ in particular.
   readable at every supported width
 - `T114` Keep the useful summary, then regroup the remaining analysis around contributions,
   categories, and only genuine time trends; turn uncategorised data into an actionable state
+
+*Then, from two people adding expenses at the same time (2026-09-02):*
+- `T117` Keep an open group in sync — the Gastos feed is `useState` over a server-rendered page
+  and every other group read is `staleTime: Infinity`, so nothing refreshes without a hard reload.
+  A finite `staleTime` (which also restores refetch-on-focus) plus a 2-minute poll on the mounted
+  tab. Load was checked and is not the constraint; the fan-out of an infinite-query refetch is
+  the one part that needs a cap
 
 **E13 — Code health** · post-MVP
 
