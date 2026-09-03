@@ -145,6 +145,12 @@ What the first session actually surfaced, in priority order:
 - **Tab switches feel slow** — no prefetch, no loading boundary, and the same two endpoints
   refetched on every tab.
 - **Members are hard to scan** in lists that are just columns of names.
+- **Insight chart labels crowd their bars.** The shared SVG geometry leaves as little as three
+  pixels between an amount baseline and its track, making the paid-vs-consumed chart unnecessarily
+  hard to read.
+- **The analysis below the summary is all chrome and no hierarchy.** A one-day "trend" and a 100%
+  uncategorised bar get the same full card as the useful member breakdown. Keep the summary, group
+  the detail around questions people can act on, and omit or replace non-insights.
 
 These come before E9 and E10. Charts and categories on top of an interface people misread is the
 same mistake as charts on top of a ledger people don't trust.
