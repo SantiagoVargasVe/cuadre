@@ -61,7 +61,6 @@ export function netText(net: bigint, currency: string): { text: string; classNam
 
 export interface MemberBreakdownData {
   pairedRows: PairedRow[];
-  netLines: { userId: string; name: string; text: string; className: string }[];
   tableRows: { label: string; values: string[] }[];
 }
 
@@ -75,11 +74,7 @@ export function memberBreakdownData(
       label: nameOf(member.userId),
       a: { value: Number(member.paid), valueText: money(member.paid, currency) },
       b: { value: Number(member.consumed), valueText: money(member.consumed, currency) },
-    })),
-    netLines: members.map((member) => ({
-      userId: member.userId,
-      name: nameOf(member.userId),
-      ...netText(BigInt(member.currentNet), currency),
+      balance: netText(BigInt(member.currentNet), currency),
     })),
     tableRows: members.map((member) => ({
       label: nameOf(member.userId),

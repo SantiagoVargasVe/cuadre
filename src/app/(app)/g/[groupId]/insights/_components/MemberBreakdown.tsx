@@ -1,5 +1,4 @@
 import { es } from "../../../../../../lib/i18n/es";
-import { ChartFrame } from "../../../../../_ui/charts/ChartFrame";
 import { HiddenDataTable } from "../../../../../_ui/charts/HiddenDataTable";
 import { PairedBars } from "../../../../../_ui/charts/PairedBars";
 import { memberBreakdownData } from "../../_components/insightsBars";
@@ -28,16 +27,7 @@ export function MemberBreakdown({
   const data = memberBreakdownData(members, currency, nameOf);
 
   return (
-    <ChartFrame
-      title={t.breakdown.title}
-      table={
-        <HiddenDataTable
-          caption={t.breakdown.title}
-          columnLabels={[t.memberColumn, t.breakdown.paid, t.breakdown.consumed, t.breakdown.currentNet]}
-          rows={data.tableRows}
-        />
-      }
-    >
+    <div className="flex flex-col gap-3">
       <PairedBars
         title={t.breakdown.title}
         description={t.breakdown.chartDescription}
@@ -45,15 +35,12 @@ export function MemberBreakdown({
         bLabel={t.breakdown.consumed}
         rows={data.pairedRows}
       />
-      <div className="mt-1 flex flex-col gap-1">
-        {data.netLines.map((line) => (
-          <div key={line.userId} className="flex items-center justify-between gap-2 text-sm">
-            <span className="font-medium text-foreground">{line.name}</span>
-            <span className={`tabular-nums ${line.className}`}>{line.text}</span>
-          </div>
-        ))}
-      </div>
+      <HiddenDataTable
+        caption={t.breakdown.title}
+        columnLabels={[t.memberColumn, t.breakdown.paid, t.breakdown.consumed, t.breakdown.currentNet]}
+        rows={data.tableRows}
+      />
       <p className="text-xs text-muted-foreground">{t.breakdown.netNote}</p>
-    </ChartFrame>
+    </div>
   );
 }
