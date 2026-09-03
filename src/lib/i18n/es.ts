@@ -283,8 +283,8 @@ export const es = {
   /** The Análisis tab (T081, T082). "Sin categoría" is its own bucket,
    * never folded into "Otro". */
   insights: {
-    overTime: "Gasto en el tiempo",
-    byCategory: "Gasto por categoría",
+    overTime: "Evolución del gasto",
+    byCategory: "En qué se gastó",
     uncategorised: "Sin categoría",
     noData: "Sin datos todavía.",
     periodColumn: "Fecha",
@@ -293,6 +293,14 @@ export const es = {
     amountColumn: "Monto",
     chartDescription: (n: number) =>
       n === 1 ? "1 barra, de mayor a menor." : `${n} barras, de mayor a menor.`,
+    contributions: {
+      title: "Aportes y balance",
+    },
+    category: {
+      singleCategory: (category: string) => `Todo el gasto está en ${category}:`,
+      allUncategorised: "Aún no hay gastos categorizados. Categoriza los gastos para entender mejor en qué se va la plata.",
+      goToExpenses: "Ir a Gastos",
+    },
     /** Per-member paid-vs-consumed (T082). */
     breakdown: {
       title: "Pagó vs. consumió",
@@ -300,7 +308,7 @@ export const es = {
       consumed: "Consumió",
       currentNet: "Balance actual",
       netNote: "El balance actual incluye los pagos ya registrados; las barras, no.",
-      chartDescription: "Dos barras por persona: lo que pagó y lo que consumió, en la misma escala.",
+      chartDescription: "Dos barras y el balance actual por persona: lo que pagó y lo que consumió, en la misma escala.",
     },
     /** The one-glance summary card (T084). */
     summary: {

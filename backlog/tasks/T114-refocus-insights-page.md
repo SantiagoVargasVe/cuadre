@@ -2,7 +2,7 @@
 id: T114
 title: Refocus Análisis on useful group decisions
 epic: E12-first-use
-status: todo
+status: done
 depends_on: [T113]
 size: M
 ---

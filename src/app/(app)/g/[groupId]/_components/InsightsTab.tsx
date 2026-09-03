@@ -45,7 +45,7 @@ export function InsightsTab({
   return (
     <div className="flex flex-col gap-6 pb-20">
       {data.byCurrency.map((block) => (
-        <InsightsCurrencySection key={block.currency} block={block} nameOf={nameOf} />
+        <InsightsCurrencySection key={block.currency} block={block} groupId={groupId} nameOf={nameOf} />
       ))}
     </div>
   );

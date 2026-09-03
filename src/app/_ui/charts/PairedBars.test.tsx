@@ -15,11 +15,13 @@ describe("PairedBars", () => {
             label: "Santiago con un nombre deliberadamente largo para una pantalla estrecha",
             a: { value: 999999999, valueText: "$ 9.999.999" },
             b: { value: 888888888, valueText: "$ 8.888.888" },
+            balance: { text: "Le deben $ 1.111.111", className: "text-credit" },
           },
           {
             label: "Valentina",
             a: { value: 120000, valueText: "$ 120.000" },
             b: { value: 240000, valueText: "$ 240.000" },
+            balance: { text: "Debe $ 120.000", className: "text-debit" },
           },
         ]}
       />,
@@ -30,7 +32,9 @@ describe("PairedBars", () => {
     expect(screen.getByText("Valentina")).toBeInTheDocument();
     expect(screen.getByText("Pagó $ 9.999.999")).toBeInTheDocument();
     expect(screen.getByText("Consumió $ 8.888.888")).toBeInTheDocument();
+    expect(screen.getByText("Le deben $ 1.111.111")).toHaveClass("text-credit");
     expect(screen.getByText("Pagó $ 120.000")).toBeInTheDocument();
     expect(screen.getByText("Consumió $ 240.000")).toBeInTheDocument();
+    expect(screen.getByText("Debe $ 120.000")).toHaveClass("text-debit");
   });
 });

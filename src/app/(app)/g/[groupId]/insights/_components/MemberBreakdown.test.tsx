@@ -35,15 +35,18 @@ describe("MemberBreakdown", () => {
       />,
     );
 
-    // Every net figure is a word + the absolute amount, and uses a money
-    // token — never --destructive as body text (design-system.md). The
-    // amount lands in its own <Money>-shaped span, so match on the word.
     const money = cop("15000");
-    const owed = screen.getAllByText((_, el) => el?.tagName === "SPAN" && el.textContent === `Le deben ${money}`);
-    const owes = screen.getAllByText((_, el) => el?.tagName === "SPAN" && el.textContent === `Debe ${money}`);
-    expect(owed.some((el) => el.classList.contains("text-credit"))).toBe(true);
-    expect(owes.some((el) => el.classList.contains("text-debit"))).toBe(true);
-    for (const el of [...owed, ...owes]) expect(el.className).not.toMatch(/destructive/);
+    const chart = within(screen.getByRole("img", { name: "Pagó vs. consumió" }));
+    const owed = chart.getByText((_, element) => element?.tagName === "text" && element.textContent === `Le deben ${money}`);
+    const owes = chart.getByText((_, element) => element?.tagName === "text" && element.textContent === `Debe ${money}`);
+    expect(owed).toHaveClass("text-credit");
+    expect(owes).toHaveClass("text-debit");
+    expect(owed).toHaveClass("tabular-nums");
+    expect(owed).toHaveAttribute("x", "100%");
+    expect(owed).toHaveAttribute("text-anchor", "end");
+    expect(owed.getAttribute("class")).not.toMatch(/destructive/);
+    expect(owes.getAttribute("class")).not.toMatch(/destructive/);
+    expect(chart.getByText(/balance actual por persona/)).toBeInTheDocument();
     expect(screen.getByText(/incluye los pagos ya registrados/)).toBeInTheDocument();
   });
 
