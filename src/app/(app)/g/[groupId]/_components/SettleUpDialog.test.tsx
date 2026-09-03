@@ -37,6 +37,7 @@ function renderTab(balances: BalancesResult, fetchMock: ReturnType<typeof vi.fn>
       <ToastProvider>
         <BalancesTab
           groupId="g1"
+          groupTitle="Cartagena 2026"
           myUserId="ana"
           members={members}
           defaultCurrency="COP"

@@ -2,7 +2,7 @@
 id: T116
 title: Copy the current payment plan for sharing
 epic: E10-quality-of-life
-status: todo
+status: done
 depends_on: [T066, T104, T115]
 size: M
 ---
