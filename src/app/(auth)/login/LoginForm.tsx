@@ -25,6 +25,7 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = safeNext(searchParams.get("next"));
+  const justReset = searchParams.get("reset") === "1";
   const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
@@ -46,6 +47,11 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
       <h1 className="text-2xl font-semibold text-foreground">{t.title}</h1>
+      {justReset && (
+        <p role="status" className="text-sm text-muted-foreground">
+          {t.resetDone}
+        </p>
+      )}
       <TextField
         label={t.emailLabel}
         type="email"
@@ -66,6 +72,9 @@ export function LoginForm() {
       <Button type="submit" disabled={isSubmitting || !isValid}>
         {isSubmitting ? t.submitting : t.submit}
       </Button>
+      <Link href="/forgot-password" className="text-sm text-primary underline">
+        {t.forgotPasswordLink}
+      </Link>
       <p className="text-sm text-muted-foreground">
         {t.noAccount}{" "}
         <Link href="/register" className="text-primary underline">
