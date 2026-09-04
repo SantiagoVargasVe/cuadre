@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
-import { apiFetch } from "../../lib/api/client";
+import { ApiError, apiFetch } from "../../lib/api/client";
 import { es } from "../../lib/i18n/es";
 import { Avatar } from "../_ui/Avatar";
 import { Button } from "../_ui/Button";
@@ -28,10 +28,24 @@ export function UserMenu() {
   const queryClient = useQueryClient();
   const [loggingOut, setLoggingOut] = React.useState(false);
 
-  const { data } = useQuery({
+  const { data, error } = useQuery({
     queryKey: ["me"],
     queryFn: () => apiFetch<MeResponse>("/api/auth/me"),
+    // A 401 here means the session was revoked elsewhere (a password reset
+    // on another device — T123). Retrying won't fix it; other failures
+    // still get the default retry.
+    retry: (failureCount, err) =>
+      !(err instanceof ApiError && err.status === 401) && failureCount < 3,
   });
+
+  // An open tab whose session was revoked shouldn't sit failing every
+  // refetch — send it to /login so it re-authenticates.
+  React.useEffect(() => {
+    if (error instanceof ApiError && error.status === 401) {
+      queryClient.clear();
+      router.replace("/login");
+    }
+  }, [error, queryClient, router]);
 
   async function onLogout() {
     setLoggingOut(true);
