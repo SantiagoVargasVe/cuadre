@@ -143,10 +143,10 @@ Authorization protects who can see the ledger. These protect what the ledger say
 
 Written down so they're decisions rather than oversights:
 
-- **No email verification.** Registration is invite-gated, which is the control. A wrong email is
-  a lockout risk for the user, not an abuse vector.
 - **No 2FA and no password reset flow in v1.** Reset requires SMTP that this repo deliberately
   doesn't own. Recovery is an operator action.
+  *(Email verification arrived with E15, [ADR-0013](../adr/0013-email-verification-gates-recovery.md):
+  registration mails a link, verification gates only self-service reset, never login.)*
 - **Any member can edit or delete any expense in their group**, including one they didn't create.
   Mitigated by `expense_revisions` recording who changed what, and surfaced in the UI as an
   "edited" marker. Groups are people who are already travelling together; permissions would be

@@ -48,13 +48,15 @@ responding `{ items, nextCursor }`.
 ## Auth
 
 ```
-POST /api/auth/register    { email, displayName, password, inviteCode,
-                            termsAccepted: true, privacyAccepted: true } → 201 { user }
-POST /api/auth/login       { email, password }                          → 200 { user }
-POST /api/auth/logout                                                   → 204
-GET  /api/auth/me                                                       → 200 { user, groups[] }
-PUT  /api/auth/avatar      { variant, seed, palette } | null            → 200 { avatar }
-PATCH /api/auth/profile    { displayName }                             → 200 { user }
+POST /api/auth/register             { email, displayName, password, inviteCode,
+                                     termsAccepted: true, privacyAccepted: true } → 201 { user }
+POST /api/auth/login                { email, password }                          → 200 { user }
+POST /api/auth/logout                                                            → 204
+GET  /api/auth/me                                                                → 200 { user, groups[] }
+PUT  /api/auth/avatar               { variant, seed, palette } | null            → 200 { avatar }
+PATCH /api/auth/profile             { displayName }                              → 200 { user }
+POST /api/auth/verify-email         { token }                                    → 204
+POST /api/auth/resend-verification                                               → 204
 ```
 
 `register` consumes the invite code in the same transaction that creates the user — and, if the
@@ -70,6 +72,25 @@ server's current legal-document registry and database clock.
 
 `user` on `register` / `login` / `me` carries `avatar` — the member's chosen generated avatar
 (`{ variant, seed, palette }`) or `null` for the T107 default.
+
+**Email verification** (E15, [ADR-0013](../adr/0013-email-verification-gates-recovery.md)).
+`register` sends a verification link **after** its transaction commits — a mail failure, or no
+mailer configured, never fails the registration, and the account is created, logged in, and
+usable regardless. Verification gates exactly one thing: self-service password reset
+(`POST /api/auth/forgot-password` sends nothing to an unverified address). It does **not** gate
+login, the join flow, or any other endpoint.
+
+- `POST /api/auth/verify-email` — unauthenticated, `{ token }`, `204` on success. Invalid,
+  expired, used, and wrong-purpose tokens all return the same generic `400 INVALID_TOKEN` with no
+  `details`. The link (`/verify-email/[token]`, 24-hour single-use token) is the whole credential,
+  so there is no Origin check.
+- `POST /api/auth/resend-verification` — authenticated, Origin-checked, no body. Mints a fresh
+  token (invalidating the previous), mails the caller's own address, and returns `204` **whether
+  or not the account is already verified and whether or not mail is configured** — it reveals
+  nothing the caller doesn't already know about their own account.
+- `user.emailVerified` (boolean) is returned by **`GET /api/auth/me` only**, for the caller's own
+  account. No group read carries it — whether a co-member confirmed their inbox is not the
+  group's business.
 
 `PUT /api/auth/avatar` sets **the session user's own** avatar (T108) — the acting user comes
 from the session, never the body. `variant` is one of the six `boring-avatars` names, `seed`
@@ -532,6 +553,8 @@ so a misconfigured deploy fails closed instead of exposing an open endpoint. Rat
 |---|---|---|
 | `POST /api/auth/login` | IP | strict — Argon2 is expensive by design |
 | `POST /api/auth/register` | IP | strict |
+| `POST /api/auth/verify-email` | IP | moderate — unauthenticated, consumes a token |
+| `POST /api/auth/resend-verification` | user id | strict — it mails the address on file |
 | `GET /api/invites/:code` | IP | moderate — it's unauthenticated and enumerable-looking |
 | `POST /api/admin/fx/refresh` | token | very strict |
 | everything else | user id | generous |

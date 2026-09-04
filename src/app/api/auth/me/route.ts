@@ -4,7 +4,13 @@ import { UnauthorizedError } from "../../../../server/errors";
 import { withErrorHandling } from "../../../../server/http/map-error";
 import { getUserById } from "../../../../server/services/auth";
 
-/** groups[] is always empty until T020/T025 give the app a groups table. */
+/**
+ * groups[] is always empty until T020/T025 give the app a groups table.
+ *
+ * `user` carries `emailVerified` (T124). This is the **only** endpoint that
+ * exposes verification state, and only for the caller's own account — it's
+ * no co-member's business (ADR-0013).
+ */
 export const GET = withErrorHandling(async (request: NextRequest) => {
   const userId = await requireUserId(request);
 

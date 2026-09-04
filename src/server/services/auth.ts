@@ -11,6 +11,7 @@ import { hashPassword, verifyPassword } from "../auth/password";
 import { signSessionToken } from "../auth/jwt";
 import { ConflictError, UnauthorizedError, ValidationError } from "../errors";
 import { isUniqueViolation } from "../db/pg-errors";
+import { sendVerificationEmail } from "./email-verification";
 import { consumeInvite } from "./invites";
 
 export class InvalidCredentialsError extends UnauthorizedError {
@@ -46,6 +47,16 @@ export interface AuthUser {
   avatar: AvatarChoice | null;
 }
 
+/**
+ * `AuthUser` plus verification state — returned **only** by `getUserById`,
+ * which backs `GET /api/auth/me` alone. Whether an address is verified is
+ * the account holder's business and no co-member's (ADR-0013), so no group
+ * read carries this.
+ */
+export interface AuthMeUser extends AuthUser {
+  emailVerified: boolean;
+}
+
 export interface LoginResult {
   user: AuthUser;
   token: string;
@@ -66,10 +77,16 @@ export async function login(email: string, password: string): Promise<LoginResul
 }
 
 /** Used by GET /api/auth/me once a session has already resolved a userId. */
-export async function getUserById(userId: string): Promise<AuthUser | null> {
+export async function getUserById(userId: string): Promise<AuthMeUser | null> {
   const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   return user
-    ? { id: user.id, email: user.email, displayName: user.displayName, avatar: toAvatarChoice(user) }
+    ? {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        avatar: toAvatarChoice(user),
+        emailVerified: user.emailVerifiedAt !== null,
+      }
     : null;
 }
 
@@ -159,6 +176,14 @@ export async function register(input: RegisterInput): Promise<LoginResult> {
 
     return created;
   });
+
+  // After the account transaction has committed (ADR-0013): a mail failure
+  // — including "no mailer configured" — must never roll back a
+  // registration that also consumed an invite and created a membership.
+  // Best-effort, awaited only so a send failure is logged, not surfaced.
+  // Covers `/register` and the `/join/[code]` flow alike, since both post
+  // to this one endpoint.
+  await sendVerificationEmail(user.id, user.email);
 
   const token = await signSessionToken(user.id);
   return {

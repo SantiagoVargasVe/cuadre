@@ -66,7 +66,20 @@ describe.skipIf(!hasTestDatabase)("GET /api/auth/me", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.user.email).toBe(EMAIL);
+    expect(body.user.emailVerified).toBe(false);
     expect(body.groups).toEqual([]);
+  });
+
+  it("reports emailVerified: true once the address is verified", async () => {
+    const { users } = await import("../../../../server/db/schema");
+    const { eq } = await import("drizzle-orm");
+    await getTestDb().update(users).set({ emailVerifiedAt: new Date() }).where(eq(users.email, EMAIL));
+
+    const response = await meGET(
+      new NextRequest(`${APP_URL}/api/auth/me`, { headers: { authorization: `Bearer ${token}` } }),
+    );
+
+    expect((await response.json()).user.emailVerified).toBe(true);
   });
 
   it("also accepts the session cookie", async () => {
