@@ -2,7 +2,7 @@
 id: T122
 title: Auth token service — mint, purpose-bound atomic consume, rate-limit policies
 epic: E15-account-recovery
-status: todo
+status: done
 depends_on: [T119]
 size: M
 ---
