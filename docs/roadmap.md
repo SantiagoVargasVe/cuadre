@@ -219,8 +219,8 @@ Real design work, not backlog items. Written down so they're not rediscovered as
 - **Per-member display currency.** Rejected for v1 because two members reading different totals for
   the same debt is a support burden. If it ever returns, the payment plan must still be computed
   in exactly one currency.
-- **Password reset.** *Answered on 2026-09-03 and promoted out of this list* — the SMTP
-  objection was the whole of it, and it turned out to be a config decision rather than an
-  infrastructure one. See ADR-0011/0012/0013 and **E15** below.
+- **Password reset.** *Answered on 2026-09-03, promoted out of this list, and shipped in E15* —
+  the SMTP objection was the whole of it, and it turned out to be a config decision rather than
+  an infrastructure one. See ADR-0011/0012/0013 and **E15** below.
 - **Multiple instances.** Migrations run at startup, which races with replicas. Moving them to a
   release step is the prerequisite for ever running two containers.

@@ -143,10 +143,12 @@ Authorization protects who can see the ledger. These protect what the ledger say
 
 Written down so they're decisions rather than oversights:
 
-- **No 2FA and no password reset flow in v1.** Reset requires SMTP that this repo deliberately
-  doesn't own. Recovery is an operator action.
-  *(Email verification arrived with E15, [ADR-0013](../adr/0013-email-verification-gates-recovery.md):
-  registration mails a link, verification gates only self-service reset, never login.)*
+- **No 2FA in v1.** Password reset arrived with E15
+  ([ADR-0012](../adr/0012-password-reset-via-single-use-token.md),
+  [ADR-0013](../adr/0013-email-verification-gates-recovery.md)): `/forgot-password` mails a
+  single-use link to a *verified* address, `/reset-password` consumes it and revokes every prior
+  session, and `scripts/reset-link.ts` covers the no-mail-vendor case. 2FA is still deliberately
+  out.
 - **Any member can edit or delete any expense in their group**, including one they didn't create.
   Mitigated by `expense_revisions` recording who changed what, and surfaced in the UI as an
   "edited" marker. Groups are people who are already travelling together; permissions would be

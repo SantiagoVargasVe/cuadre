@@ -2,7 +2,7 @@
 id: T125
 title: POST /api/auth/forgot-password and /api/auth/reset-password
 epic: E15-account-recovery
-status: todo
+status: done
 depends_on: [T120, T122, T123, T124]
 size: M
 ---
