@@ -322,9 +322,10 @@ than repeating it.
   Deliberately last: recovery is for people who *can't* log in. Droppable without leaving anything
   half-built
 
-- `T132` Log when a verification mail is not sent. The unconfigured branch returns silently while
-  the reset path warns and names `reset-link`; that asymmetry is why the 2026-09-04 mail outage
-  produced no diagnostic anywhere
+- `T132` Log when a verification mail is not sent — the unconfigured branch used to return
+  silently while the reset path warned and named `reset-link`; that asymmetry is why the
+  2026-09-04 mail outage produced no diagnostic anywhere. Decided in passing that this path
+  deliberately does *not* mint, since nothing can deliver a verification link by hand
 
 **Changing an account's email address was considered and not adopted.** It needs its own
 re-verification story, collides with the citext uniqueness constraint, and the case it exists for

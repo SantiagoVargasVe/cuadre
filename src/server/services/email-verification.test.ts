@@ -85,21 +85,49 @@ describe.skipIf(!hasTestDatabase)("email verification service", () => {
       }
     });
 
-    it("does nothing when mail is unconfigured — no token, no send", async () => {
+    it("mints nothing and sends nothing when mail is unconfigured, but WARNS", async () => {
+      // The warn is the point (T132). Nothing here can tell the caller
+      // anything — the route returns 204 either way — so this line is the
+      // only evidence that verification is silently disabled. Its absence
+      // is what made the 2026-09-04 outage invisible.
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       isMailConfiguredMock.mockReturnValue(false);
       const user = await seedUser();
 
       await sendVerificationEmail(user.id, user.email);
 
+      // Deliberately no token: unlike a reset token, nothing can deliver a
+      // verification link, so minting one would leave an unredeemable row.
       expect(await tokensFor(user.id)).toHaveLength(0);
       expect(sendMailMock).not.toHaveBeenCalled();
+
+      expect(warn).toHaveBeenCalledOnce();
+      const [message, context] = warn.mock.calls[0]!;
+      expect(message).toContain("mail is not configured");
+      expect(message).toContain("reset-link");
+      expect(context).toEqual({ userId: user.id });
+      // Never the address, and never a token.
+      expect(JSON.stringify(warn.mock.calls[0])).not.toContain(user.email);
+      warn.mockRestore();
     });
 
-    it("swallows a send failure — resolves, does not throw", async () => {
+    it("swallows a send failure — resolves, does not throw, and logs it distinctly", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
       sendMailMock.mockRejectedValue(new Error("smtp exploded"));
       const user = await seedUser();
 
       await expect(sendVerificationEmail(user.id, user.email)).resolves.toBeUndefined();
+
+      // A different line from the unconfigured case: a dead API key and a
+      // provider outage are different problems with different fixes, and a
+      // shared message would defeat the only diagnostic there is.
+      expect(error).toHaveBeenCalledOnce();
+      const [message, context] = error.mock.calls[0]!;
+      expect(message).toContain("failed to send");
+      expect(message).not.toContain("not configured");
+      expect(context).toMatchObject({ userId: user.id, error: "Error" });
+      expect(JSON.stringify(error.mock.calls[0])).not.toContain(user.email);
+      error.mockRestore();
     });
 
     it("invalidates the previous email_verify token on a re-send", async () => {
