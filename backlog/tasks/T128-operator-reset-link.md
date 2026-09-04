@@ -2,7 +2,7 @@
 id: T128
 title: scripts/reset-link.ts — mint a recovery link without email
 epic: E15-account-recovery
-status: todo
+status: done
 depends_on: [T122]
 size: S
 ---
