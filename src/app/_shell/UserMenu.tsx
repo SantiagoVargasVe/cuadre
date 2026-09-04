@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -8,17 +8,9 @@ import { ApiError, apiFetch } from "../../lib/api/client";
 import { es } from "../../lib/i18n/es";
 import { Avatar } from "../_ui/Avatar";
 import { Button } from "../_ui/Button";
+import { useMe } from "./useMe";
 
 const t = es.nav;
-
-interface MeResponse {
-  user: {
-    id: string;
-    email: string;
-    displayName: string;
-    avatar: import("../../lib/avatar").AvatarChoice | null;
-  };
-}
 
 /** Displays the current user's name and signs them out. No dropdown — just
  * a name and a button, since Base UI has no Menu primitive on the app's
@@ -28,15 +20,7 @@ export function UserMenu() {
   const queryClient = useQueryClient();
   const [loggingOut, setLoggingOut] = React.useState(false);
 
-  const { data, error } = useQuery({
-    queryKey: ["me"],
-    queryFn: () => apiFetch<MeResponse>("/api/auth/me"),
-    // A 401 here means the session was revoked elsewhere (a password reset
-    // on another device — T123). Retrying won't fix it; other failures
-    // still get the default retry.
-    retry: (failureCount, err) =>
-      !(err instanceof ApiError && err.status === 401) && failureCount < 3,
-  });
+  const { data, error } = useMe();
 
   // An open tab whose session was revoked shouldn't sit failing every
   // refetch — send it to /login so it re-authenticates.

@@ -60,6 +60,30 @@ export const es = {
       termsRequired: "Debes aceptar los Términos de servicio.",
       privacyRequired: "Debes autorizar el tratamiento descrito en la Política de privacidad.",
     },
+    verifyEmail: {
+      verifying: "Verificando tu correo…",
+      successTitle: "Correo verificado",
+      successBody:
+        "Ya podrás restablecer tu contraseña por tu cuenta si alguna vez la olvidas.",
+      errorTitle: "No pudimos verificar el enlace",
+      errorBody:
+        "El enlace no es válido o ya caducó. Pide uno nuevo y vuelve a intentarlo.",
+      resend: "Reenviar enlace",
+      resending: "Enviando…",
+      resent: "Listo. Revisa tu correo.",
+      resendError: "No se pudo reenviar. Intenta más tarde.",
+      goToApp: "Ir a Cuadre",
+    },
+    verifyPrompt: {
+      body:
+        "Verifica tu correo para poder restablecer tu contraseña si alguna vez la olvidas. Puedes seguir usando Cuadre sin hacerlo.",
+      resend: "Reenviar verificación",
+      resending: "Enviando…",
+      resent: "Enviado. Revisa tu correo.",
+      rateLimited: "Ya enviamos uno hace poco. Intenta más tarde.",
+      error: "No se pudo enviar. Intenta más tarde.",
+      dismiss: "Ahora no",
+    },
   },
   nav: {
     appName: "Cuadre",
@@ -84,8 +108,19 @@ export const es = {
     },
     security: {
       heading: "Seguridad",
-      body: "Cambiar la contraseña o el correo todavía no está disponible.",
+      body: "Solo tú ves si tu correo está verificado.",
       changePassword: "Cambiar contraseña",
+      email: {
+        verifiedLabel: "Correo verificado",
+        unverifiedLabel: "Correo sin verificar",
+        unverifiedHint:
+          "Verifícalo para poder restablecer tu contraseña por tu cuenta si la olvidas.",
+        resend: "Reenviar verificación",
+        resending: "Enviando…",
+        resent: "Enviado. Revisa tu correo.",
+        rateLimited: "Ya enviamos uno hace poco. Intenta más tarde.",
+        error: "No se pudo enviar. Intenta más tarde.",
+      },
     },
     avatar: {
       heading: "Tu avatar",

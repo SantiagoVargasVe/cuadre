@@ -2,7 +2,7 @@
 id: T127
 title: Verification UI — /verify-email/[token], shell prompt, /cuenta status
 epic: E15-account-recovery
-status: todo
+status: done
 depends_on: [T124]
 size: M
 ---
