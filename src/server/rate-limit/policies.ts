@@ -58,4 +58,11 @@ export const policies = {
    * address on file.
    */
   verificationResend: { capacity: 3, windowSeconds: HOUR },
+
+  /**
+   * `POST /api/auth/change-password`, per **user** — Argon2 runs twice
+   * (verify the current password, hash the new one), and the caller is
+   * authenticated, so their id is a better key than their IP.
+   */
+  changePassword: { capacity: 5, windowSeconds: 15 * MINUTE },
 } as const satisfies Record<string, RateLimitPolicy>;

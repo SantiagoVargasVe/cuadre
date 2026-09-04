@@ -28,11 +28,18 @@ export interface SessionClaims {
   issuedAt: number;
 }
 
-export function signSessionToken(userId: string): Promise<string> {
+/**
+ * `issuedAt` (whole seconds) is only for the one flow that must keep the
+ * caller logged in *across* a `sessions_valid_from` bump it triggered
+ * (T129 change-password): minting at the wall clock would land `iat` in
+ * the revoking second and kill the replacement too. Everywhere else it's
+ * omitted and jose stamps "now".
+ */
+export function signSessionToken(userId: string, issuedAt?: number): Promise<string> {
   return new SignJWT({})
     .setProtectedHeader({ alg: ALGORITHM })
     .setSubject(userId)
-    .setIssuedAt()
+    .setIssuedAt(issuedAt)
     .setExpirationTime(TTL)
     .sign(secretKey());
 }

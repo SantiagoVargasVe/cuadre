@@ -61,3 +61,23 @@ export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
  */
 export const updateProfileSchema = registerSchema.pick({ displayName: true });
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+/**
+ * `POST /api/auth/change-password` (T129). `newPassword` is held to
+ * registration's rule by reusing its field; `currentPassword` only has to
+ * be non-empty — the service verifies it against the stored hash.
+ */
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, v.passwordTooShort),
+  newPassword: registerSchema.shape.password,
+});
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+/** The `/cuenta` change-password **form** — adds a confirmation the API never sees. */
+export const changePasswordFormSchema = changePasswordSchema
+  .extend({ confirmPassword: z.string() })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: v.passwordsDoNotMatch,
+    path: ["confirmPassword"],
+  });
+export type ChangePasswordFormInput = z.infer<typeof changePasswordFormSchema>;

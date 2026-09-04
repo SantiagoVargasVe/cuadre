@@ -2,7 +2,7 @@
 id: T129
 title: Change your password from /cuenta
 epic: E15-account-recovery
-status: todo
+status: done
 depends_on: [T122, T123]
 size: M
 ---
