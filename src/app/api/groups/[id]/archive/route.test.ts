@@ -60,8 +60,15 @@ describe.skipIf(!hasTestDatabase)("POST /api/groups/[id]/archive", () => {
   }
 
   it("404s for a non-member", async () => {
-    const [{ signSessionToken }] = await Promise.all([import("../../../../../server/auth/jwt")]);
-    const outsiderToken = await signSessionToken(crypto.randomUUID());
+    const [{ users }, { signSessionToken }] = await Promise.all([
+      import("../../../../../server/db/schema"),
+      import("../../../../../server/auth/jwt"),
+    ]);
+    const [outsider] = await getTestDb()
+      .insert(users)
+      .values({ email: `${crypto.randomUUID()}@example.com`, displayName: "Nadie", passwordHash: "x" })
+      .returning();
+    const outsiderToken = await signSessionToken(outsider!.id);
     const response = await archivePOST(req(outsiderToken), ctx());
     expect(response.status).toBe(404);
   });

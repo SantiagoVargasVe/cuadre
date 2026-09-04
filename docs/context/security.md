@@ -41,6 +41,13 @@ exists to an outsider. `403` means "you're inside, but this needs `owner`". See
 - **JWT via `jose`**, HS256, signed with `AUTH_SECRET` (32+ chars, validated at boot). Claims are
   `sub`, `iat`, `exp` and nothing else — no display name, no email, no membership list. Membership
   changes must take effect immediately, and a claim baked into a token doesn't.
+- **Sessions are revocable** (E15, [ADR-0012](../adr/0012-password-reset-via-single-use-token.md),
+  superseding ADR-0003's "no per-session revocation"). `getSession` / `getSessionFromCookies`
+  compare the token's `iat` against `users.sessions_valid_from` — a token minted before that
+  instant stops resolving, so a password reset or change ends every *other* session at once. It is
+  one indexed read at the route boundary, per request, **never cached**. `src/middleware.ts` stays
+  crypto-only (the Edge runtime can't reach the DB): a revoked token clears middleware and is
+  rejected by the first Route Handler, which `apiFetchServer` turns into a `/login` redirect.
 - Rotating `AUTH_SECRET` logs everyone out and breaks nothing else. That's the intended recovery
   action.
 - Registration requires separate Terms and Privacy acknowledgements at the route boundary. The

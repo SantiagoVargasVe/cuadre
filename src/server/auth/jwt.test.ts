@@ -28,7 +28,29 @@ describe("signSessionToken / verifySessionToken", () => {
     const token = await signSessionToken("user-123");
     const claims = await verifySessionToken(token);
 
-    expect(claims).toEqual({ userId: "user-123" });
+    expect(claims).toEqual({ userId: "user-123", issuedAt: expect.any(Number) });
+  });
+
+  it("returns the token's iat so a session can be positioned against sessions_valid_from", async () => {
+    const { signSessionToken, verifySessionToken } = await freshModule();
+
+    const before = Math.floor(Date.now() / 1000);
+    const claims = await verifySessionToken(await signSessionToken("user-123"));
+    const after = Math.floor(Date.now() / 1000);
+
+    expect(claims?.issuedAt).toBeGreaterThanOrEqual(before);
+    expect(claims?.issuedAt).toBeLessThanOrEqual(after);
+  });
+
+  it("returns null for a token with no iat", async () => {
+    const { verifySessionToken } = await freshModule();
+    const noIat = await new SignJWT({})
+      .setProtectedHeader({ alg: "HS256" })
+      .setSubject("user-123")
+      .setExpirationTime("30d")
+      .sign(new TextEncoder().encode(AUTH_SECRET));
+
+    expect(await verifySessionToken(noIat)).toBeNull();
   });
 
   it("carries only sub, iat, exp — no other claims", async () => {

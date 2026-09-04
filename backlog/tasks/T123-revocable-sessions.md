@@ -2,7 +2,7 @@
 id: T123
 title: Enforce sessions_valid_from — make sessions revocable
 epic: E15-account-recovery
-status: todo
+status: done
 depends_on: [T119]
 size: M
 ---

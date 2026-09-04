@@ -20,6 +20,12 @@ function secretKey(): Uint8Array {
 
 export interface SessionClaims {
   userId: string;
+  /**
+   * The JWT `iat`, in whole seconds. T123 compares it against
+   * `users.sessions_valid_from` to make a session revocable, so it can no
+   * longer be discarded here.
+   */
+  issuedAt: number;
 }
 
 export function signSessionToken(userId: string): Promise<string> {
@@ -42,8 +48,10 @@ export function signSessionToken(userId: string): Promise<string> {
 export async function verifySessionToken(token: string): Promise<SessionClaims | null> {
   try {
     const { payload } = await jwtVerify(token, secretKey(), { algorithms: [ALGORITHM] });
-    if (!payload.sub) return null;
-    return { userId: payload.sub };
+    // A token with no `sub`, or no numeric `iat` to position against the
+    // account's session epoch, can't resolve to a session.
+    if (!payload.sub || typeof payload.iat !== "number") return null;
+    return { userId: payload.sub, issuedAt: payload.iat };
   } catch {
     return null;
   }

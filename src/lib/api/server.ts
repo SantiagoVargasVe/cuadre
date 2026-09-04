@@ -1,5 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { ApiError, parseApiError } from "./errors";
 
 export interface ApiFetchServerOptions extends Omit<RequestInit, "body"> {
@@ -53,6 +54,14 @@ export async function apiFetchServer<T>(
   });
 
   if (!response.ok) {
+    // Middleware lets a validly-signed but revoked token through (T123, and
+    // it can't reach the DB on the Edge runtime), so the first place a
+    // server-rendered page learns its session is dead is right here. Send
+    // it to /login rather than an error boundary. `redirect` throws
+    // NEXT_REDIRECT and never returns.
+    if (response.status === 401) {
+      redirect("/login");
+    }
     throw await parseApiError(response);
   }
   if (response.status === 204) {

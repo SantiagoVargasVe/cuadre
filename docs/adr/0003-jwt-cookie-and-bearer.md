@@ -47,12 +47,19 @@ understands is worse than two that are actually enforced.
 - **Sessions in the database** — buys instant revocation, costs a query on every request. Worth
   revisiting if per-session logout is ever wanted; today rotating `AUTH_SECRET` logs everyone out
   and is the intended recovery action.
+  *Revisited by [ADR-0012](0012-password-reset-via-single-use-token.md): E15 took the cheaper half
+  — one `users.sessions_valid_from` column compared against `iat`, no session table — because a
+  password reset that leaves the other person's cookie working has done nothing about the actual
+  problem.*
 
 ## Consequences
 
 - One `getSession()` reads either source; nothing downstream knows which was used.
 - Rotating `AUTH_SECRET` invalidates every session and breaks nothing else.
-- There is no per-session revocation. A stolen token is valid until it expires — accepted at this
-  scale, and the reason expiry is short rather than a year.
+- ~~There is no per-session revocation. A stolen token is valid until it expires~~ — accepted at
+  this scale, and the reason expiry is short rather than a year.
+  **Superseded by [ADR-0012](0012-password-reset-via-single-use-token.md) (E15):** a token is now
+  valid only while its `iat >= users.sessions_valid_from`, so a reset or password change revokes
+  every earlier session. Expiry still bounds a stolen token that predates no such event.
 - Tests must cover both auth paths, and must cover the `Origin` rejection specifically. It is the
   control most likely to be quietly removed by someone debugging a local CORS problem.

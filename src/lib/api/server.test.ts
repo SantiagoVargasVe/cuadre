@@ -13,6 +13,14 @@ vi.mock("next/headers", () => ({
   cookies: async () => ({ toString: () => "cuadre_session=abc123" }),
 }));
 
+// `redirect` throws NEXT_REDIRECT in Next; a plain throw is enough to
+// assert the branch was taken without pulling in the framework.
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn((path: string) => {
+    throw new Error(`NEXT_REDIRECT:${path}`);
+  }),
+}));
+
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
@@ -70,16 +78,29 @@ describe("apiFetchServer", () => {
     expect(result).toEqual({ items: [{ id: "g1" }] });
   });
 
-  it("throws a typed ApiError for a non-ok response", async () => {
+  it("throws a typed ApiError for a non-ok, non-401 response", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(jsonResponse(401, { error: { code: "UNAUTHENTICATED", message: "nope" } })),
+      vi.fn().mockResolvedValue(jsonResponse(422, { error: { code: "SPLITS_DO_NOT_BALANCE", message: "nope" } })),
     );
 
     const error = await apiFetchServer("/api/groups").catch((e: unknown) => e);
 
     expect(error).toBeInstanceOf(ApiError);
-    expect((error as ApiError).status).toBe(401);
+    expect((error as ApiError).status).toBe(422);
+  });
+
+  it("redirects to /login on a 401 instead of surfacing an error boundary", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse(401, { error: { code: "UNAUTHORIZED", message: "nope" } })),
+    );
+
+    const error = await apiFetchServer("/api/groups").catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toBe("NEXT_REDIRECT:/login");
+    expect(error).not.toBeInstanceOf(ApiError);
   });
 
   it("sends a JSON body with the right content type when one is given", async () => {

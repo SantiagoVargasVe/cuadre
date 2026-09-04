@@ -81,8 +81,15 @@ describe.skipIf(!hasTestDatabase)("POST /api/invites/[code]/accept", () => {
   });
 
   it("409s for a code that doesn't exist", async () => {
-    const { signSessionToken } = await import("../../../../../server/auth/jwt");
-    const token = await signSessionToken(crypto.randomUUID());
+    const [{ users }, { signSessionToken }] = await Promise.all([
+      import("../../../../../server/db/schema"),
+      import("../../../../../server/auth/jwt"),
+    ]);
+    const [user] = await getTestDb()
+      .insert(users)
+      .values({ email: "nomembership@example.com", displayName: "Nomi", passwordHash: "x" })
+      .returning();
+    const token = await signSessionToken(user!.id);
 
     const response = await acceptPOST(
       new NextRequest(`${APP_URL}/api/invites/nope/accept`, {

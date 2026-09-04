@@ -5,8 +5,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { UserMenu } from "./UserMenu";
 
 const pushMock = vi.fn();
+const replaceMock = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: pushMock }),
+  useRouter: () => ({ push: pushMock, replace: replaceMock }),
 }));
 
 function jsonResponse(status: number, body: unknown) {
@@ -24,6 +25,7 @@ function renderWithClient(ui: React.ReactElement) {
 afterEach(() => {
   vi.unstubAllGlobals();
   pushMock.mockClear();
+  replaceMock.mockClear();
 });
 
 describe("UserMenu", () => {
@@ -40,6 +42,20 @@ describe("UserMenu", () => {
     renderWithClient(<UserMenu />);
 
     expect(await screen.findByText("Ana")).toBeInTheDocument();
+  });
+
+  it("sends the tab to /login when the session has been revoked (me → 401)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(401, { error: { code: "UNAUTHORIZED", message: "no" } }),
+      ),
+    );
+
+    renderWithClient(<UserMenu />);
+
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/login"));
+    expect(screen.queryByText("Ana")).not.toBeInTheDocument();
   });
 
   it("logs out and redirects to /login", async () => {
