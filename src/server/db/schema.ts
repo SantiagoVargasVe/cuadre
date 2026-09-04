@@ -53,6 +53,32 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const legalDocument = pgEnum("legal_document", ["terms", "privacy"]);
+export const legalAcceptanceSource = pgEnum("legal_acceptance_source", [
+  "registration",
+  "legacy_backfill",
+]);
+
+/**
+ * Immutable evidence of the exact legal-document version acknowledged by
+ * one user. The natural key retains old versions when a document changes;
+ * there is deliberately no mutable "accepted" boolean on users. Migration
+ * 0010 adds the database trigger that rejects UPDATE and DELETE.
+ */
+export const legalAcceptances = pgTable(
+  "legal_acceptances",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    document: legalDocument("document").notNull(),
+    documentVersion: text("document_version").notNull(),
+    acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }).notNull().defaultNow(),
+    source: legalAcceptanceSource("source").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.document, table.documentVersion] })],
+);
+
 /**
  * Reference data, seeded by migration (see 0002). The one authoritative home
  * for the ISO-4217 minor-unit exponent, so every money-bearing column can

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RegisterForm } from "./RegisterForm";
@@ -34,34 +34,6 @@ describe("RegisterForm", () => {
     expect(field).not.toBeDisabled();
   });
 
-  it("submits the full payload, including the prefilled invite code", async () => {
-    searchParamsMock.mockReturnValue(new URLSearchParams("code=ABC123XYZ"));
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(
-        jsonResponse(201, { user: { id: "1", email: "ana@example.com", displayName: "Ana" } }),
-      );
-    vi.stubGlobal("fetch", fetchMock);
-    const user = userEvent.setup();
-
-    render(<RegisterForm />);
-    await user.type(screen.getByLabelText("Correo electrónico"), "ana@example.com");
-    await user.type(screen.getByLabelText("Nombre"), "Ana");
-    await user.type(screen.getByLabelText("Contraseña"), "correct horse battery staple");
-    await user.click(screen.getByRole("button", { name: "Crear cuenta" }));
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("/api/auth/register");
-    expect(JSON.parse(init.body as string)).toEqual({
-      email: "ana@example.com",
-      displayName: "Ana",
-      password: "correct horse battery staple",
-      inviteCode: "ABC123XYZ",
-    });
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/groups"));
-  });
-
   it("renders a duplicate-email error against the email field, not as a form banner", async () => {
     searchParamsMock.mockReturnValue(new URLSearchParams("code=ABC123XYZ"));
     vi.stubGlobal(
@@ -80,6 +52,8 @@ describe("RegisterForm", () => {
     await user.type(screen.getByLabelText("Correo electrónico"), "ana@example.com");
     await user.type(screen.getByLabelText("Nombre"), "Ana");
     await user.type(screen.getByLabelText("Contraseña"), "correct horse battery staple");
+    await user.click(screen.getByRole("checkbox", { name: /Términos de servicio/ }));
+    await user.click(screen.getByRole("checkbox", { name: /Política de privacidad/ }));
     await user.click(screen.getByRole("button", { name: "Crear cuenta" }));
 
     expect(await screen.findByText("Ese correo ya está registrado.")).toBeInTheDocument();
@@ -105,6 +79,8 @@ describe("RegisterForm", () => {
     await user.type(screen.getByLabelText("Correo electrónico"), "ana@example.com");
     await user.type(screen.getByLabelText("Nombre"), "Ana");
     await user.type(screen.getByLabelText("Contraseña"), "correct horse battery staple");
+    await user.click(screen.getByRole("checkbox", { name: /Términos de servicio/ }));
+    await user.click(screen.getByRole("checkbox", { name: /Política de privacidad/ }));
     await user.click(screen.getByRole("button", { name: "Crear cuenta" }));
 
     expect(

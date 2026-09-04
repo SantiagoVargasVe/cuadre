@@ -1,3 +1,5 @@
+import { legalEs } from "./legal-es";
+
 /**
  * Spanish message catalog. Imported directly rather than looked up by a
  * runtime string key — `es.auth.login.title` is a compile-time-checked
@@ -7,6 +9,7 @@
  * blocks that.
  */
 export const es = {
+  legal: legalEs,
   auth: {
     login: {
       title: "Iniciar sesión",
@@ -34,6 +37,13 @@ export const es = {
       submitting: "Creando cuenta…",
       hasAccount: "¿Ya tienes cuenta?",
       loginLink: "Inicia sesión",
+      legal: {
+        legend: "Aceptaciones legales",
+        termsLabel: "He leído y acepto los",
+        termsLink: "Términos de servicio",
+        privacyLabel: "He leído la política y autorizo el tratamiento descrito en la",
+        privacyLink: "Política de privacidad",
+      },
       errors: {
         INVALID_INVITE_CODE: "El código de invitación no es válido o ya fue usado.",
         EMAIL_ALREADY_REGISTERED: "Ese correo ya está registrado.",
@@ -47,6 +57,8 @@ export const es = {
       passwordTooShort: "La contraseña debe tener al menos 8 caracteres.",
       displayNameRequired: "El nombre es obligatorio.",
       inviteCodeRequired: "El código de invitación es obligatorio.",
+      termsRequired: "Debes aceptar los Términos de servicio.",
+      privacyRequired: "Debes autorizar el tratamiento descrito en la Política de privacidad.",
     },
   },
   nav: {

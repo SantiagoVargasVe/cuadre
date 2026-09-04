@@ -43,6 +43,9 @@ exists to an outsider. `403` means "you're inside, but this needs `owner`". See
   changes must take effect immediately, and a claim baked into a token doesn't.
 - Rotating `AUTH_SECRET` logs everyone out and breaks nothing else. That's the intended recovery
   action.
+- Registration requires separate Terms and Privacy acknowledgements at the route boundary. The
+  service inserts the server-owned current versions and database timestamp in the same transaction
+  as the account and invite; it never trusts client-supplied legal metadata.
 
 ### The cookie/bearer dual mode, and its one real risk
 
@@ -118,6 +121,11 @@ Authorization protects who can see the ledger. These protect what the ledger say
 - No third party is in the request path. The single outbound dependency is one FX call a day,
   which carries no user data.
 - Logs record user ids, never emails or amounts.
+- `/terms` and `/privacy` are public, repository-versioned pages. Registration records document
+  keys, versions, the database timestamp, and whether the record came from explicit registration or
+  the one-time legacy backfill. It does not add IP, user-agent, email, or client-clock evidence.
+- The existing unauthenticated rate limiter stores a namespaced IP bucket key. This predates legal
+  acknowledgements and is disclosed by the Privacy Policy; T118 adds no new request logging.
 
 ## Known accepted risks
 

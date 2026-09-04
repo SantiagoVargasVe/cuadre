@@ -71,6 +71,13 @@
       "when": 1788307810749,
       "tag": "0009_expense_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788484276426,
+      "tag": "0010_concerned_korvac",
+      "breakpoints": true
     }
   ]
 }

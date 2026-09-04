@@ -47,6 +47,8 @@ describe.skipIf(!hasTestDatabase)("POST /api/auth/register", () => {
     displayName: "Ana",
     password: "correct horse battery staple",
     inviteCode: "valid-invite",
+    termsAccepted: true,
+    privacyAccepted: true,
   };
 
   it("registers, consumes the code, and sets the session cookie", async () => {

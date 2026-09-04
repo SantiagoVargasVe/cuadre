@@ -3,6 +3,9 @@ import { es } from "../i18n/es";
 
 const v = es.auth.validation;
 
+const requiredAcknowledgement = (message: string) =>
+  z.boolean().refine((acknowledged) => acknowledged, { message });
+
 /**
  * Shared verbatim with the API (T011) and the register form (T014) — one
  * schema, so client-side validation can never disagree with what the
@@ -18,6 +21,8 @@ export const registerSchema = z.object({
   // here) — no exact number is mandated in docs/context/security.md.
   password: z.string().min(8, v.passwordTooShort),
   inviteCode: z.string().min(1, v.inviteCodeRequired),
+  termsAccepted: requiredAcknowledgement(v.termsRequired),
+  privacyAccepted: requiredAcknowledgement(v.privacyRequired),
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 

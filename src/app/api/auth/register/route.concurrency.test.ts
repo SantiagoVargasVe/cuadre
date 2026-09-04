@@ -48,6 +48,8 @@ describe.skipIf(!hasTestDatabase)("POST /api/auth/register — concurrent race",
         displayName: "Racer",
         password: "correct horse battery staple",
         inviteCode: "racing-invite",
+        termsAccepted: true,
+        privacyAccepted: true,
       }),
     });
   }
