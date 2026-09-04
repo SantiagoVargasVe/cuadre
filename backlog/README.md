@@ -81,6 +81,7 @@ establish that.
 | **E12** first-use | Fixes and clarity from real use of the deployed app | T100–T110, T113–T114, T117 | post-MVP |
 | **E13** code health | The real subset of a static-analysis pass, plus the list of non-issues | T111–T112 | post-MVP |
 | **E14** legal and trust | Hosted Terms and Privacy Policy plus recorded acknowledgement | T118 | post-MVP |
+| **E15** account recovery | Outbound mail, email verification, password reset, revocable sessions | T119–T129 | post-MVP |
 
 Sequencing rationale is in [docs/roadmap.md](../docs/roadmap.md). The short version: the ledger
 has to be trustworthy before anything is built on top of it, so the money math lands in M3–M4 and
@@ -184,7 +185,8 @@ the measured contrast rules in design-system.md. Reversing this needs an ADR.
   worth until a real group asks for it. Don't re-propose it as a task file without that signal.*
 - `T093` Comments on an expense — where "wait, that wasn't 200" currently happens in WhatsApp.
   *Spec also drafted 2026-09-01 and deliberately not adopted — same call as T092.*
-- `T094` Notifications — needs SMTP or push, neither of which this repo owns today
+- `T094` Notifications — the SMTP half arrived with E15 (ADR-0011); push didn't, and the feature
+  is still unadopted
 - `T095` PWA / offline expense queue — expenses get added on bad restaurant wifi
 
 T080–T084, T090, and T095 now have full task files, written 2026-09-01 against the shape the first
@@ -269,9 +271,50 @@ full "checked, not changing, why" list so it isn't re-triaged later.
   `useEffect` mirror. Real, but money-path — kept out of T111 on purpose.
 
 Open design questions that are **not** backlog items — cross-group balances, user deletion,
-per-member display currency, password reset, multi-instance — are listed in
-[roadmap.md](../docs/roadmap.md) § E11.
+per-member display currency, multi-instance — are listed in
+[roadmap.md](../docs/roadmap.md) § E11. Password reset was on that list until 2026-09-03; it is
+now E15.
 
 **E14 — Legal and trust** · post-MVP
 
 - `T118` Hosted Terms and Privacy Policy with separate, recorded registration acknowledgements
+
+**E15 — Account recovery** · post-MVP
+
+Planned 2026-09-03. Three ADRs first — [ADR-0011](../docs/adr/0011-outbound-email-via-smtp.md)
+(outbound mail over SMTP, provider by config), [ADR-0012](../docs/adr/0012-password-reset-via-single-use-token.md)
+(single-use reset tokens, and sessions that can actually be revoked), and
+[ADR-0013](../docs/adr/0013-email-verification-gates-recovery.md) (verification gates recovery,
+never login). Read those before picking up anything here; the tasks assume their reasoning rather
+than repeating it.
+
+*Foundations — independent, can land in any order:*
+- `T119` Schema: `auth_tokens` with a `purpose` enum, `users.email_verified_at`,
+  `users.sessions_valid_from`. One migration, both purposes known up front
+- `T120` SMTP transport, optional by config — and the five keys added to the prod compose
+  `environment:` allowlist, which is how this silently ships sending nothing
+- `T121` Terms and Privacy copy for email delivery and self-service recovery. Separate because it
+  needs Santiago's approval, and that shouldn't block code review. It **does** block T124
+
+*Then the machinery:*
+- `T122` Mint and consume, purpose-bound in the `WHERE` clause, plus the rate-limit policies
+- `T123` Enforce `sessions_valid_from` — the hot path, reviewed on its own
+
+*Then the flows, in this order for a reason:*
+- `T124` Email verification: send at registration, verify and resend endpoints
+- `T125` `/forgot-password` and `/reset-password` — **depends on T124 structurally**, so reset
+  cannot ship without the gate that makes it safe. Do not split it out to unblock a release
+- `T126` The two reset pages, including the `/login` link without which none of this is reachable
+- `T127` Verification UI: the token page, a dismissible prompt, and `/cuenta` status
+
+*Then the tail:*
+- `T128` `scripts/reset-link.ts` — the operator path that keeps "email is optional" true, and the
+  only recovery an unverified member has
+- `T129` Change your password from `/cuenta`, retiring the disabled button T109 left there.
+  Deliberately last: recovery is for people who *can't* log in. Droppable without leaving anything
+  half-built
+
+**Changing an account's email address was considered and not adopted.** It needs its own
+re-verification story, collides with the citext uniqueness constraint, and the case it exists for
+— a wrong address at registration — now has an answer in T128. Write it as a task if someone
+actually asks; don't fold it into one of the above.
