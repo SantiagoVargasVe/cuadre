@@ -154,15 +154,16 @@ the UI lands in M6.
 - `T074` FX refresh systemd timer
 - `T075` Add the app hostname to the Cloudflare Tunnel *(manual)*
 - `T076` Unique prod compose service key (`app` → `cuadre-app`) — a generic service key becomes a
-  network alias the shared `cloudflared` can resolve to the wrong stack; it 502'd Nextcloud on
-  2026-08-30. Also repoints `cuadre-fx-refresh`, which execs the service by key.
+  network alias a shared `cloudflared` can resolve to the wrong stack; it 502'd a neighbouring
+  service on 2026-08-30. Also repoints `cuadre-fx-refresh`, which execs the service by key.
 - `T130` Sync the compose file from the repo on each deploy tick — the timer kept the *image*
   current and nothing else, so `infra/docker-compose.prod.yml` was a template the deployment never
   saw. That is how T120's five `MAIL_*` keys reached the host's `.env`, the image, and the code but
   never the container, leaving verification mail silently unsent. Ported from the sibling repo's
   T111, which hit the identical failure
-- `T131` Remove the operator's real home path and account name from the FX units — non-negotiable
-  11, in a public repo. Split out of T130 rather than widening its diff
+- `T131` Strip the operator's machine from the repo — account name, deploy paths, public
+  hostnames, and (the real disclosure) the inventory of which other stacks share the host's
+  tunnel. Generalised, not deleted: the 502 write-up still has to convince
 
 **E9 — Insights** · post-MVP
 
@@ -320,6 +321,10 @@ than repeating it.
 - `T129` Change your password from `/cuenta`, retiring the disabled button T109 left there.
   Deliberately last: recovery is for people who *can't* log in. Droppable without leaving anything
   half-built
+
+- `T132` Log when a verification mail is not sent. The unconfigured branch returns silently while
+  the reset path warns and names `reset-link`; that asymmetry is why the 2026-09-04 mail outage
+  produced no diagnostic anywhere
 
 **Changing an account's email address was considered and not adopted.** It needs its own
 re-verification story, collides with the citext uniqueness constraint, and the case it exists for

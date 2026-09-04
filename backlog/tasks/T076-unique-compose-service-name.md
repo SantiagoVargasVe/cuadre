@@ -13,12 +13,12 @@ size: S
 its **service key** as a network alias in addition to `container_name`, and that alias cannot be
 suppressed — it is derived from the key.
 
-The host's shared `cloudflared` container is attached to several stacks' networks at once
-(nextcloud, immich, wishlist, cuadre, monitoring), and Docker's embedded DNS resolves a name across
-**all** networks a container is attached to. Three stacks each declaring `app` meant three containers
-answered to that one name. Nextcloud's tunnel ingress pointed at the bare `app:80`, so cloudflared
-resolved it to whichever DNS returned — and on 2026-08-30 it landed on `cuadre-app`, which listens on
-3000, not 80. `cloud.santiagovargas.co` served a hard 502 until the service keys were renamed.
+A shared `cloudflared` container may be attached to several stacks' networks at once, and Docker's
+embedded DNS resolves a name across **all** networks a container is attached to. Three stacks each
+declaring `app` meant three containers answered to that one name. A neighbouring stack's tunnel
+ingress pointed at the bare `app:80`, so cloudflared resolved it to whichever DNS returned — and on
+2026-08-30 it landed on `cuadre-app`, which listens on 3000, not 80. That hostname served a hard 502
+until the service keys were renamed.
 
 Cuadre's own routing was never broken: the tunnel points at `cuadre-app:3000`, the container name,
 which is unique. But this file supplied the alias that actually captured the traffic. See

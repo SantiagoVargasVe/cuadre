@@ -12,7 +12,7 @@ merge to main → CI green → release.yml builds & pushes ghcr.io/santiagovarga
 ## Host layout
 
 ```
-<deploy-dir>/                     e.g. ~/nas/cuadre  (match cuadre-deploy.service's WorkingDirectory)
+<deploy-dir>/                     e.g. /srv/cuadre  (match cuadre-deploy.service's WorkingDirectory)
   docker-compose.yml              # synced from infra/docker-compose.prod.yml every tick (T130)
   .env                            # chmod 600, never in git — NEVER synced
   data/
