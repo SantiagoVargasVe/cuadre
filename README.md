@@ -47,6 +47,19 @@ npm run dev
 Open http://localhost:3000. Registration needs an invite code — seed one with
 `npm run seed:invite`.
 
+### Recovering an account without email
+
+Outbound mail is optional ([ADR-0011](docs/adr/0011-outbound-email-via-smtp.md)). When `MAIL_*`
+is unset, when a mail provider is failing, or when a member's address predates verification and
+`/forgot-password` won't serve them, mint a recovery link from the host:
+
+```bash
+npm run reset-link -- someone@example.com
+```
+
+It prints a single-use `/reset-password/<token>` URL valid for 30 minutes and sends nothing —
+deliver it to the person however you like. This is a supported path, not a workaround.
+
 ## Documentation
 
 This repo is built to be worked on with AI agents, so the context is the primary artifact.

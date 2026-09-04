@@ -97,6 +97,7 @@ npm run db:studio    # Drizzle Studio
 
 npm run seed:invite  # mint a bootstrap invite code
 npm run fx:refresh   # fetch today's rates now (same code path as the timer)
+npm run reset-link -- <email>   # mint a password-recovery link with no email (ADR-0011)
 ```
 
 Use the `db:*` scripts, not raw `docker compose`. They pass `--project-directory .` so `.env`

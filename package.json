@@ -20,7 +20,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "seed:invite": "tsx scripts/seed-invite.ts",
-    "fx:refresh": "tsx scripts/fx-refresh.ts"
+    "fx:refresh": "tsx scripts/fx-refresh.ts",
+    "reset-link": "tsx scripts/reset-link.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
