@@ -80,6 +80,7 @@ establish that.
 | **E10** quality-of-life | Categories, receipts, recurring, comments, notifications, PWA, expense discovery and sharing | T090–T095, T115–T116 | post-MVP |
 | **E12** first-use | Fixes and clarity from real use of the deployed app | T100–T110, T113–T114, T117 | post-MVP |
 | **E13** code health | The real subset of a static-analysis pass, plus the list of non-issues | T111–T112 | post-MVP |
+| **E14** legal and trust | Hosted Terms and Privacy Policy plus recorded acknowledgement | T118 | post-MVP |
 
 Sequencing rationale is in [docs/roadmap.md](../docs/roadmap.md). The short version: the ledger
 has to be trustworthy before anything is built on top of it, so the money math lands in M3–M4 and
@@ -270,3 +271,7 @@ full "checked, not changing, why" list so it isn't re-triaged later.
 Open design questions that are **not** backlog items — cross-group balances, user deletion,
 per-member display currency, password reset, multi-instance — are listed in
 [roadmap.md](../docs/roadmap.md) § E11.
+
+**E14 — Legal and trust** · post-MVP
+
+- `T118` Hosted Terms and Privacy Policy with separate, recorded registration acknowledgements
