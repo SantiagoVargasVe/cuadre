@@ -148,7 +148,22 @@ export const es = {
     security: {
       heading: "Seguridad",
       body: "Solo tú ves si tu correo está verificado.",
-      changePassword: "Cambiar contraseña",
+      changePassword: {
+        heading: "Cambiar contraseña",
+        currentLabel: "Contraseña actual",
+        newLabel: "Nueva contraseña",
+        newHint: "Mínimo 8 caracteres.",
+        confirmLabel: "Repite la nueva contraseña",
+        submit: "Guardar contraseña",
+        submitting: "Guardando…",
+        success: "Contraseña actualizada. Se cerró la sesión en los demás dispositivos.",
+        errors: {
+          INVALID_CREDENTIALS: "La contraseña actual no es correcta.",
+          RATE_LIMITED: "Demasiados intentos. Intenta de nuevo más tarde.",
+          ORIGIN_NOT_ALLOWED: "No se pudo verificar la solicitud. Recarga la página.",
+          generic: "No se pudo cambiar la contraseña. Intenta de nuevo.",
+        },
+      },
       email: {
         verifiedLabel: "Correo verificado",
         unverifiedLabel: "Correo sin verificar",

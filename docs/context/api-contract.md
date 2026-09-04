@@ -59,6 +59,7 @@ POST /api/auth/verify-email         { token }                                   
 POST /api/auth/resend-verification                                               → 204
 POST /api/auth/forgot-password      { email }                                    → 202 (always)
 POST /api/auth/reset-password       { token, password }                          → 204
+POST /api/auth/change-password      { currentPassword, newPassword }             → 204
 ```
 
 `register` consumes the invite code in the same transaction that creates the user — and, if the
@@ -110,6 +111,14 @@ login, the join flow, or any other endpoint.
   limited per IP.
 - With no mailer configured, `/forgot-password` still `202`s and the operator delivers the
   minted link with `npm run reset-link` (ADR-0011).
+
+`POST /api/auth/change-password` — authenticated, Origin-checked, `{ currentPassword, newPassword }`,
+`204`. The current password is verified first; a wrong one is `401 INVALID_CREDENTIALS`, the same
+error a wrong password at login gives. `newPassword` uses registration's rule (reused schema
+field). Success moves `sessions_valid_from` — revoking **every** session — and delivers a
+**replacement session cookie** minted at the new boundary, so the caller stays signed in while
+every other session is closed. It also deletes the user's outstanding `password_reset` tokens.
+Rate limited per user (Argon2 runs twice).
 
 `PUT /api/auth/avatar` sets **the session user's own** avatar (T108) — the acting user comes
 from the session, never the body. `variant` is one of the six `boring-avatars` names, `seed`
@@ -576,6 +585,7 @@ so a misconfigured deploy fails closed instead of exposing an open endpoint. Rat
 | `POST /api/auth/resend-verification` | user id | strict — it mails the address on file |
 | `POST /api/auth/forgot-password` | IP **and** hashed address | strict — either bucket refuses |
 | `POST /api/auth/reset-password` | IP | moderate — caps Argon2 burn, not a token guess |
+| `POST /api/auth/change-password` | user id | strict — authenticated, Argon2 runs twice |
 | `GET /api/invites/:code` | IP | moderate — it's unauthenticated and enumerable-looking |
 | `POST /api/admin/fx/refresh` | token | very strict |
 | everything else | user id | generous |

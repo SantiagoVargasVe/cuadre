@@ -1,5 +1,5 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { AvatarChoice } from "../../lib/avatar";
 import { CURRENT_LEGAL_DOCUMENTS } from "../../lib/legal";
 import type { RegisterInput, UpdateProfileInput } from "../../lib/schemas/auth";
@@ -9,6 +9,7 @@ import { db, withTransaction } from "../db/client";
 import { groupMembers, legalAcceptances, users } from "../db/schema";
 import { hashPassword, verifyPassword } from "../auth/password";
 import { signSessionToken } from "../auth/jwt";
+import { deleteUserTokens } from "../auth/tokens";
 import { ConflictError, UnauthorizedError, ValidationError } from "../errors";
 import { isUniqueViolation } from "../db/pg-errors";
 import { sendVerificationEmail } from "./email-verification";
@@ -190,4 +191,52 @@ export async function register(input: RegisterInput): Promise<LoginResult> {
     user: { id: user.id, email: user.email, displayName: user.displayName, avatar: toAvatarChoice(user) },
     token,
   };
+}
+
+/**
+ * A member changes **their own** password from `/cuenta` (T129). The
+ * current password is verified first — a wrong one is
+ * `INVALID_CREDENTIALS`, the same error a wrong password at login gives.
+ *
+ * On success this bumps `sessions_valid_from`, which revokes **every**
+ * session (ADR-0012) — including the one making the request. So it mints a
+ * replacement, and mints it with `iat = sessions_valid_from` rather than
+ * the wall clock: the new value is `date_trunc('second', now()) + 1s`, and
+ * a token stamped "now" would land in the revoking second and die with the
+ * rest. The caller stays logged in; everyone else is out.
+ *
+ * Argon2 runs twice here (verify, then hash) — both outside the
+ * transaction, as `register` already does.
+ */
+export async function changePassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<{ token: string }> {
+  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!user) throw new UnauthorizedError();
+  if (!(await verifyPassword(currentPassword, user.passwordHash))) {
+    throw new InvalidCredentialsError();
+  }
+
+  const passwordHash = await hashPassword(newPassword);
+
+  const validFrom = await withTransaction(async (tx) => {
+    const [updated] = await tx
+      .update(users)
+      .set({
+        passwordHash,
+        sessionsValidFrom: sql`date_trunc('second', now()) + interval '1 second'`,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning({ sessionsValidFrom: users.sessionsValidFrom });
+    // Someone who just proved they know their password shouldn't leave a
+    // live reset link in an inbox.
+    await deleteUserTokens(tx, userId, "password_reset");
+    return updated!.sessionsValidFrom;
+  });
+
+  const token = await signSessionToken(userId, Math.floor(validFrom.getTime() / 1000));
+  return { token };
 }
