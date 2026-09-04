@@ -2,7 +2,7 @@
 id: T119
 title: Schema — auth_tokens, email_verified_at, sessions_valid_from
 epic: E15-account-recovery
-status: todo
+status: done
 depends_on: []
 size: S
 ---

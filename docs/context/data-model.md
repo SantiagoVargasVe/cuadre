@@ -34,7 +34,8 @@ never touches stored data or an exported file. `sort_order` is the display order
 ### `users`
 
 `id uuid pk` · `email citext unique` · `display_name` · `password_hash` ·
-`avatar_variant` nullable · `avatar_seed` nullable · `avatar_palette` nullable · timestamps
+`avatar_variant` nullable · `avatar_seed` nullable · `avatar_palette` nullable ·
+`email_verified_at timestamptz` nullable · `sessions_valid_from timestamptz not null` · timestamps
 
 Argon2id hashes. No role column — see the sibling repo's precedent; authorization here is
 membership-based, not role-based, with the single exception of `group_members.role`.
@@ -45,6 +46,25 @@ The three `avatar_*` columns hold a member's chosen generated avatar (T108) — 
 All three nullable: `null` means the T107 default (variant `beam`, seeded by the user id,
 default palette), so existing rows need no backfill and the columns drop cleanly. Values are
 validated at the API boundary; the columns are plain `text` to keep the migration reversible.
+
+`email_verified_at` (E15, migration `0011`) is null until the address is verified; the timestamp
+answers *when*, which a boolean can't, and it's an audit trail. **Not backfilled** — marking a
+possibly-mistyped address as verified is the state [ADR-0013](../adr/0013-email-verification-gates-recovery.md)
+exists to prevent, and T118's `legacy_backfill` doesn't transfer because "this inbox is
+controlled" isn't a decision anyone can make for someone else. Only `GET /api/auth/me` ever
+exposes it, for the caller's own account — verification status is not the group's business.
+
+`sessions_valid_from` (E15, migration `0011`) is the account's session epoch: T123 resolves a JWT
+only when its `iat >= sessions_valid_from`, so moving it forward (on a password reset or change)
+revokes every session minted earlier — the per-session revocation
+[ADR-0003](../adr/0003-jwt-cookie-and-bearer.md) deferred. It is **not null** so no read site has
+to decide what null means, and every write truncates to a whole second (`date_trunc('second',
+now())`, and `+ interval '1 second'` on a bump) because a JWT `iat` is whole seconds and the
+check must stay a plain comparison. Migration `0011`'s column default doubles as the one-time
+backfill for existing rows — set to the migration instant, deliberately not epoch (inert) and not
+a future value (which would bar re-login); pre-E15 sessions are re-established on next sign-in.
+Spent/expired `auth_tokens` are never swept — one row per request is a rounding error at this
+scale (ADR-0012 § *Consequences*).
 
 ### `legal_acceptances`
 
@@ -61,6 +81,26 @@ invite consumption, and optional group membership. The server owns the versions,
 timestamp. Migration `0010` backfills both initial `2026-09-03` versions for accounts that already
 exist at rollout time, using that rollout timestamp and `legacy_backfill` so the deliberate product
 assumption is distinguishable from an explicit registration action.
+
+### `auth_tokens`
+
+`token_hash text pk` · `user_id → users` (`ON DELETE CASCADE`) · `purpose`
+(`password_reset | email_verify`) · `expires_at timestamptz` · `used_at timestamptz` nullable ·
+`created_at` — index on `(user_id, purpose)`
+
+One table for both single-use secrets in the account-recovery epic (E15), because they are the
+same object and share the atomic-consume statement that is the easiest thing here to get wrong
+([ADR-0013](../adr/0013-email-verification-gates-recovery.md) § *Why one token table*).
+`purpose` is a `pgEnum` (like `legal_document`), and it belongs in the consume statement's
+`WHERE`, never a check afterwards — a verification token honoured by the reset path would let
+anyone who can read a verification mail set a password.
+
+**Only the SHA-256 of a token is stored**, and lookup is by that hash. Deliberately not Argon2id:
+a 32-byte CSPRNG token isn't guessable at any per-attempt cost, so a memory-hard hash would add
+~100 ms and ~19 MB per lookup for nothing — but hashing at all still keeps a leaked backup or a
+stray `SELECT *` in a log from handing over live links ([ADR-0012](../adr/0012-password-reset-via-single-use-token.md)
+§ *Why SHA-256*). Expiries: 30 minutes for `password_reset`, 24 hours for `email_verify`. Rows are
+never swept; `ON DELETE CASCADE` and delete-on-consume (T122) bound the accumulation.
 
 ### `invite_codes`
 

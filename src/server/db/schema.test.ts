@@ -1,7 +1,7 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { hasTestDatabase, setupTestDb, getTestDb } from "../../test/db";
-import { currencies, groupMembers, groups, inviteCodes, users } from "./schema";
+import { authTokens, currencies, groupMembers, groups, inviteCodes, users } from "./schema";
 
 describe.skipIf(!hasTestDatabase)("users / invite_codes schema", () => {
   setupTestDb();
@@ -153,5 +153,104 @@ describe.skipIf(!hasTestDatabase)("currencies / groups / group_members schema", 
       .returning();
 
     expect(invite?.groupId).toBe(group.id);
+  });
+});
+
+describe.skipIf(!hasTestDatabase)("auth_tokens / users recovery columns schema", () => {
+  setupTestDb();
+
+  async function seedUser() {
+    const [user] = await getTestDb()
+      .insert(users)
+      .values({
+        email: `${crypto.randomUUID()}@example.com`,
+        displayName: "Ana",
+        passwordHash: "x",
+      })
+      .returning();
+    return user!;
+  }
+
+  it("defaults a new user to unverified with a whole-second session epoch", async () => {
+    const user = await seedUser();
+
+    expect(user.emailVerifiedAt).toBeNull();
+    // date_trunc('second', now()) — T123's `iat >= sessions_valid_from`
+    // check must be a plain comparison, so there can be no sub-second part.
+    expect(user.sessionsValidFrom).toBeInstanceOf(Date);
+    expect(user.sessionsValidFrom.getMilliseconds()).toBe(0);
+    expect(user.sessionsValidFrom.getTime() % 1000).toBe(0);
+  });
+
+  it("stores a token per purpose and reads the purpose back", async () => {
+    const db = getTestDb();
+    const user = await seedUser();
+
+    await db.insert(authTokens).values([
+      {
+        tokenHash: "sha256-reset",
+        userId: user.id,
+        purpose: "password_reset",
+        expiresAt: new Date(Date.now() + 30 * 60_000),
+      },
+      {
+        tokenHash: "sha256-verify",
+        userId: user.id,
+        purpose: "email_verify",
+        expiresAt: new Date(Date.now() + 24 * 3_600_000),
+      },
+    ]);
+
+    const rows = await db
+      .select()
+      .from(authTokens)
+      .where(eq(authTokens.userId, user.id))
+      .orderBy(authTokens.tokenHash);
+
+    expect(new Set(rows.map((r) => r.purpose))).toEqual(new Set(["password_reset", "email_verify"]));
+    expect(rows.every((r) => r.usedAt === null)).toBe(true);
+  });
+
+  it("rejects a duplicate token_hash", async () => {
+    const db = getTestDb();
+    const user = await seedUser();
+    const row = {
+      tokenHash: "sha256-dup",
+      userId: user.id,
+      purpose: "password_reset" as const,
+      expiresAt: new Date(Date.now() + 30 * 60_000),
+    };
+
+    await db.insert(authTokens).values(row);
+
+    await expect(db.insert(authTokens).values(row)).rejects.toThrow();
+  });
+
+  it("rejects an unknown purpose at the database, not just in TypeScript", async () => {
+    const db = getTestDb();
+    const user = await seedUser();
+
+    await expect(
+      db.execute(sql`
+        INSERT INTO auth_tokens (token_hash, user_id, purpose, expires_at)
+        VALUES ('sha256-bad', ${user.id}, 'account_delete', now() + interval '1 hour')
+      `),
+    ).rejects.toThrow();
+  });
+
+  it("cascade-deletes a user's tokens when the user row goes", async () => {
+    const db = getTestDb();
+    const user = await seedUser();
+    await db.insert(authTokens).values({
+      tokenHash: "sha256-cascade",
+      userId: user.id,
+      purpose: "email_verify",
+      expiresAt: new Date(Date.now() + 24 * 3_600_000),
+    });
+
+    await db.delete(users).where(eq(users.id, user.id));
+
+    const rows = await db.select().from(authTokens).where(eq(authTokens.userId, user.id));
+    expect(rows).toHaveLength(0);
   });
 });

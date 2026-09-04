@@ -49,6 +49,27 @@ export const users = pgTable("users", {
   avatarVariant: text("avatar_variant"),
   avatarSeed: text("avatar_seed"),
   avatarPalette: text("avatar_palette"),
+  // Email verification (E15, ADR-0013). Nullable: null means unverified,
+  // and the timestamp answers *when* — a boolean couldn't, and this is an
+  // audit trail. Deliberately NOT backfilled by migration 0011: marking a
+  // possibly-mistyped address as verified is the exact state ADR-0013
+  // exists to prevent, and T118's `legacy_backfill` precedent does not
+  // transfer (that recorded an operator decision; "this inbox is
+  // controlled" is a claim about the world nobody checked). Verification
+  // gates only self-service password reset — never login — so every
+  // existing row staying null locks nobody out.
+  emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+  // The account's session epoch (E15, ADR-0012). A JWT is revocable
+  // because T123 compares its `iat` against this column: a token minted
+  // before it stops resolving. NOT NULL so no read site has to decide what
+  // null means — the answer is always "the account's epoch". Truncated to
+  // a whole second on every write because a JWT `iat` is whole seconds and
+  // T123's check must be a plain `iat >= sessions_valid_from`, not a
+  // rounding exercise (ADR-0012 § *The `iat` granularity trap*). T122
+  // moves it forward on a reset or password change; T119 only creates it.
+  sessionsValidFrom: timestamp("sessions_valid_from", { withTimezone: true })
+    .notNull()
+    .default(sql`date_trunc('second', now())`),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -77,6 +98,56 @@ export const legalAcceptances = pgTable(
     source: legalAcceptanceSource("source").notNull(),
   },
   (table) => [primaryKey({ columns: [table.userId, table.document, table.documentVersion] })],
+);
+
+/**
+ * One enum for both token kinds (E15). `password_reset` and `email_verify`
+ * are the same object — a high-entropy secret, stored hashed, bound to a
+ * user, expiring, single-use — so they share one table and one atomic
+ * consume statement (ADR-0013 § *Why one token table*). A `pgEnum` rather
+ * than text + CHECK, matching `legal_document` and `split_strategy`: both
+ * reject an unknown value, but the enum is also a type in Drizzle instead
+ * of a string a caller can typo.
+ */
+export const authTokenPurpose = pgEnum("auth_token_purpose", ["password_reset", "email_verify"]);
+
+/**
+ * Single-use secrets for account recovery and email verification (E15).
+ *
+ * **Only the SHA-256 of a token is ever stored here**, and lookup is by
+ * that hash. This is deliberately *not* Argon2id: Argon2 exists to make a
+ * low-entropy human password expensive to guess per attempt, but a token
+ * is 32 bytes from a CSPRNG and not guessable at any cost per attempt, so
+ * a memory-hard hash would add ~100 ms and ~19 MB per lookup buying
+ * nothing. Hashing at all still matters — a leaked backup or a stray
+ * `SELECT *` in a log must not hand over live links (ADR-0012 § *Why
+ * SHA-256*).
+ *
+ * `purpose` belongs in the consume statement's `WHERE`, never a
+ * TypeScript check afterwards (T122): a verification token accepted by the
+ * reset path would let anyone who can read a verification mail set a
+ * password. Spent and expired rows are never swept — one per request is a
+ * rounding error at this scale, and `ON DELETE CASCADE` plus
+ * delete-on-consume (T122) covers the shape of it.
+ */
+export const authTokens = pgTable(
+  "auth_tokens",
+  {
+    tokenHash: text("token_hash").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    purpose: authTokenPurpose("purpose").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // "Delete this user's other outstanding tokens of this kind" (T122) is
+    // a real write path and is always purpose-scoped — someone
+    // mid-verification who requests a reset must not lose either.
+    index("auth_tokens_user_id_purpose_idx").on(table.userId, table.purpose),
+  ],
 );
 
 /**
