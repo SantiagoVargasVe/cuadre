@@ -80,4 +80,66 @@ describe("envSchema", () => {
 
     expect(result.success).toBe(false);
   });
+
+  const mailEnv = {
+    MAIL_SMTP_HOST: "smtp.example.com",
+    MAIL_SMTP_PORT: "587",
+    MAIL_SMTP_USER: "smtp-user",
+    MAIL_SMTP_PASS: "smtp-pass",
+    MAIL_FROM: "no-reply@example.com",
+  };
+
+  it("accepts the environment with mail fully unconfigured", () => {
+    const result = envSchema.safeParse(validEnv);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.MAIL_SMTP_HOST).toBeUndefined();
+      expect(result.data.MAIL_FROM).toBeUndefined();
+    }
+  });
+
+  it("accepts a fully configured mailer and coerces the port to a number", () => {
+    const result = envSchema.safeParse({ ...validEnv, ...mailEnv });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.MAIL_SMTP_PORT).toBe(587);
+      expect(result.data.MAIL_FROM).toBe("no-reply@example.com");
+    }
+  });
+
+  it("treats blank mail vars as unset, not as a partial config", () => {
+    const blanked = Object.fromEntries(Object.keys(mailEnv).map((k) => [k, ""]));
+    const result = envSchema.safeParse({ ...validEnv, ...blanked });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a partially configured mailer and names what is missing", () => {
+    const result = envSchema.safeParse({
+      ...validEnv,
+      MAIL_SMTP_HOST: mailEnv.MAIL_SMTP_HOST,
+      MAIL_SMTP_USER: mailEnv.MAIL_SMTP_USER,
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((i) => i.message.includes("partially configured"));
+      expect(issue).toBeDefined();
+      expect(issue?.message).toContain("MAIL_SMTP_PORT");
+      expect(issue?.message).toContain("MAIL_SMTP_PASS");
+      expect(issue?.message).toContain("MAIL_FROM");
+    }
+  });
+
+  it("rejects a MAIL_FROM that is not an email address", () => {
+    const result = envSchema.safeParse({ ...validEnv, ...mailEnv, MAIL_FROM: "Cuadre <no-reply@example.com>" });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((i) => i.path.join(".") === "MAIL_FROM");
+      expect(issue).toBeDefined();
+    }
+  });
 });

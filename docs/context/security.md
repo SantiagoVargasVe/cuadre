@@ -118,9 +118,14 @@ Authorization protects who can see the ledger. These protect what the ledger say
 - A group's expenses, balances, and member list are visible only to current members.
 - Email addresses are **never** returned by any endpoint except `GET /api/auth/me`, for the
   authenticated user's own record. Co-members see display names only.
-- No third party is in the request path. The single outbound dependency is one FX call a day,
-  which carries no user data.
-- Logs record user ids, never emails or amounts.
+- Outbound dependencies are limited to two, and only one ever carries user data. The daily FX
+  call carries none. When mail is configured ([ADR-0011](../adr/0011-outbound-email-via-smtp.md)),
+  an email **processor** receives a member's address and a link — on registration (verification),
+  on a reset request for a *verified* address, and on an explicit resend — and nothing else: no
+  group name, no member list, no amount, no balance. With `MAIL_*` unset, neither address nor FX
+  request leaves the box.
+- Logs record user ids, never emails or amounts. A failed mail send logs the recipient **domain**
+  only — never the address, the subject, or the link.
 - `/terms` and `/privacy` are public, repository-versioned pages. Registration records document
   keys, versions, the database timestamp, and whether the record came from explicit registration or
   the one-time legacy backfill. It does not add IP, user-agent, email, or client-clock evidence.

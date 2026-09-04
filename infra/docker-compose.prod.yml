@@ -56,6 +56,17 @@ services:
       # arm the FX refresh timer (T074). `:-` so an operator who hasn't set one
       # doesn't need the key in .env at all.
       FX_REFRESH_TOKEN: ${FX_REFRESH_TOKEN:-}
+      # Outbound email (ADR-0011). All five together or none — a partial set
+      # fails the app at boot. Unset means mail is disabled and recovery falls
+      # back to `scripts/reset-link.ts`. `:-` so an operator running no mail
+      # vendor needs none of these in .env — but they MUST be listed here, or a
+      # value in the host's .env never reaches the container and the epic ships
+      # silently sending nothing.
+      MAIL_SMTP_HOST: ${MAIL_SMTP_HOST:-}
+      MAIL_SMTP_PORT: ${MAIL_SMTP_PORT:-}
+      MAIL_SMTP_USER: ${MAIL_SMTP_USER:-}
+      MAIL_SMTP_PASS: ${MAIL_SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-}
     networks:
       - default
 
