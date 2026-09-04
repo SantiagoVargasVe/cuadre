@@ -119,7 +119,8 @@ hand-rolled SVG does not. T081 owns the shared primitives; T082 and T084 consume
 - **Recurring expenses** for longer trips and shared households
 - **Comments on an expense** — where the "wait, that wasn't 200" conversation currently happens in
   WhatsApp
-- **Notifications** — needs SMTP or push, neither of which this repo owns today
+- **Notifications** — the SMTP half arrived with E15 (ADR-0011); push still hasn't, and the
+  feature is still unadopted
 - **PWA / offline add** — expenses get added in restaurants with bad wifi; a queued offline write
   is genuinely useful and genuinely fiddly
 - **Search and filter Gastos** — selected next on 2026-09-02. Search titles and filter by category,
@@ -184,6 +185,28 @@ expense form through a callback inside a `useEffect`; lifting that state is **T1
 separate because it touches the money path. The task files carry the full list of dismissed
 findings so the pass doesn't get re-run from zero.
 
+### E15 · Account recovery
+
+Planned 2026-09-03, after the sibling wishlist repo worked the same problem through. Three ADRs
+and eleven tasks, and the ordering inside it is the argument: transport, then tokens, then
+revocable sessions, then **verification**, and only then the reset endpoints.
+
+Verification is not a follow-up here. A public endpoint that mails a credential to whatever
+address is on the account turns a typo into someone else's opportunity, and in this app a taken
+account writes in other people's ledger under their name. So `/forgot-password` sends nothing to
+an unverified address, and the gate ships in the same task as the endpoint that would otherwise
+be unsafe without it — see [ADR-0013](adr/0013-email-verification-gates-recovery.md).
+
+Verification gates *only* recovery. Not login, and specifically not the invite → register → land
+in a group flow that M2 shipped early to protect. An operator with no mail vendor still runs a
+working, recoverable app, via `scripts/reset-link.ts`.
+
+Two things this epic drags along that are easy to miss when reading it as "just password reset":
+sessions become revocable, which costs one indexed read on every authenticated request and
+supersedes a consequence recorded in [ADR-0003](adr/0003-jwt-cookie-and-bearer.md); and the
+hosted Terms and Privacy Policy stop being true the moment the first message is sent, which is
+its own task because the copy needs approval on its own timeline.
+
 ### E11 · Bigger questions
 
 Real design work, not backlog items. Written down so they're not rediscovered as bugs.
@@ -196,6 +219,8 @@ Real design work, not backlog items. Written down so they're not rediscovered as
 - **Per-member display currency.** Rejected for v1 because two members reading different totals for
   the same debt is a support burden. If it ever returns, the payment plan must still be computed
   in exactly one currency.
-- **Password reset.** Needs SMTP the repo doesn't own. Today recovery is an operator action.
+- **Password reset.** *Answered on 2026-09-03 and promoted out of this list* — the SMTP
+  objection was the whole of it, and it turned out to be a config decision rather than an
+  infrastructure one. See ADR-0011/0012/0013 and **E15** below.
 - **Multiple instances.** Migrations run at startup, which races with replicas. Moving them to a
   release step is the prerequisite for ever running two containers.
