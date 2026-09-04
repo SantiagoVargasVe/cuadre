@@ -143,8 +143,14 @@ and sharing one couples two unrelated services in ways that complicate both.
 Adding a runtime dependency needs a line in the ADR or task explaining why. Current intended set:
 
 `next` · `react` · `drizzle-orm` · `postgres` · `zod` · `jose` (JWT) · `@node-rs/argon2` ·
-`nanoid` · `tailwindcss` · `@base-ui/react` · `@tanstack/react-query` ·
+`nanoid` · `nodemailer` · `tailwindcss` · `@base-ui/react` · `@tanstack/react-query` ·
 `react-hook-form` · `@hookform/resolvers` · `boring-avatars`
+
+**`nodemailer`** (E15, [ADR-0011](../adr/0011-outbound-email-via-smtp.md)) is the only outbound
+mail dependency — the de-facto standard SMTP client for Node, no native build step, MIT. Imported
+only from `src/server/mail/`, never from `src/app/`, like the DB. SMTP rather than a vendor SDK
+keeps the provider a `.env` choice; a mailer that isn't configured is a supported state, so every
+feature on top degrades rather than breaks. Pinned to `9.1.1`.
 
 **`boring-avatars`** (T107) generates each member's identicon-style avatar. Chosen over
 DiceBear's HTTP API and every other remote service: it has **zero runtime dependencies** (React

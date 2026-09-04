@@ -2,7 +2,7 @@
 id: T120
 title: SMTP mail transport, optional by config
 epic: E15-account-recovery
-status: todo
+status: done
 depends_on: []
 size: S
 ---

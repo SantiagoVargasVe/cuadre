@@ -13,6 +13,21 @@ const currencyCode = z
 
 const emptyToUndefined = (value: unknown) => (value === "" ? undefined : value);
 
+/**
+ * Outbound mail is optional *as a set* (ADR-0011). Either all five are
+ * configured or none are — a half-set (a host with no password) is the
+ * failure mode where recovery ships and silently sends nothing, so it
+ * fails at boot instead. Named here so the schema and the cross-check
+ * below stay in sync.
+ */
+const MAIL_KEYS = [
+  "MAIL_SMTP_HOST",
+  "MAIL_SMTP_PORT",
+  "MAIL_SMTP_USER",
+  "MAIL_SMTP_PASS",
+  "MAIL_FROM",
+] as const;
+
 export const envSchema = z
   .object({
     APP_URL: z
@@ -49,10 +64,40 @@ export const envSchema = z
         .min(32, "must be at least 32 characters — run: openssl rand -hex 32")
         .optional(),
     ),
+
+    // Outbound email over SMTP (ADR-0011). All optional; the app boots
+    // with mail disabled when they're unset. `emptyToUndefined` so a blank
+    // line in `.env` reads as unset, the same treatment FX_REFRESH_TOKEN
+    // gets. The all-or-nothing rule is the `.superRefine` below.
+    MAIL_SMTP_HOST: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    MAIL_SMTP_PORT: z.preprocess(
+      emptyToUndefined,
+      z.coerce.number("must be a port number").int().positive().optional(),
+    ),
+    MAIL_SMTP_USER: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    MAIL_SMTP_PASS: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    MAIL_FROM: z.preprocess(
+      emptyToUndefined,
+      z.email("must be an email address, e.g. no-reply@example.com").optional(),
+    ),
   })
   .refine((env) => env.SUPPORTED_CURRENCIES.includes(env.DEFAULT_CURRENCY), {
     error: "DEFAULT_CURRENCY must be one of SUPPORTED_CURRENCIES",
     path: ["DEFAULT_CURRENCY"],
+  })
+  // Same idea as the DEFAULT_CURRENCY cross-check: a boot-time failure that
+  // names what's wrong, rather than a mailer that looks fine until the one
+  // send that matters (ADR-0011).
+  .superRefine((env, ctx) => {
+    const missing = MAIL_KEYS.filter((key) => env[key] === undefined);
+    if (missing.length === 0 || missing.length === MAIL_KEYS.length) return;
+    ctx.addIssue({
+      code: "custom",
+      path: [missing[0]!],
+      message:
+        `mail is partially configured — set all of ${MAIL_KEYS.join(", ")} together, or ` +
+        `none. Missing: ${missing.join(", ")}`,
+    });
   });
 
 export type Env = z.infer<typeof envSchema>;
