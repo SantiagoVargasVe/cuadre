@@ -75,7 +75,7 @@ establish that.
 | **E5** balances | Balance engine, pairwise view, simplification, settlements | T040–T044 | M4 |
 | **E6** currency | `fx_rates`, providers, daily refresh, display currency, conversion | T050–T054 | M5 |
 | **E7** frontend | Shell, groups, feed, expense form, split editor, balances, settle up | T060–T068 | M6 |
-| **E8** deploy | Dockerfile, CI, GHCR, compose, timers, tunnel | T070–T076 | M7 |
+| **E8** deploy | Dockerfile, CI, GHCR, compose, timers, tunnel | T070–T076, T130–T131 | M7 |
 | **E9** insights | Charts, CSV export, revision diffs | T080–T084 | post-MVP |
 | **E10** quality-of-life | Categories, receipts, recurring, comments, notifications, PWA, expense discovery and sharing | T090–T095, T115–T116 | post-MVP |
 | **E12** first-use | Fixes and clarity from real use of the deployed app | T100–T110, T113–T114, T117 | post-MVP |
@@ -156,6 +156,13 @@ the UI lands in M6.
 - `T076` Unique prod compose service key (`app` → `cuadre-app`) — a generic service key becomes a
   network alias the shared `cloudflared` can resolve to the wrong stack; it 502'd Nextcloud on
   2026-08-30. Also repoints `cuadre-fx-refresh`, which execs the service by key.
+- `T130` Sync the compose file from the repo on each deploy tick — the timer kept the *image*
+  current and nothing else, so `infra/docker-compose.prod.yml` was a template the deployment never
+  saw. That is how T120's five `MAIL_*` keys reached the host's `.env`, the image, and the code but
+  never the container, leaving verification mail silently unsent. Ported from the sibling repo's
+  T111, which hit the identical failure
+- `T131` Remove the operator's real home path and account name from the FX units — non-negotiable
+  11, in a public repo. Split out of T130 rather than widening its diff
 
 **E9 — Insights** · post-MVP
 

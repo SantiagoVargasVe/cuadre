@@ -38,9 +38,10 @@ services:
       db:
         condition: service_healthy
     # This block is an ALLOWLIST. A key sitting in .env does NOT reach the
-    # container unless it is named here. `docker compose up -d` also will not
-    # recreate a running container for a change to an .env *value* alone —
-    # that needs `--force-recreate` (infra/deploy/README.md).
+    # container unless it is named here — that, not a missing --force-recreate,
+    # is what silently withheld the MAIL_* keys until T130. An .env *value*
+    # change does recreate the container on its own (measured; see
+    # infra/deploy/README.md § Changing .env for the version caveat).
     environment:
       NODE_ENV: production
       # Cuadre's schema requires the `postgres://` scheme, not `postgresql://`.
