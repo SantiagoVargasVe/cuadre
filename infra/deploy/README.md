@@ -6,15 +6,15 @@ no inbound port, and — while the GHCR package stays public — holds no GitHub
 
 ```
 merge to main → CI green → release.yml builds & pushes ghcr.io/santiagovargasve/cuadre
-              → this timer (every 5 min): docker compose pull && up -d
+              → this timer (every 5 min): fetch compose file → docker compose pull && up -d
 ```
 
 ## Host layout
 
 ```
 <deploy-dir>/                     e.g. ~/nas/cuadre  (match cuadre-deploy.service's WorkingDirectory)
-  docker-compose.yml              # a copy of infra/docker-compose.prod.yml
-  .env                            # chmod 600, never in git
+  docker-compose.yml              # synced from infra/docker-compose.prod.yml every tick (T130)
+  .env                            # chmod 600, never in git — NEVER synced
   data/
     postgres/                     # the database's only copy — see "Backups"
 ```
@@ -25,6 +25,8 @@ merge to main → CI green → release.yml builds & pushes ghcr.io/santiagovarga
 mkdir -p <deploy-dir>/data/postgres
 cd <deploy-dir>
 cp /path/to/repo/infra/docker-compose.prod.yml docker-compose.yml
+# ^ a bootstrap only. From the first timer tick onward this file is fetched from
+#   the repository and replaced (T130), so edit it in git, not here.
 # write .env — every key named in the compose `environment:` block:
 #   POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB
 #   AUTH_SECRET APP_URL
@@ -53,21 +55,32 @@ journalctl -u cuadre-deploy.service -n 50      # what the last deploy did
 systemctl start cuadre-deploy.service          # deploy right now
 ```
 
-A tick with nothing new is cheap: `pull` is a no-op on an unchanged digest and `up -d` only
-recreates a container when the image actually moved.
+A tick with nothing new is cheap: one fetch of the compose file, plus a `pull` that is a no-op on
+an unchanged digest. `up -d` recreates the container when the image moved **or** when the resolved
+configuration changed — the second half is what makes an edit to `infra/docker-compose.prod.yml`
+take effect, and is the mechanism the compose sync depends on.
+
+**The compose file is synced; `.env` is not, and never will be.** It holds secrets, and it is
+where every per-deployment difference belongs. A key added to the compose `environment:` block in
+the repo reaches the deployment on the next tick; the *value* behind it still has to be in the
+host's `.env` first.
 
 ## Rollback
 
 Images are tagged `latest` and `sha-<commit>` (the full commit SHA). To pin a known-good build:
 
 ```bash
-sudo systemctl stop cuadre-deploy.timer        # FIRST — or the next tick pulls `latest`
-                                               #   straight back over the pin
+sudo systemctl stop cuadre-deploy.timer        # MANDATORY, not advisory — see below
 # edit docker-compose.yml: image: ghcr.io/santiagovargasve/cuadre:sha-<commit>
 docker compose up -d
 ```
 
-Re-enable the timer only after moving the compose file back to `:latest`.
+Stopping the timer first became a **requirement** with T130. A pin edits the very file each tick
+now overwrites, so an un-stopped timer doesn't merely outrun the pin — it erases it, and the
+rollback silently undoes itself within five minutes.
+
+Re-enable the timer only after moving the compose file back to `:latest`. A rollback that needs to
+outlive an operator's terminal belongs in the repo, where the sync will carry it.
 
 ## Changing `.env`
 
