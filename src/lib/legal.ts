@@ -2,14 +2,14 @@ export const LEGAL_DOCUMENTS = {
   terms: {
     document: "terms",
     path: "/terms",
-    version: "2026-09-03",
-    effectiveDate: "2026-09-03",
+    version: "2026-09-04",
+    effectiveDate: "2026-09-04",
   },
   privacy: {
     document: "privacy",
     path: "/privacy",
-    version: "2026-09-03",
-    effectiveDate: "2026-09-03",
+    version: "2026-09-04",
+    effectiveDate: "2026-09-04",
   },
 } as const;
 

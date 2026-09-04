@@ -23,7 +23,8 @@ export const legalEs = {
         title: "2. Cuenta e invitaciones",
         paragraphs: [
           "El registro requiere una invitación. Debes proporcionar información correcta, proteger tu contraseña y avisar al Operador si crees que alguien accedió a tu cuenta.",
-          "Cuadre no verifica el correo electrónico y actualmente no ofrece recuperación automática de contraseña. Una dirección incorrecta puede impedirte recuperar el acceso.",
+          "Al crear tu cuenta, Cuadre envía un mensaje de verificación a tu correo. Verificarlo es opcional: una cuenta sin verificar puede usar la aplicación con normalidad y todas sus funciones. La verificación solo habilita una cosa: restablecer tu contraseña sin intervención del Operador.",
+          "Si tu dirección es incorrecta o no puedes recibir ese mensaje, no podrás usar el restablecimiento automático de contraseña. En ese caso el Operador puede generarte un enlace de restablecimiento y hacértelo llegar por otro canal. Mantener tu correo correcto y accesible evita depender de ese paso.",
         ],
         bullets: [],
       },
@@ -90,10 +91,10 @@ export const legalEs = {
         title: "2. Datos que tratamos",
         paragraphs: ["Cuadre puede tratar las siguientes categorías:"],
         bullets: [
-          "datos de cuenta: correo electrónico, nombre visible, hash de contraseña y avatar elegido;",
+          "datos de cuenta: correo electrónico, estado de verificación del correo, nombre visible, hash de contraseña y avatar elegido;",
           "datos de grupos: invitaciones, membresías, funciones de propietario o integrante y fechas asociadas;",
           "contenido financiero compartido: títulos, fechas, monedas, montos, participantes, divisiones, pagos, notas, categorías e historial de cambios;",
-          "datos técnicos necesarios: sesión, identificadores internos y dirección IP utilizada para limitar intentos abusivos en rutas públicas.",
+          "datos técnicos necesarios: sesión, identificadores internos, registros de un solo uso para verificar el correo o restablecer la contraseña, y dirección IP utilizada para limitar intentos abusivos en rutas públicas.",
         ],
       },
       {
@@ -101,6 +102,7 @@ export const legalEs = {
         paragraphs: ["Usamos esos datos para:"],
         bullets: [
           "crear y autenticar tu cuenta;",
+          "verificar tu dirección de correo y permitir el restablecimiento de contraseña;",
           "gestionar invitaciones y acceso a grupos;",
           "mostrar el libro compartido, calcular saldos y preparar planes de pago;",
           "mantener historial, integridad, seguridad y límites contra abuso;",
@@ -110,8 +112,9 @@ export const legalEs = {
       {
         title: "4. Quién puede ver la información",
         paragraphs: [
-          "Los integrantes actuales de un grupo pueden ver su contenido, los nombres visibles y los avatares de los demás integrantes. No reciben las direcciones de correo de otras personas.",
+          "Los integrantes actuales de un grupo pueden ver su contenido, los nombres visibles y los avatares de los demás integrantes. No reciben las direcciones de correo de otras personas ni saben si esas cuentas verificaron su correo: el estado de verificación es visible únicamente para el titular de la cuenta.",
           "El Operador y quienes administren técnicamente la infraestructura pueden tener acceso cuando sea necesario para operar, proteger, respaldar o recuperar la instancia. No se envían datos del usuario al proveedor diario de tasas de cambio.",
+          "Si el Operador habilita el envío de correo, Cuadre entrega tu dirección de correo y un enlace a un proveedor de entrega de email en tres momentos: al registrarte (verificación), al solicitar el restablecimiento de contraseña de una dirección verificada, y cuando pides reenviar la verificación. Ese proveedor no recibe nombres de grupos, listas de integrantes, montos ni saldos. Si el Operador no configura un proveedor de correo, tu dirección no se envía a ningún tercero.",
           "Cuadre no incorpora analítica, publicidad, seguimiento ni venta de datos personales.",
         ],
         bullets: [],
@@ -128,7 +131,7 @@ export const legalEs = {
         title: "6. Conservación",
         paragraphs: [
           "Los datos se conservan mientras sean necesarios para operar la cuenta y los grupos, mantener la integridad del libro compartido, atender solicitudes o cumplir obligaciones aplicables.",
-          "Los gastos y pagos eliminados se conservan de forma lógica y los cambios de gastos mantienen revisiones. Las membresías retiradas y los grupos archivados preservan su historial. Las aceptaciones legales conservan el documento, la versión y la fecha del servidor.",
+          "Los gastos y pagos eliminados se conservan de forma lógica y los cambios de gastos mantienen revisiones. Las membresías retiradas y los grupos archivados preservan su historial. Las aceptaciones legales conservan el documento, la versión y la fecha del servidor. Los enlaces de verificación y de restablecimiento son de un solo uso y caducan; sus registros se guardan sin el enlace en claro.",
           "Cuadre no ofrece actualmente eliminación automática de cuentas. Una solicitud de supresión puede estar limitada cuando afecte el historial compartido o exista otra razón legítima para conservar información; el Operador debe evaluar cada solicitud.",
         ],
         bullets: [],
