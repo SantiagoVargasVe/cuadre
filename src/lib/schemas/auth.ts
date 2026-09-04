@@ -32,6 +32,22 @@ export const loginSchema = z.object({
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
+/** `POST /api/auth/forgot-password` (T125) — just an address; the response is always 202. */
+export const forgotPasswordSchema = z.object({ email: z.email(v.emailInvalid) });
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+
+/**
+ * `POST /api/auth/reset-password` and the `/reset-password/[token]` form
+ * (T125, T126). The new password is held to **exactly** registration's
+ * rule by reusing its field — restating `.min(8)` here is precisely how
+ * the two drift apart.
+ */
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: registerSchema.shape.password,
+});
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
 /**
  * `PATCH /api/auth/profile` (T109) — the display name a member can change
  * about themselves. Derived from `registerSchema` rather than restated:

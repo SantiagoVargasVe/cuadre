@@ -57,6 +57,8 @@ PUT  /api/auth/avatar               { variant, seed, palette } | null           
 PATCH /api/auth/profile             { displayName }                              → 200 { user }
 POST /api/auth/verify-email         { token }                                    → 204
 POST /api/auth/resend-verification                                               → 204
+POST /api/auth/forgot-password      { email }                                    → 202 (always)
+POST /api/auth/reset-password       { token, password }                          → 204
 ```
 
 `register` consumes the invite code in the same transaction that creates the user — and, if the
@@ -91,6 +93,23 @@ login, the join flow, or any other endpoint.
 - `user.emailVerified` (boolean) is returned by **`GET /api/auth/me` only**, for the caller's own
   account. No group read carries it — whether a co-member confirmed their inbox is not the
   group's business.
+
+**Password reset** (E15, [ADR-0012](../adr/0012-password-reset-via-single-use-token.md)).
+
+- `POST /api/auth/forgot-password` — `{ email }`, Origin-checked, **always `202` with an
+  identical empty body**: registered, unknown, unverified, mail unconfigured, or a failed send
+  are indistinguishable, and no Argon2 runs on any path so timing doesn't separate them. An
+  **unverified** address mints no token and sends nothing — the gate from ADR-0013. Consumes
+  *two* rate-limit buckets, per IP and per hashed address; either exhausted is `429` with
+  `Retry-After`.
+- `POST /api/auth/reset-password` — `{ token, password }`, Origin-checked, `204`. `password` is
+  held to exactly registration's rule (reused schema field). Invalid, expired, used, and
+  wrong-purpose tokens all return the same generic `400 INVALID_TOKEN`. Success sets **no
+  cookie** and does not log the caller in — the page redirects to `/login` — and moves
+  `sessions_valid_from`, so every session issued before the reset stops resolving (T123). Rate
+  limited per IP.
+- With no mailer configured, `/forgot-password` still `202`s and the operator delivers the
+  minted link with `npm run reset-link` (ADR-0011).
 
 `PUT /api/auth/avatar` sets **the session user's own** avatar (T108) — the acting user comes
 from the session, never the body. `variant` is one of the six `boring-avatars` names, `seed`
@@ -555,6 +574,8 @@ so a misconfigured deploy fails closed instead of exposing an open endpoint. Rat
 | `POST /api/auth/register` | IP | strict |
 | `POST /api/auth/verify-email` | IP | moderate — unauthenticated, consumes a token |
 | `POST /api/auth/resend-verification` | user id | strict — it mails the address on file |
+| `POST /api/auth/forgot-password` | IP **and** hashed address | strict — either bucket refuses |
+| `POST /api/auth/reset-password` | IP | moderate — caps Argon2 burn, not a token guess |
 | `GET /api/invites/:code` | IP | moderate — it's unauthenticated and enumerable-looking |
 | `POST /api/admin/fx/refresh` | token | very strict |
 | everything else | user id | generous |

@@ -22,4 +22,16 @@ export const mailEs = {
     expiry: "El enlace caduca en 24 horas y solo puede usarse una vez.",
     ignore: "Si no creaste una cuenta en Cuadre, ignora este mensaje.",
   },
+  passwordReset: {
+    subject: "Restablece tu contraseña de Cuadre",
+    heading: "Restablece tu contraseña",
+    body:
+      "Alguien —esperamos que tú— pidió restablecer la contraseña de esta cuenta. Abre el enlace " +
+      "para elegir una nueva.",
+    cta: "Restablecer contraseña",
+    linkFallback: "Si el botón no funciona, copia y pega este enlace en tu navegador:",
+    expiry: "El enlace caduca en 30 minutos y solo puede usarse una vez.",
+    ignore:
+      "Si no lo pediste, ignora este mensaje: tu contraseña no cambia hasta que abras el enlace.",
+  },
 } as const;
