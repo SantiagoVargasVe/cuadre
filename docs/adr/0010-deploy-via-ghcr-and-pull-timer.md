@@ -42,8 +42,11 @@ Inherited from operating this chain next door. They are not hypothetical:
 - **Keeping the GHCR package public** is what keeps "no GitHub credentials on the host" true. If it
   ever flips private, the host needs a read-only PAT.
 - **Compose `environment:` is an allowlist.** A key existing in `.env` does not mean it reaches the
-  container. And `docker compose up -d` will not recreate a container for `.env`-content-only
-  changes — that needs `--force-recreate`.
+  container. The second half of this bullet used to claim that `docker compose up -d` will not
+  recreate a container for `.env`-content-only changes; **that was measured on 2026-09-04 and is
+  false** (on Compose v2.39.4 — not re-verified on the host's v5.x). Compose hashes the resolved
+  configuration and interpolation precedes the hash, so an env-value edit does recreate.
+  `--force-recreate` remains the version-independent way to be certain.
 - **The tick syncs the compose file from the repository** (T130, added 2026-09-04). Until then it
   kept the image current and nothing else, so `infra/docker-compose.prod.yml` was a template the
   running deployment never saw — which is how T120's five `MAIL_*` keys reached the host's `.env`,

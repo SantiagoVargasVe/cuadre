@@ -84,12 +84,23 @@ outlive an operator's terminal belongs in the repo, where the sync will carry it
 
 ## Changing `.env`
 
-`docker compose up -d` does **not** recreate a running container when only an `.env` *value*
-changed — it compares the compose spec, and `${VAR}` interpolation doesn't alter it. Force it:
+This repo asserted for a long time that `docker compose up -d` does **not** recreate a container
+when only an `.env` *value* changed, on the reasoning that `${VAR}` interpolation doesn't alter the
+compose spec. **That was measured and is false** on Compose v2.39.4: an env-value-only edit
+produces `Recreated` and the new value is live inside the container. Compose hashes the *resolved*
+configuration, and interpolation happens before the hash.
+
+Measured on a dev machine, not the deployment host — which runs a much newer Compose (v5.x), where
+this was not re-verified. So `--force-recreate` stays the recommendation when you need certainty;
+it is harmless and version-independent:
 
 ```bash
 docker compose up -d --force-recreate
 ```
+
+The claim mattered because it points the wrong way during an incident: it teaches "env changes
+don't propagate", which is a plausible-sounding wrong answer to the T130 outage, where the real
+cause was that the keys were never in the `environment:` allowlist at all.
 
 Adding or removing a key in the compose `environment:` block *is* a spec change and recreates
 normally. That block is an allowlist: a key in `.env` that isn't named there never reaches the
