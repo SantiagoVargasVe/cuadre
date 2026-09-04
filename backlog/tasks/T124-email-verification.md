@@ -2,7 +2,7 @@
 id: T124
 title: Email verification — send at registration, verify and resend endpoints
 epic: E15-account-recovery
-status: todo
+status: done
 depends_on: [T120, T121, T122]
 size: M
 ---
