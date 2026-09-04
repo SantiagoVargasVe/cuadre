@@ -19,6 +19,8 @@ export const es = {
       submitting: "Iniciando sesión…",
       noAccount: "¿No tienes cuenta?",
       registerLink: "Regístrate",
+      forgotPasswordLink: "¿Olvidaste tu contraseña?",
+      resetDone: "Tu contraseña se actualizó. Inicia sesión con la nueva.",
       errors: {
         INVALID_CREDENTIALS: "Correo o contraseña incorrectos.",
         RATE_LIMITED: "Demasiados intentos. Intenta de nuevo más tarde.",
@@ -55,10 +57,47 @@ export const es = {
     validation: {
       emailInvalid: "Correo electrónico inválido.",
       passwordTooShort: "La contraseña debe tener al menos 8 caracteres.",
+      passwordsDoNotMatch: "Las contraseñas no coinciden.",
       displayNameRequired: "El nombre es obligatorio.",
       inviteCodeRequired: "El código de invitación es obligatorio.",
       termsRequired: "Debes aceptar los Términos de servicio.",
       privacyRequired: "Debes autorizar el tratamiento descrito en la Política de privacidad.",
+    },
+    forgotPassword: {
+      title: "Restablecer contraseña",
+      description:
+        "Escribe tu correo y te enviaremos un enlace para elegir una nueva contraseña.",
+      emailLabel: "Correo electrónico",
+      submit: "Enviar enlace",
+      submitting: "Enviando…",
+      successTitle: "Enlace en camino",
+      successBody:
+        "Si esa dirección está registrada, te enviamos un enlace para restablecer tu contraseña.",
+      verifiedNote:
+        "El restablecimiento necesita un correo verificado. Si el tuyo no lo está, inicia sesión y verifícalo desde tu cuenta.",
+      verifiedNoteLink: "Iniciar sesión",
+      backToLogin: "Volver a iniciar sesión",
+      errors: {
+        RATE_LIMITED: "Demasiados intentos. Intenta de nuevo más tarde.",
+        ORIGIN_NOT_ALLOWED: "No se pudo verificar la solicitud. Recarga la página.",
+        generic: "Ocurrió un error. Intenta de nuevo.",
+      },
+    },
+    resetPassword: {
+      title: "Elige una nueva contraseña",
+      passwordLabel: "Nueva contraseña",
+      passwordHint: "Mínimo 8 caracteres.",
+      confirmLabel: "Repite la contraseña",
+      submit: "Guardar contraseña",
+      submitting: "Guardando…",
+      invalidTitle: "El enlace no sirve",
+      invalidBody: "Es posible que haya caducado o que ya se haya usado. Pide uno nuevo.",
+      invalidLink: "Pedir un enlace nuevo",
+      errors: {
+        RATE_LIMITED: "Demasiados intentos. Intenta de nuevo más tarde.",
+        ORIGIN_NOT_ALLOWED: "No se pudo verificar la solicitud. Recarga la página.",
+        generic: "Ocurrió un error. Intenta de nuevo.",
+      },
     },
     verifyEmail: {
       verifying: "Verificando tu correo…",

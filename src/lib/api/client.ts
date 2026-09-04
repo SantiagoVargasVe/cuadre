@@ -26,11 +26,10 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     throw await parseApiError(response);
   }
 
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return (await response.json()) as T;
+  // A `204`, or any 2xx with no body (`/api/auth/forgot-password` answers
+  // `202` with nothing) — `response.json()` on an empty body throws.
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 export { ApiError };

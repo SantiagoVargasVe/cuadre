@@ -49,6 +49,22 @@ export const resetPasswordSchema = z.object({
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 /**
+ * The `/reset-password/[token]` **form** (T126) — password plus a
+ * confirmation the API never sees. `password` is `resetPasswordSchema`'s
+ * field, so the client can't accept anything the server would reject.
+ */
+export const resetPasswordFormSchema = z
+  .object({
+    password: resetPasswordSchema.shape.password,
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: v.passwordsDoNotMatch,
+    path: ["confirmPassword"],
+  });
+export type ResetPasswordFormInput = z.infer<typeof resetPasswordFormSchema>;
+
+/**
  * `PATCH /api/auth/profile` (T109) — the display name a member can change
  * about themselves. Derived from `registerSchema` rather than restated:
  * the name you can set on /cuenta and the name you register with must

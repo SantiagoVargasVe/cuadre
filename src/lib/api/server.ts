@@ -64,10 +64,10 @@ export async function apiFetchServer<T>(
     }
     throw await parseApiError(response);
   }
-  if (response.status === 204) {
-    return undefined as T;
-  }
-  return (await response.json()) as T;
+  // Empty-body 2xx (`204`, or a `202` with nothing) — `response.json()`
+  // throws on an empty body.
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 export { ApiError };
