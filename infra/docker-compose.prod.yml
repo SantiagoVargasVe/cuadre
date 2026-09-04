@@ -20,7 +20,8 @@
 # resolves a name across all of them — so a service called `app` here would
 # collide with an `app` in any other stack on that tunnel and the tunnel would
 # route to whichever one DNS happened to return. That is not hypothetical: it
-# took cloud.santiagovargas.co down with a hard 502 on 2026-08-30. Keep the
+# took a neighbouring stack's public hostname down with a hard 502 on
+# 2026-08-30. Keep the
 # service key equal to the container name, and remember that anything doing
 # `docker compose exec` must use the same key (see infra/deploy/cuadre-fx-refresh).
 #

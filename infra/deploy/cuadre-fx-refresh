@@ -12,7 +12,8 @@ set -eu
 umask 077
 
 # The directory holding docker-compose.yml — match cuadre-deploy.service.
-COMPOSE_DIR="${CUADRE_COMPOSE_DIR:-/home/robin/nas/cuadre}"
+# Placeholder default; override with CUADRE_COMPOSE_DIR rather than editing.
+COMPOSE_DIR="${CUADRE_COMPOSE_DIR:-/srv/cuadre}"
 # The token, one line, chmod 600. Same value as FX_REFRESH_TOKEN in .env.
 TOKEN_FILE="${CUADRE_FX_TOKEN_FILE:-/etc/cuadre/fx-refresh.token}"
 

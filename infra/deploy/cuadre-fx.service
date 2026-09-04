@@ -10,5 +10,8 @@ Type=oneshot
 # hits the app on localhost inside its container, not the public hostname, so a
 # down tunnel doesn't stop it.
 ExecStart=/usr/local/bin/cuadre-fx-refresh
-User=robin
+# Placeholder, like cuadre-deploy.service: edit to the account that owns the
+# deploy directory and is in the docker group before installing. This repo is
+# public, and a real account name describes somebody's machine.
+User=cuadre
 Group=docker
