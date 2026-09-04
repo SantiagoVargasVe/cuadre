@@ -37,6 +37,8 @@ describe.skipIf(!hasTestDatabase)("register — DB errors other than a unique vi
       displayName: null as unknown as string,
       password: "correct horse battery staple",
       inviteCode: "some-code",
+      termsAccepted: true,
+      privacyAccepted: true,
     }).catch((caught: unknown) => caught);
 
     expect(error).not.toBeInstanceOf(EmailAlreadyRegisteredError);
@@ -56,6 +58,8 @@ describe.skipIf(!hasTestDatabase)("register — DB errors other than a unique vi
       displayName: "Beto",
       password: "correct horse battery staple",
       inviteCode: "group-invite",
+      termsAccepted: true,
+      privacyAccepted: true,
     });
 
     const [membership] = await getTestDb()

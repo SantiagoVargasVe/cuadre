@@ -10,6 +10,7 @@ import { es } from "../../../lib/i18n/es";
 import { registerSchema, type RegisterInput } from "../../../lib/schemas/auth";
 import { Button } from "../../_ui/Button";
 import { TextField } from "../../_ui/TextField";
+import { LegalAcceptanceFields } from "./LegalAcceptanceFields";
 
 const t = es.auth.register;
 
@@ -17,20 +18,24 @@ export interface RegisterFormProps {
   /** Set by /join/[code] (a path segment, not the ?code= query string this form also reads). */
   defaultInviteCode?: string;
 }
-
 export function RegisterForm({ defaultInviteCode }: RegisterFormProps = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
+    control,
     handleSubmit,
     setError,
     formState: { errors, isSubmitting, isValid },
   } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
     mode: "onChange",
-    defaultValues: { inviteCode: defaultInviteCode ?? searchParams.get("code") ?? "" },
+    defaultValues: {
+      inviteCode: defaultInviteCode ?? searchParams.get("code") ?? "",
+      termsAccepted: false,
+      privacyAccepted: false,
+    },
   });
 
   async function onSubmit(data: RegisterInput) {
@@ -75,6 +80,7 @@ export function RegisterForm({ defaultInviteCode }: RegisterFormProps = {}) {
         error={errors.inviteCode?.message}
         {...register("inviteCode")}
       />
+      <LegalAcceptanceFields control={control} />
       {formError && (
         <p role="alert" className="text-sm text-destructive">
           {formError}

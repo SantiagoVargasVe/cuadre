@@ -46,6 +46,22 @@ All three nullable: `null` means the T107 default (variant `beam`, seeded by the
 default palette), so existing rows need no backfill and the columns drop cleanly. Values are
 validated at the API boundary; the columns are plain `text` to keep the migration reversible.
 
+### `legal_acceptances`
+
+`user_id → users` · `document` (`terms | privacy`) · `document_version` ·
+`acknowledged_at timestamptz` · `source` (`registration | legacy_backfill`) — composite pk
+`(user_id, document, document_version)`
+
+One immutable row is evidence that a user acknowledged one exact document version. New document
+versions are new rows; nothing updates or deletes old evidence, and migration `0010` enforces that
+with a trigger. There is deliberately no current-state consent boolean on `users`.
+
+Registration inserts the current Terms and Privacy rows in the same transaction as the user,
+invite consumption, and optional group membership. The server owns the versions, source, and
+timestamp. Migration `0010` backfills both initial `2026-09-03` versions for accounts that already
+exist at rollout time, using that rollout timestamp and `legacy_backfill` so the deliberate product
+assumption is distinguishable from an explicit registration action.
+
 ### `invite_codes`
 
 `code` (pk, nanoid) · `created_by → users` · `group_id → groups` **nullable** · `expires_at`
@@ -201,6 +217,7 @@ Full rules: [splitting.md](splitting.md) §1.
 | Group member | `removed_at`. **Refused while their net balance ≠ 0** in any currency. Their historical rows stay valid. |
 | Group | `archived_at`. Read-only afterwards; nothing cascades. |
 | User | Not supported in v1. It would orphan ledger rows in other people's groups, which is a real design question and not an MVP one. |
+| Legal acceptance | Immutable. A newer document version adds a row; it never rewrites or deletes the version previously acknowledged. |
 
 Nothing in this schema hard-deletes anything a balance was ever computed from. Restated: the data
 here is **not reconstructable** — unlike a wishlist item, a trip's ledger cannot be re-derived

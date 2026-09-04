@@ -48,7 +48,8 @@ responding `{ items, nextCursor }`.
 ## Auth
 
 ```
-POST /api/auth/register    { email, displayName, password, inviteCode }  → 201 { user }
+POST /api/auth/register    { email, displayName, password, inviteCode,
+                            termsAccepted: true, privacyAccepted: true } → 201 { user }
 POST /api/auth/login       { email, password }                          → 200 { user }
 POST /api/auth/logout                                                   → 204
 GET  /api/auth/me                                                       → 200 { user, groups[] }
@@ -57,7 +58,15 @@ PATCH /api/auth/profile    { displayName }                             → 200 {
 ```
 
 `register` consumes the invite code in the same transaction that creates the user — and, if the
-code carries a `groupId`, adds the membership too. All three commit together or none do.
+code carries a `groupId`, adds the membership too. It also inserts one acknowledgement for the
+current Terms version and one for the current Privacy Policy version. All writes commit together or
+none do.
+
+Both acknowledgement properties are required literal acknowledgements: missing or `false` is
+`400 VALIDATION_ERROR`. They are separate because accepting the Terms and authorizing the data
+treatment are separate actions. The client never supplies a timestamp, document version, document
+identifier, or record source; unknown body properties are stripped and those values come from the
+server's current legal-document registry and database clock.
 
 `user` on `register` / `login` / `me` carries `avatar` — the member's chosen generated avatar
 (`{ variant, seed, palette }`) or `null` for the T107 default.

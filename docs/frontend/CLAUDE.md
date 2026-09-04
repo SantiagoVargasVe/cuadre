@@ -41,6 +41,7 @@ so a live split preview can never disagree with what gets saved.
 | Route | What it is |
 |---|---|
 | `/login`, `/register` | Auth. Register requires an invite code — prefilled from `?code=`. |
+| `/terms`, `/privacy` | Public, self-hosted versioned legal documents. No session required. |
 | `/join/[code]` | Invite landing. **Works logged out.** |
 | `/groups` | Your groups, each with your net position. |
 | `/g/[groupId]` | The group. Three tabs: **Gastos · Balances · Ajustes**. |

@@ -1,14 +1,15 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import type { AvatarChoice } from "../../lib/avatar";
-import type { UpdateProfileInput } from "../../lib/schemas/auth";
+import { CURRENT_LEGAL_DOCUMENTS } from "../../lib/legal";
+import type { RegisterInput, UpdateProfileInput } from "../../lib/schemas/auth";
 import type { AvatarChoiceInput } from "../../lib/schemas/avatar";
 import { toAvatarChoice } from "../db/avatar";
 import { db, withTransaction } from "../db/client";
-import { groupMembers, users } from "../db/schema";
+import { groupMembers, legalAcceptances, users } from "../db/schema";
 import { hashPassword, verifyPassword } from "../auth/password";
 import { signSessionToken } from "../auth/jwt";
-import { ConflictError, UnauthorizedError } from "../errors";
+import { ConflictError, UnauthorizedError, ValidationError } from "../errors";
 import { isUniqueViolation } from "../db/pg-errors";
 import { consumeInvite } from "./invites";
 
@@ -112,13 +113,6 @@ export async function updateProfile(userId: string, input: UpdateProfileInput): 
   return { id: user.id, email: user.email, displayName: user.displayName, avatar: toAvatarChoice(user) };
 }
 
-export interface RegisterInput {
-  email: string;
-  displayName: string;
-  password: string;
-  inviteCode: string;
-}
-
 /**
  * Create the user, consume the invite code, and — when the code carries a
  * group_id — insert the group membership, all in one transaction (ADR-0002):
@@ -130,6 +124,9 @@ export interface RegisterInput {
  * for those ~50-100ms.
  */
 export async function register(input: RegisterInput): Promise<LoginResult> {
+  if (!input.termsAccepted || !input.privacyAccepted) {
+    throw new ValidationError("LEGAL_ACKNOWLEDGEMENTS_REQUIRED", "Legal acknowledgements required");
+  }
   const passwordHash = await hashPassword(input.password);
 
   const user = await withTransaction(async (tx) => {
@@ -144,6 +141,15 @@ export async function register(input: RegisterInput): Promise<LoginResult> {
       throw error;
     }
     if (!created) throw new Error("Insert into users returned no row");
+
+    await tx.insert(legalAcceptances).values(
+      CURRENT_LEGAL_DOCUMENTS.map(({ document, version }) => ({
+        userId: created.id,
+        document,
+        documentVersion: version,
+        source: "registration" as const,
+      })),
+    );
 
     const { groupId } = await consumeInvite(tx, input.inviteCode, created.id);
 
