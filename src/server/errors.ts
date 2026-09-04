@@ -75,6 +75,23 @@ export class ValidationError extends DomainError {
   }
 }
 
+/**
+ * A recovery/verification token that didn't claim a row — invalid, expired,
+ * already used, unknown, or presented to the wrong purpose. Every one of
+ * those is deliberately indistinguishable to the caller: one `400`, one
+ * code, one message, **no `details`**. Anything more tells a prober which
+ * of the five they hit (ADR-0012 § Enumeration, ADR-0013). `400` rather
+ * than `401` because there is no session in play — the link itself is the
+ * whole credential, and it's the input that's bad.
+ */
+export class InvalidAuthTokenError extends DomainError {
+  readonly status = 400;
+  constructor() {
+    super("INVALID_TOKEN", "This link is invalid or has expired");
+    this.name = "InvalidAuthTokenError";
+  }
+}
+
 /** The mapper adds Retry-After from retryAfterSeconds. */
 export class RateLimitError extends DomainError {
   readonly status = 429;

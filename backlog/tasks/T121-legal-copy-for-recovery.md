@@ -2,7 +2,7 @@
 id: T121
 title: Terms and Privacy — email delivery and self-service recovery
 epic: E15-account-recovery
-status: blocked
+status: done
 depends_on: []
 size: S
 ---
