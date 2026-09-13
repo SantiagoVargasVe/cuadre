@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
   // reproduce this; only `next dev` does, because dev skips the dead-code
   // elimination that would otherwise drop the unreachable branch.
   //
-  // Stub it for every target except the real Node.js server, which is the
+  // Stub the Node-only boot helpers for every target except the real Node.js server, which is the
   // only one that ever executes it.
   //
   // The alias key must be an absolute path. Webpack resolves alias keys
@@ -32,6 +32,8 @@ const nextConfig: NextConfig = {
   // <root>/src/server/db/migrate, and silently never match anything.
   webpack: (config, { nextRuntime }) => {
     if (nextRuntime !== "nodejs") {
+      config.resolve.alias[path.resolve(process.cwd(), "src/server/startup")] = false;
+      config.resolve.alias[path.resolve(process.cwd(), "src/server/db/wait-for-database")] = false;
       config.resolve.alias[path.resolve(process.cwd(), "src/server/db/migrate")] = false;
     }
     return config;

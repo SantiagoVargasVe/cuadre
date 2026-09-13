@@ -13,10 +13,14 @@ export async function register(): Promise<void> {
     return;
   }
 
-  const [{ runMigrations }, { config }] = await Promise.all([
-    import("./server/db/migrate"),
-    import("./server/config"),
-  ]);
-
-  await runMigrations(config.DATABASE_URL);
+  const { runStartup } = await import("./server/startup");
+  await runStartup(async () => {
+    const [{ runMigrations }, { config }, { waitForDatabase }] = await Promise.all([
+      import("./server/db/migrate"),
+      import("./server/config"),
+      import("./server/db/wait-for-database"),
+    ]);
+    await waitForDatabase(config.DATABASE_URL);
+    await runMigrations(config.DATABASE_URL);
+  });
 }
