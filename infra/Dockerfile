@@ -48,6 +48,12 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 USER nextjs
 EXPOSE 3000
 
+# An HTTP probe detects a failed instrumentation hook; a live Node process or
+# listening TCP port alone is not readiness. Docker reports unhealthy but does
+# not restart on health status: fatal initialization explicitly exits instead.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=130s --retries=3 \
+  CMD node -e "require('http').get('http://127.0.0.1:3000/login',r=>{r.resume();process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1)).setTimeout(4000,function(){this.destroy();process.exit(1)})"
+
 # Migrations run at startup from src/instrumentation.ts (production only, and
 # safe only at a single instance — see the comment there). No separate migrate
 # step in the deploy.
