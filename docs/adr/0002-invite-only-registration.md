@@ -2,6 +2,9 @@
 
 **Status:** Accepted · 2026-08-25
 
+**Updated by [ADR-0014](0014-reusable-group-invites.md):** newly minted group links are reusable
+for 24 hours. The single-use rule below still applies to plain and legacy registration/group codes.
+
 ## Context
 
 The site sits on a publicly reachable URL. Open registration on a public URL attracts bot signups,

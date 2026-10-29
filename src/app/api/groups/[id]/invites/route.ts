@@ -23,7 +23,6 @@ export const POST = withErrorHandling(async (request: NextRequest, context: Rout
   const parsed = await parseBody(request, createInviteSchema);
   if ("error" in parsed) return parsed.error;
 
-  const expiresAt = parsed.data.expiresAt ? new Date(parsed.data.expiresAt) : undefined;
-  const { code, url } = await createInvite(id, userId, { expiresAt });
-  return NextResponse.json({ code, url }, { status: 201 });
+  const invite = await createInvite(id, userId);
+  return NextResponse.json(invite, { status: 201 });
 });

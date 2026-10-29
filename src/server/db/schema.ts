@@ -233,10 +233,10 @@ export const groupMembers = pgTable(
 );
 
 /**
- * Single-use codes serving two purposes at once (ADR-0002): `group_id =
- * null` is a plain registration invite; `group_id` set is a group invite
- * that also registers you. Consumption is atomic with the user insert and,
- * when present, the membership insert (services/auth.ts `register`).
+ * Unified registration/group invites (ADR-0002, ADR-0014). New group links
+ * are reusable with a mandatory 24-hour expiry. Legacy and plain codes
+ * default to single-use; no migration revives a spent link. Validation is
+ * transactional with account/membership creation (services/auth.ts).
  *
  * `created_by` is nullable because `npm run seed:invite` mints the very
  * first code before any user exists.
@@ -247,12 +247,16 @@ export const inviteCodes = pgTable(
     code: text("code").primaryKey(),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
     groupId: uuid("group_id").references(() => groups.id, { onDelete: "cascade" }),
+    reusable: boolean("reusable").notNull().default(false),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     consumedBy: uuid("consumed_by").references(() => users.id, { onDelete: "set null" }),
     consumedAt: timestamp("consumed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
+    check("reusable_invite_requires_group_and_expiry", sql`NOT ${table.reusable} OR
+      (${table.groupId} IS NOT NULL AND ${table.expiresAt} IS NOT NULL
+       AND ${table.consumedAt} IS NULL AND ${table.consumedBy} IS NULL)`),
     // The lookup every consumption attempt makes: is this code still live?
     index("invite_codes_unconsumed_idx")
       .on(table.consumedAt)

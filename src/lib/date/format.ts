@@ -48,3 +48,13 @@ const TIMESTAMP_FORMATTER = new Intl.DateTimeFormat("es-CO", {
 export function formatTimestamp(isoInstant: string): string {
   return TIMESTAMP_FORMATTER.format(new Date(isoInstant));
 }
+
+/** A deadline is an instant: show its date AND time in the viewer's timezone. */
+const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("es-CO", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+export function formatDateTime(isoInstant: string): string {
+  return DATE_TIME_FORMATTER.format(new Date(isoInstant));
+}

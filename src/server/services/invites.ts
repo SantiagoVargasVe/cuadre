@@ -35,12 +35,9 @@ export class AlreadyAMemberError extends ConflictError {
 const INVITE_CODE_LENGTH = 16;
 
 /**
- * Atomically marks an invite code consumed, inside the caller's
- * transaction. The conditional UPDATE — rather than a SELECT to check
- * validity followed by an UPDATE — is what makes this race-safe: two
- * concurrent callers both attempting the same code serialize on Postgres's
- * row lock, and whichever commits second finds zero rows matching its own
- * WHERE clause.
+ * Validates an invite inside the caller's account/membership transaction.
+ * Legacy codes record one consumer atomically; reusable group links keep
+ * their consumer fields null (ADR-0014). Both serialize on the row lock.
  */
 export async function consumeInvite(
   tx: Transaction,
@@ -49,51 +46,55 @@ export async function consumeInvite(
 ): Promise<{ groupId: string | null }> {
   const [row] = await tx
     .update(inviteCodes)
-    .set({ consumedBy: userId, consumedAt: new Date() })
+    .set({
+      consumedBy: sql`CASE WHEN ${inviteCodes.reusable} THEN NULL ELSE ${userId}::uuid END`,
+      consumedAt: sql`CASE WHEN ${inviteCodes.reusable} THEN NULL ELSE ${new Date().toISOString()}::timestamptz END`,
+    })
     .where(
       and(
         eq(inviteCodes.code, code),
         isNull(inviteCodes.consumedAt),
         or(isNull(inviteCodes.expiresAt), gt(inviteCodes.expiresAt, new Date())),
+        or(isNull(inviteCodes.groupId), sql`EXISTS (
+          SELECT 1 FROM ${groups} WHERE ${groups.id} = ${inviteCodes.groupId}
+          AND ${groups.archivedAt} IS NULL
+        )`),
       ),
     )
-    .returning({ groupId: inviteCodes.groupId });
+    .returning({ groupId: inviteCodes.groupId, expiresAt: inviteCodes.expiresAt });
 
-  if (!row) throw new InvalidInviteError();
+  // A request may have waited for another join's row lock past expiry.
+  if (!row || (row.expiresAt && row.expiresAt <= new Date())) throw new InvalidInviteError();
   return { groupId: row.groupId };
-}
-
-export interface CreateInviteInput {
-  expiresAt?: Date;
 }
 
 /**
  * Any current member may mint a code — no approval step (api-contract.md).
- * Each code is single-use (ADR-0002's schema), so onboarding several people
- * means minting several codes, one per invitee.
+ * New group codes are reusable for exactly 24 hours (ADR-0014).
  */
 export async function createInvite(
   groupId: string,
   userId: string,
-  input: CreateInviteInput,
-): Promise<{ code: string; url: string }> {
+): Promise<{ code: string; url: string; expiresAt: string }> {
   await requireMembership(groupId, userId);
   const [group] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
   assertGroupNotArchived(group!);
 
   const code = nanoid(INVITE_CODE_LENGTH);
-  await db.insert(inviteCodes).values({ code, groupId, createdBy: userId, expiresAt: input.expiresAt });
+  const createdAt = new Date();
+  const expiresAt = new Date(createdAt.getTime() + 24 * 60 * 60 * 1000);
+  await db.insert(inviteCodes).values({ code, groupId, createdBy: userId, reusable: true, createdAt, expiresAt });
 
-  return { code, url: `${config.APP_URL}/join/${code}` };
+  return { code, url: `${config.APP_URL}/join/${code}`, expiresAt: expiresAt.toISOString() };
 }
 
 export type InviteLookup =
-  | { valid: true; groupTitle?: string; inviterName: string | null }
+  | { valid: true; groupTitle?: string; inviterName: string | null; expiresAt?: string }
   | { valid: false };
 
 /**
  * Unauthenticated — the register/join page needs this before anyone has an
- * account. Returns **only** groupTitle, inviterName, and valid
+ * account. Returns **only** groupTitle, inviterName, validity and expiry
  * (security.md § Invite codes): no member list, no expense count, no ids,
  * no email addresses. `inviterName` is null only for the bootstrap code
  * `seed:invite` mints with no creator, before any user exists.
@@ -105,6 +106,7 @@ export async function lookupInvite(code: string): Promise<InviteLookup> {
       consumedAt: inviteCodes.consumedAt,
       inviterName: users.displayName,
       groupTitle: groups.title,
+      archivedAt: groups.archivedAt,
     })
     .from(inviteCodes)
     .leftJoin(users, eq(users.id, inviteCodes.createdBy))
@@ -114,16 +116,20 @@ export async function lookupInvite(code: string): Promise<InviteLookup> {
 
   if (!row) return { valid: false };
   if (row.consumedAt) return { valid: false };
-  if (row.expiresAt && row.expiresAt < new Date()) return { valid: false };
+  if (row.archivedAt) return { valid: false };
+  if (row.expiresAt && row.expiresAt <= new Date()) return { valid: false };
 
-  return { valid: true, groupTitle: row.groupTitle ?? undefined, inviterName: row.inviterName };
+  return {
+    valid: true, groupTitle: row.groupTitle ?? undefined, inviterName: row.inviterName,
+    ...(row.expiresAt ? { expiresAt: row.expiresAt.toISOString() } : {}),
+  };
 }
 
 /**
  * For an **already-registered** user joining via a group invite — the
  * new-account path (register + consume + join in one transaction) is
  * services/auth.ts `register()` instead. Same conditional-update
- * consumption as that path: zero rows means InvalidInviteError (409).
+ * validation as that path: zero rows means InvalidInviteError (409).
  *
  * The composite pk on `group_members` means a returning member (one this
  * group previously removed) hits the same row a fresh join would insert —

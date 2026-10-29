@@ -105,14 +105,18 @@ never swept; `ON DELETE CASCADE` and delete-on-consume (T122) bound the accumula
 ### `invite_codes`
 
 `code` (pk, nanoid) · `created_by → users` · `group_id → groups` **nullable** · `expires_at`
-nullable · `consumed_by → users` nullable · `consumed_at` nullable · `created_at`
+nullable · `reusable boolean not null default false` · `consumed_by → users` nullable · `consumed_at` nullable · `created_at`
 
 **One table serves both purposes.** A code with `group_id = null` is a plain registration invite.
 A code with a `group_id` is a group invite that *also* works as a registration invite — the
 recipient registers through it and lands in the group in one transaction. That unification is the
 whole onboarding flow ([ADR-0002](../adr/0002-invite-only-registration.md)).
 
-Consumed atomically with the user insert. A partially consumed code is a bug, not a state.
+Validated atomically with account/membership creation. New group links set `reusable = true`
+and expire exactly 24 hours after server-owned creation; the schema requires a group and expiry
+and null consumer fields for them. Plain registration and existing legacy rows default to false
+and are still consumed atomically. Migration `0013` never revives spent or expired links.
+See [ADR-0014](../adr/0014-reusable-group-invites.md).
 
 ### `groups`
 
