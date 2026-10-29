@@ -509,9 +509,12 @@ export const es = {
     },
     invite: {
       heading: "Invitar",
-      body: "Comparte este enlace. Quien lo abra se une a este grupo (y crea su cuenta si aún no tiene).",
+      body: "Comparte un mismo enlace con tus amigos. Durante 24 horas, varias personas pueden unirse al grupo y crear su cuenta si aún no tienen una.",
       mint: "Crear enlace de invitación",
       minting: "Creando…",
+      mintAnother: "Crear otro enlace de invitación",
+      expiresAt: "Válido hasta",
+      expired: "Este enlace expiró. Crea otro para seguir invitando.",
       linkLabel: "Enlace de invitación",
       copy: "Copiar",
       copied: "¡Copiado!",
@@ -603,6 +606,7 @@ export const es = {
     },
   },
   join: {
+    expiresAt: "Invitación válida hasta",
     someone: "Alguien",
     invitedToGroup: (inviter: string, group: string) => `${inviter} te invitó a ${group}`,
     invitedGeneric: (inviter: string) => `${inviter} te invitó a Cuadre`,

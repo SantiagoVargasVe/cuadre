@@ -2,7 +2,7 @@
 id: T134
 title: Make group invite links reusable for 24 hours
 epic: E3-groups
-status: todo
+status: done
 depends_on: [T023, T024, T068]
 size: M
 ---
@@ -38,41 +38,41 @@ invite and bootstrap behavior.
 
 ## Acceptance criteria
 
-- [ ] Any current member can generate a group invite with the existing UI. One newly minted
+- [x] Any current member can generate a group invite with the existing UI. One newly minted
       URL works for multiple distinct users; successfully joining does not invalidate it.
-- [ ] New reusable group links expire exactly 24 hours after creation, calculated on the server
+- [x] New reusable group links expire exactly 24 hours after creation, calculated on the server
       in UTC. Reuse never extends that deadline. The API cannot create a non-expiring reusable
       link or extend its lifetime through a client-supplied `expiresAt`.
-- [ ] The same link authorizes both account creation and membership in its group. Multiple new
+- [x] The same link authorizes both account creation and membership in its group. Multiple new
       users can each register through it and automatically join; there is no separate registration
       invite, approval or second group link. Existing users can join while logged in, or log in
       from the invite page and return to that same group invite without losing its context.
       Account creation, legal acknowledgements and membership remain transactional: a failed
       registration leaves no orphan account or membership and does not invalidate the link.
-- [ ] Concurrent joins by different users all succeed before expiry. Repeated or concurrent
+- [x] Concurrent joins by different users all succeed before expiry. Repeated or concurrent
       acceptance by the same user cannot create duplicate memberships or change their role.
       Preserve the existing `ALREADY_A_MEMBER` behavior for active members and the existing
       reactivation behavior for removed members (plain member, never restored owner).
-- [ ] Expiry is enforced during public lookup, acceptance and registration, including exactly
+- [x] Expiry is enforced during public lookup, acceptance and registration, including exactly
       at the deadline (`now >= expiresAt`). Opening a link never creates or changes membership.
       Unknown/expired links remain invalid, and an archived group cannot admit users through one.
-- [ ] Plain registration invites remain single-use, including the existing concurrency guarantee
+- [x] Plain registration invites remain single-use, including the existing concurrency guarantee
       that only one registration can consume a code.
-- [ ] Add a reviewed migration if schema changes are needed. Previously consumed or expired
+- [x] Add a reviewed migration if schema changes are needed. Previously consumed or expired
       links stay invalid; existing unconsumed legacy links retain their single-use semantics.
       Do not backfill legacy links into unlimited or newly valid reusable invites.
-- [ ] Return the new link's expiry to the UI and explain in Spanish that the same link can be
+- [x] Return the new link's expiry to the UI and explain in Spanish that the same link can be
       shared with multiple people and expires in 24 hours. A user can generate a fresh link
       after expiry without refreshing the page. Keep strings in i18n and components <= 100 lines.
-- [ ] Preserve member-only invite creation, Origin checks, existing rate limits and public
+- [x] Preserve member-only invite creation, Origin checks, existing rate limits and public
       lookup's limited metadata. Holding a valid invite grants membership only to its group.
-- [ ] PostgreSQL integration tests cover sequential and concurrent reuse across existing/new
+- [x] PostgreSQL integration tests cover sequential and concurrent reuse across existing/new
       users, duplicate joins, removed members, rollback, legacy codes, plain single-use races,
       archived groups and the exact expiry boundary. Use a controlled clock for expiry cases.
       Include one scenario with two separate new-account registrations plus an existing user's
       acceptance all using the same URL. Add route and UI tests for register-and-join, preserving
       invite context across login, expiry metadata, shared-link copy and generating another link.
-- [ ] Update ADR references and the product, data model, API and security documentation to
+- [x] Update ADR references and the product, data model, API and security documentation to
       distinguish reusable group links from single-use registration/legacy codes. Run
       `npm run test:ci` with PostgreSQL before opening the implementation PR.
 
@@ -89,3 +89,7 @@ to existing members, financial history, password-reset or email-verification tok
 `src/lib/schemas/invites.ts`; invite API routes and tests;
 `src/app/(auth)/join/[code]/`; group settings `InvitePanel` and tests;
 `src/lib/i18n/es.ts`; `docs/adr/` and related context documents.
+
+Validated with `npm run test:ci` against PostgreSQL 17: 196 files, 1,153 tests, coverage
+thresholds and production build passed. Browser checked at 375/768/1280px in light and dark
+themes, including the logged-out register page and login return to the same invite.

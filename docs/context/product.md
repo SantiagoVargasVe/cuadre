@@ -40,9 +40,11 @@ default locale. English is a later locale, not a parallel one.
 
 **Create a group and invite people**
 1. Title, description, and the group's default currency (COP unless changed)
-2. Mint an invite link and send it over WhatsApp
+2. Mint one invite link and share it with everyone over WhatsApp. New group links work for
+   multiple people and expire 24 hours after creation ([ADR-0014](../adr/0014-reusable-group-invites.md)).
 3. A recipient who already has an account joins the group; one who doesn't registers *through*
-   that link and lands in the group — the group invite doubles as a registration invite
+   that same link and joins automatically — no second registration code is needed. Each person
+   can use it without invalidating it for the others. Plain registration invites remain single-use.
 
 **Add an expense** — the flow that has to be fast
 1. Title, amount, currency (defaults to the group's), date (defaults to today)

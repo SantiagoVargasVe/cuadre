@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { es } from "../../../../lib/i18n/es";
+import { LocalDateTime } from "../../../_ui/LocalDateTime";
 import { RegisterForm } from "../../register/RegisterForm";
 import { JoinAccept } from "./JoinAccept";
 
@@ -9,6 +10,7 @@ export interface InviteLookup {
   valid: boolean;
   groupTitle?: string;
   inviterName?: string | null;
+  expiresAt?: string;
 }
 
 export interface JoinViewProps {
@@ -45,6 +47,11 @@ export function JoinView({ code, invite, isLoggedIn }: JoinViewProps) {
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold text-foreground">{heading}</h1>
+      {invite.expiresAt && (
+        <p className="text-sm text-muted-foreground">
+          {t.expiresAt} <LocalDateTime value={invite.expiresAt} />
+        </p>
+      )}
       {isLoggedIn ? <JoinAccept code={code} /> : <RegisterForm defaultInviteCode={code} />}
     </div>
   );

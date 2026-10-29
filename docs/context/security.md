@@ -75,12 +75,16 @@ mechanisms that nobody fully understands is worse than two that are enforced.
 
 - 16-char nanoid. At that length, enumeration is not the attack — but the lookup endpoint is
   unauthenticated, so rate limit it by IP anyway.
-- `GET /api/invites/:code` returns **only** the group title, the inviter's display name, and
-  validity. No member list, no expense count, no ids, no email addresses. Someone with a leaked
+- `GET /api/invites/:code` returns **only** the group title, the inviter's display name,
+  validity and optional expiry. No member list, no expense count, no ids, no email addresses. Someone with a leaked
   code learns a trip's name; that's the accepted floor.
-- **Consumption is atomic** with user creation and the membership insert. Check-then-insert races
-  two people onto one single-use code. Consume with a conditional `UPDATE … WHERE consumed_at IS
-  NULL RETURNING`, and treat zero rows as `409`.
+- **Validation is atomic** with user creation and the membership insert. Plain and legacy codes
+  still use a conditional `UPDATE … WHERE consumed_at IS NULL RETURNING` to admit one consumer.
+  New group links are explicitly reusable and leave consumer fields null, while enforcing a
+  server-owned 24-hour expiry and an unarchived group on every use. Recheck expiry after the
+  row lock is acquired. At the deadline (`now >= expires_at`) both lookup and writes reject it.
+  A database constraint requires a group and expiry for reusable codes. The migration never
+  reactivates existing used links. See [ADR-0014](../adr/0014-reusable-group-invites.md).
 - Expired codes (`expires_at`) and consumed codes are indistinguishable in the response — both are
   "invalid".
 

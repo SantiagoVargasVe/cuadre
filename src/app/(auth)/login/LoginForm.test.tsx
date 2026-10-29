@@ -79,6 +79,13 @@ describe("LoginForm", () => {
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/groups"));
   });
 
+  it("returns an existing user to the shared group invite after login", async () => {
+    searchParams = new URLSearchParams({ next: "/join/shared-group-code" });
+    stubSuccessfulLogin();
+    await submitValidLogin();
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/join/shared-group-code"));
+  });
+
   it("renders a field-level error for an invalid email before ever submitting", async () => {
     const user = userEvent.setup();
     render(<LoginForm />);

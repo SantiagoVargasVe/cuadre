@@ -51,6 +51,9 @@ so a live split preview can never disagree with what gets saved.
 `/join/[code]` is the entry point for every new user. Logged out it shows "Ana te invitó a
 *Cartagena 2026*" and a register form; logged in it shows a join button. Both land on the group.
 It must render before authentication, which is why the invite lookup endpoint is public.
+New group links can onboard multiple friends for 24 hours (ADR-0014). Their expiry is shown in
+local date/time, and the invite-page login link preserves `/join/[code]` through `?next=`.
+Settings shows the shared link, its deadline and a button to mint another without reloading.
 
 Nothing in this app needs to render as a link preview — unlike the sibling wishlist repo, OG tags
 are not an architectural constraint here. Server-render for latency, not for crawlers.

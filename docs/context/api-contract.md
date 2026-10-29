@@ -62,7 +62,7 @@ POST /api/auth/reset-password       { token, password }                         
 POST /api/auth/change-password      { currentPassword, newPassword }             → 204
 ```
 
-`register` consumes the invite code in the same transaction that creates the user — and, if the
+`register` validates the invite (consuming it only when single-use) in the same transaction that creates the user — and, if the
 code carries a `groupId`, adds the membership too. It also inserts one acknowledgement for the
 current Terms version and one for the current Privacy Policy version. All writes commit together or
 none do.
@@ -157,15 +157,25 @@ POST   /api/groups/:id/archive        → 200 { group }        (owner only)
 
 ```
 GET    /api/groups/:id/members                → 200 { members[] }
-POST   /api/groups/:id/invites                { expiresAt? } → 201 { code, url }
+POST   /api/groups/:id/invites                {} → 201 { code, url, expiresAt }
 DELETE /api/groups/:id/members/:userId        → 204          (owner only)
 POST   /api/invites/:code/accept              → 200 { group } (already-registered user)
-GET    /api/invites/:code                     → 200 { groupTitle?, inviterName, valid }
+GET    /api/invites/:code                     → 200 { groupTitle?, inviterName, valid, expiresAt? }
 ```
 
 `GET /api/invites/:code` is **unauthenticated** — the register page needs to show "Ana invited you
 to *Cartagena 2026*" before anyone has an account. It returns the group title and inviter's
-display name and **nothing else**: no member list, no expense count, no ids.
+display name, validity and optional expiry: no member list, no expense count, no ids.
+
+New group links are reusable for exactly 24 hours from server-side creation (ADR-0014).
+The creation endpoint rejects client-supplied fields such as `expiresAt` (`400`). A link can
+admit multiple existing users through acceptance and multiple new accounts through registration;
+the latter creates each membership in the account transaction. Neither use extends the deadline.
+`expiresAt` is an RFC 3339 UTC instant, also returned by valid lookups when present. At the
+deadline or for an archived group, lookup returns `{ valid: false }` and writes return
+`409 INVALID_INVITE_CODE`. Active members still get `409 ALREADY_A_MEMBER` on acceptance;
+removed members rejoin as plain members. Plain and legacy invites remain single-use, and no
+previously spent/expired code is revived.
 
 `DELETE …/members/:userId` returns `422` with the outstanding balances if that member's net is
 non-zero in any currency. You cannot walk out mid-trip.

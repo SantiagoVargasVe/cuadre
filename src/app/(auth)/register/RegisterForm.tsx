@@ -91,7 +91,7 @@ export function RegisterForm({ defaultInviteCode }: RegisterFormProps = {}) {
       </Button>
       <p className="text-sm text-muted-foreground">
         {t.hasAccount}{" "}
-        <Link href="/login" className="text-primary underline">
+        <Link href={defaultInviteCode ? `/login?next=${encodeURIComponent(`/join/${defaultInviteCode}`)}` : "/login"} className="text-primary underline">
           {t.loginLink}
         </Link>
       </p>

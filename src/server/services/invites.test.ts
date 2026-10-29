@@ -143,7 +143,7 @@ describe.skipIf(!hasTestDatabase)("invites service", () => {
       const group = await seedGroup(owner);
       const outsider = await seedUser();
 
-      await expect(createInvite(group.id, outsider, {})).rejects.toThrow(NotAMemberError);
+      await expect(createInvite(group.id, outsider)).rejects.toThrow(NotAMemberError);
     });
 
     it("mints a code and a url built from APP_URL", async () => {
@@ -151,7 +151,7 @@ describe.skipIf(!hasTestDatabase)("invites service", () => {
       const group = await seedGroup(owner);
       await getTestDb().insert(groupMembers).values({ groupId: group.id, userId: owner, role: "owner" });
 
-      const { code, url } = await createInvite(group.id, owner, {});
+      const { code, url } = await createInvite(group.id, owner);
 
       expect(code).toHaveLength(16);
       expect(url).toBe(`http://localhost:3000/join/${code}`);

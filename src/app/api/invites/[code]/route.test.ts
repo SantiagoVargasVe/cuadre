@@ -38,7 +38,7 @@ describe.skipIf(!hasTestDatabase)("GET /api/invites/[code]", () => {
     expect(await response.json()).toEqual({ valid: false });
   });
 
-  it("returns exactly groupTitle, inviterName, and valid for a live invite", async () => {
+  it("returns only groupTitle, inviterName, validity and expiry for a live reusable invite", async () => {
     const [{ users, groups, inviteCodes }] = await Promise.all([
       import("../../../../server/db/schema"),
     ]);
@@ -50,9 +50,10 @@ describe.skipIf(!hasTestDatabase)("GET /api/invites/[code]", () => {
       .insert(groups)
       .values({ title: "Cartagena 2026", defaultCurrency: "COP", createdBy: owner!.id })
       .returning();
+    const expiresAt = new Date(Date.now() + 86400000);
     await getTestDb()
       .insert(inviteCodes)
-      .values({ code: "route-lookup-1", groupId: group!.id, createdBy: owner!.id });
+      .values({ code: "route-lookup-1", groupId: group!.id, createdBy: owner!.id, reusable: true, expiresAt });
 
     const response = await inviteGET(
       new NextRequest(`${APP_URL}/api/invites/route-lookup-1`),
@@ -63,6 +64,7 @@ describe.skipIf(!hasTestDatabase)("GET /api/invites/[code]", () => {
       valid: true,
       groupTitle: "Cartagena 2026",
       inviterName: "Ana",
+      expiresAt: expiresAt.toISOString(),
     });
   });
 });

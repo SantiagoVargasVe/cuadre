@@ -132,10 +132,10 @@ export async function updateProfile(userId: string, input: UpdateProfileInput): 
 }
 
 /**
- * Create the user, consume the invite code, and — when the code carries a
- * group_id — insert the group membership, all in one transaction (ADR-0002):
- * a burned code with no account, or an account with a code that silently
- * failed to burn, are exactly the failures this prevents.
+ * Create the user, validate the invite, and — when it carries a group_id —
+ * insert membership, all in one transaction (ADR-0002, ADR-0014). Reusable
+ * group links stay valid for the next friend; single-use codes are consumed.
+ * An invalid/expired invite rolls the whole account and legal rows back.
  *
  * The password is hashed before the transaction opens — hashing is pure
  * CPU work with no DB dependency, and there's no reason to hold it open

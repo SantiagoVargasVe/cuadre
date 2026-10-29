@@ -109,7 +109,9 @@ Wrap every multi-step write. Registration especially: create user + consume invi
 membership all commit together, or you get an account with a burned code and no group.
 
 Consume the invite with a conditional update — `WHERE consumed_at IS NULL RETURNING` — and treat
-zero rows as `409`. A check-then-insert races two people onto one single-use code.
+zero rows as `409`. A check-then-insert races two people onto one single-use code. ADR-0014's
+new reusable group links use that same transactional validation but leave consumer fields null,
+enforce the fixed expiry and reject archived groups. Never make a legacy link reusable implicitly.
 
 ## Errors
 
@@ -148,7 +150,8 @@ Full strategy: [testing.md](../context/testing.md). Backend specifics:
 
 1. **Authorization on every group-scoped endpoint**, including the id-addressed ones.
 2. **The balance trigger**, with the service bypassed — the transaction must abort.
-3. **Invite consumption races** — two concurrent registrations, exactly one wins.
+3. **Invite races** — exactly one winner for a single-use code; all distinct users admitted by
+   a live reusable group link. Expiry applies even to requests waiting for another join's lock.
 4. **Member removal** refused with a non-zero balance, in any currency.
 5. **FX** — pins immune to newer rates, no stale fallback, idempotent refresh.
 

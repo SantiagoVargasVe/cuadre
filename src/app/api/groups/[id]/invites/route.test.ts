@@ -71,6 +71,13 @@ describe.skipIf(!hasTestDatabase)("POST /api/groups/[id]/invites", () => {
     expect(response.status).toBe(201);
     expect(body.code).toHaveLength(16);
     expect(body.url).toBe(`${APP_URL}/join/${body.code}`);
+    expect(Date.parse(body.expiresAt) - Date.now()).toBeGreaterThan(24 * 60 * 60 * 1000 - 5000);
+    expect(Date.parse(body.expiresAt) - Date.now()).toBeLessThanOrEqual(24 * 60 * 60 * 1000);
+  });
+
+  it.each([null, "2099-01-01T00:00:00Z"])("rejects a client-supplied expiry of %s", async (expiresAt) => {
+    const response = await invitesPOST(req(ownerToken, { expiresAt }), ctx());
+    expect(response.status).toBe(400);
   });
 
   it("403s with no Origin and no Bearer", async () => {

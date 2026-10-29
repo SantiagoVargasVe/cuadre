@@ -1,17 +1,40 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { JoinView } from "./JoinView";
 
+const pushMock = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: pushMock }),
   useSearchParams: () => new URLSearchParams(),
 }));
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  pushMock.mockClear();
 });
 
 describe("JoinView", () => {
+  it("registers a new account with the shared invite directly from its join page", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ user: { id: "new-friend" } }), {
+      status: 201, headers: { "Content-Type": "application/json" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    render(<JoinView code="SHARED123" invite={{ valid: true, groupTitle: "Guatemala", inviterName: "Ana" }} isLoggedIn={false} />);
+    await user.type(screen.getByLabelText("Correo electrónico"), "caro@example.com");
+    await user.type(screen.getByLabelText("Nombre"), "Caro");
+    await user.type(screen.getByLabelText("Contraseña"), "correct horse battery staple");
+    await user.click(screen.getByRole("checkbox", { name: /Términos de servicio/ }));
+    await user.click(screen.getByRole("checkbox", { name: /Política de privacidad/ }));
+    await user.click(screen.getByRole("button", { name: "Crear cuenta" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/auth/register");
+    expect(JSON.parse(init.body as string)).toMatchObject({ email: "caro@example.com", inviteCode: "SHARED123" });
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/groups"));
+  });
+
   it("shows the invalid message and a login link when the invite isn't valid", () => {
     render(<JoinView code="dead" invite={{ valid: false }} isLoggedIn={false} />);
 
@@ -23,7 +46,7 @@ describe("JoinView", () => {
     render(
       <JoinView
         code="ABC123"
-        invite={{ valid: true, groupTitle: "Cartagena 2026", inviterName: "Ana" }}
+        invite={{ valid: true, groupTitle: "Cartagena 2026", inviterName: "Ana", expiresAt: "2030-01-11T12:00:00Z" }}
         isLoggedIn={false}
       />,
     );
@@ -31,6 +54,8 @@ describe("JoinView", () => {
     expect(screen.getByText("Ana te invitó a Cartagena 2026")).toBeInTheDocument();
     const field = screen.getByLabelText("Código de invitación") as HTMLInputElement;
     expect(field.value).toBe("ABC123");
+    expect(screen.getByRole("link", { name: "Inicia sesión" })).toHaveAttribute("href", "/login?next=%2Fjoin%2FABC123");
+    expect(screen.getByText(/Invitación válida hasta/)).toBeInTheDocument();
   });
 
   it("falls back to a generic greeting for a plain invite with no group", () => {
