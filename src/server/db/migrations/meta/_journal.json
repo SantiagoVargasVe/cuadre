@@ -85,6 +85,13 @@
       "when": 1788490874138,
       "tag": "0011_account_recovery",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793244788301,
+      "tag": "0012_guatemalan_quetzal",
+      "breakpoints": true
     }
   ]
 }

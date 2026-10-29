@@ -30,13 +30,15 @@ describe("CreateGroupDialog", () => {
 
     render(<CreateGroupDialog />);
     await user.click(screen.getByRole("button", { name: "Crear grupo" }));
-    await user.type(await screen.findByLabelText("Título"), "Cartagena");
+    await user.type(await screen.findByLabelText("Título"), "Guatemala");
+    await user.click(screen.getByRole("combobox", { name: "Moneda por defecto" }));
+    await user.click(await screen.findByRole("option", { name: "GTQ" }));
     await user.click(screen.getByRole("button", { name: "Crear" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("/api/groups");
-    expect(JSON.parse(init.body as string)).toMatchObject({ title: "Cartagena" });
+    expect(JSON.parse(init.body as string)).toMatchObject({ title: "Guatemala", defaultCurrency: "GTQ" });
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/g/new-group-id"));
   });
 

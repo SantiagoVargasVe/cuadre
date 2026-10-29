@@ -18,6 +18,19 @@ function mockFetchOnce(body: string, ok = true, status = 200) {
 describe("openErApiProvider.fetchRates", () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  it("includes GTQ from the provider's recorded USD response without losing digits", async () => {
+    mockFetchOnce(fixture("open-er-api-gtq.json"));
+    const result = await openErApiProvider.fetchRates("USD", ["COP", "EUR", "GTQ"]);
+    expect(result.rates).toEqual({ COP: "3146.899554", EUR: "0.897215", GTQ: "7.637817" });
+  });
+
+  it("rejects a response missing GTQ rather than returning partial rates", async () => {
+    mockFetchOnce(fixture("open-er-api-success.json"));
+    const error = await openErApiProvider.fetchRates("USD", ["COP", "EUR", "GTQ"]).catch((e) => e);
+    expect(error).toBeInstanceOf(MissingCurrencyError);
+    expect(error.currency).toBe("GTQ");
+  });
+
   it("maps a valid payload to the expected rates and asOf, exactly as transmitted", async () => {
     mockFetchOnce(fixture("open-er-api-success.json"));
 

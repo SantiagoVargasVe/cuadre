@@ -157,7 +157,8 @@ reasons it exists — see design-system.md § *Money display* for the full table
 
 - `Intl.NumberFormat('es-CO', { currency: 'COP' })` renders `$ 150.000,00`. COP needs
   `maximumFractionDigits: 0` explicitly.
-- `EUR` under `es-CO` renders `EUR 45,00`, not `€45,00` — EUR uses `narrowSymbol`.
+- `EUR` and `GTQ` under `es-CO` render literal codes in `symbol` mode — they use
+  `narrowSymbol` for `€` and `Q`, with two decimals.
 - `narrowSymbol` renders **both COP and USD as `$`** under `es-CO`. So the `currencyDisplay`
   mode is per-currency: COP/USD use `symbol` (`$` / `US$`), giving every currency a distinct
   string (T101). The currency name lives only here — no component appends its own.
