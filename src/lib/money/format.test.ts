@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { UnknownCurrencyError } from "./errors";
-import { formatAmountInput, formatAmountInputValue, formatMoney, parseAmountInput } from "./format";
+import { formatAmountInput, formatAmountInputValue, formatMoney, KNOWN_CURRENCIES, parseAmountInput } from "./format";
 
 /** Intl's `es-CO` currency literal between the symbol and the number is a
  * non-breaking space (U+00A0), not U+0020 — asserted here so a plain
@@ -24,7 +24,13 @@ describe("formatMoney", () => {
     expect(result).not.toContain("EUR");
   });
 
-  it("gives COP, USD and EUR three visually distinct strings for the same amount", () => {
+  it("renders GTQ with the Q symbol and two centavo digits", () => {
+    expect(formatMoney({ amount: 123450n, currency: "GTQ" })).toBe(`Q${NBSP}1.234,50`);
+    expect(formatMoney({ amount: -5n, currency: "GTQ" })).toBe(`-Q${NBSP}0,05`);
+    expect(formatMoney({ amount: 5n, currency: "GTQ" }, { signed: true })).toBe(`+Q${NBSP}0,05`);
+  });
+
+  it("gives every known currency a visually distinct string for the same amount", () => {
     // The regression this guards: two different currencies formatting
     // identically, in an app whose entire output is who owes whom (T101).
     const cop = formatMoney({ amount: 8000n, currency: "COP" });
@@ -34,7 +40,9 @@ describe("formatMoney", () => {
     expect(cop).toBe(`$${NBSP}80`);
     expect(usd).toBe(`US$${NBSP}80,00`);
     expect(eur).toBe(`€${NBSP}80,00`);
-    expect(new Set([cop, usd, eur]).size).toBe(3);
+    expect(KNOWN_CURRENCIES).toContain("GTQ");
+    const formatted = KNOWN_CURRENCIES.map((currency) => formatMoney({ amount: 8000n, currency }));
+    expect(new Set(formatted).size).toBe(KNOWN_CURRENCIES.length);
 
     // The exact case that regressed here: the same numeric amount in COP and
     // in USD must not format identically.
@@ -90,6 +98,11 @@ describe("formatMoney", () => {
 });
 
 describe("formatAmountInput", () => {
+  it("groups quetzales and accepts up to two centavo digits", () => {
+    expect(formatAmountInput("1234,", "GTQ")).toBe("1.234,");
+    expect(formatAmountInput("1234,567", "GTQ")).toBe("1.234,56");
+  });
+
   it("groups a COP integer into thousands as it grows, digit by digit", () => {
     expect(formatAmountInput("1", "COP")).toBe("1");
     expect(formatAmountInput("15", "COP")).toBe("15");
@@ -131,6 +144,13 @@ describe("formatAmountInput", () => {
 });
 
 describe("parseAmountInput", () => {
+  it("round-trips GTQ centavos exactly, including beyond Number.MAX_SAFE_INTEGER", () => {
+    for (const amount of [1n, 123456n, 900719925474099312n]) {
+      expect(parseAmountInput(formatAmountInputValue(amount, "GTQ"), "GTQ")).toBe(amount);
+    }
+    expect(parseAmountInput("1.234,56", "GTQ")).toBe(123456n);
+  });
+
   it("parses a grouped COP amount to its exact minor-unit bigint", () => {
     expect(parseAmountInput("150.000", "COP")).toBe(15000000n);
   });

@@ -71,7 +71,7 @@ describe.skipIf(!hasTestDatabase)("currencies / groups / group_members schema", 
     return group!;
   }
 
-  it("seeds COP, USD, EUR by migration", async () => {
+  it("seeds COP, USD, EUR and GTQ by migration", async () => {
     const rows = await getTestDb().select().from(currencies);
 
     expect(rows).toEqual(
@@ -79,6 +79,7 @@ describe.skipIf(!hasTestDatabase)("currencies / groups / group_members schema", 
         { code: "COP", exponent: 2, displayDecimals: 0, name: "Colombian Peso" },
         { code: "USD", exponent: 2, displayDecimals: 2, name: "US Dollar" },
         { code: "EUR", exponent: 2, displayDecimals: 2, name: "Euro" },
+        { code: "GTQ", exponent: 2, displayDecimals: 2, name: "Guatemalan Quetzal" },
       ]),
     );
   });

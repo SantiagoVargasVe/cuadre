@@ -5,7 +5,7 @@ const validEnv = {
   APP_URL: "http://localhost:3000",
   DATABASE_URL: "postgres://cuadre:change-me@localhost:5432/cuadre",
   AUTH_SECRET: "a".repeat(32),
-  SUPPORTED_CURRENCIES: "COP,USD,EUR",
+  SUPPORTED_CURRENCIES: "COP,USD,EUR,GTQ",
   DEFAULT_CURRENCY: "COP",
   FX_PROVIDER: "open-er-api",
   FX_BASE_CURRENCY: "USD",
@@ -19,7 +19,7 @@ describe("envSchema", () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.SUPPORTED_CURRENCIES).toEqual(["COP", "USD", "EUR"]);
+      expect(result.data.SUPPORTED_CURRENCIES).toEqual(["COP", "USD", "EUR", "GTQ"]);
       expect(result.data.FX_TRM_CROSSCHECK).toBe(true);
     }
   });

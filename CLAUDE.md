@@ -2,7 +2,7 @@
 
 Group expense splitting for trips and shared activities. A group records who paid for what and
 how it was split; the app derives who owes whom, and can simplify those debts into fewer
-payments. Multi-currency (COP / USD / EUR), Spanish-first.
+payments. Multi-currency (COP / USD / EUR / GTQ), Spanish-first.
 
 Runs on Santiago's home server (Debian 13, Docker) behind the existing Cloudflare Tunnel.
 

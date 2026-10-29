@@ -21,7 +21,7 @@ short list of payments at the end.
 - **Flexible splits** — equally, among a subset, by percentage, by exact amounts, by shares, or
   as a straight loan from one person to another
 - **Multiple payers** — one expense can be covered by several people at once
-- **Multi-currency** — COP (default), USD, EUR. Expenses stay in the currency they were paid in;
+- **Multi-currency** — COP (default), USD, EUR, GTQ (Guatemalan quetzal). Expenses stay in the currency they were paid in;
   a group can switch its display currency at a pinned rate, and switch back
 - **Balances** — what each member paid, what they owe, and where they net out
 - **Simplify debts** — collapse a tangle of IOUs into the fewest payments. Reversible: it's

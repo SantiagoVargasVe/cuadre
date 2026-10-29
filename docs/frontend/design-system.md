@@ -181,17 +181,18 @@ free; a genuinely new interaction pattern extends the rule in `globals.css`, onc
 <Money value={{ amount: 15000000n, currency: "COP" }} />   // $ 150.000
 <Money value={{ amount: 8645n, currency: "USD" }} />        // US$ 86,45
 <Money value={{ amount: 4500n, currency: "EUR" }} />        // € 45,00
+<Money value={{ amount: 4500n, currency: "GTQ" }} />        // Q 45,00
 <Money value={net} signed />                                // + $ 20.000 / − $ 20.000
 ```
 
 Backed by `src/lib/money/format.ts`, which exists to absorb three verified `Intl` quirks under
 `es-CO` — the `currencyDisplay` mode is **per currency** (`CURRENCY_META`), because no single
-mode names all three distinctly:
+mode names all four distinctly:
 
 - `Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' })` gives `$ 150.000,00`.
   CLDR assigns COP two fraction digits; Colombians expect none. Pass `maximumFractionDigits: 0`.
-- `currencyDisplay: 'symbol'` gives EUR the literal string `EUR`, not `€` — so **EUR alone**
-  uses `narrowSymbol`.
+- `currencyDisplay: 'symbol'` gives EUR and GTQ literal codes — they use `narrowSymbol`
+  for `€` and `Q`, respectively, both with two decimals.
 - `currencyDisplay: 'narrowSymbol'` collapses **COP and USD both onto a bare `$`** — two
   currencies, one string, measured. In an app whose entire output is who-owes-whom that is a
   trust bug, so **COP and USD use `symbol`**: `$` stays `$` for COP, and USD gets its distinct

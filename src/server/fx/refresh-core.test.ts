@@ -40,14 +40,14 @@ describe.skipIf(!hasTestDatabase)("refreshCore", () => {
 
   it("inserts one row per non-base currency, skipping the base's own self-pair", async () => {
     const db = getTestDb();
-    const provider = fakeProvider({ USD: "1", COP: "3062.957648", EUR: "0.856908" });
+    const provider = fakeProvider({ USD: "1", COP: "3062.957648", EUR: "0.856908", GTQ: "7.637817" });
 
-    const result = await refreshCore(db, provider, "USD", ["USD", "COP", "EUR"], false);
+    const result = await refreshCore(db, provider, "USD", ["USD", "COP", "EUR", "GTQ"], false);
 
-    expect(result).toEqual({ inserted: 2, asOf: "2026-08-26", source: "fake" });
+    expect(result).toEqual({ inserted: 3, asOf: "2026-08-26", source: "fake" });
     const rows = await db.select().from(fxRates);
-    expect(rows).toHaveLength(2);
-    expect(rows.map((r) => r.quoteCurrency).sort()).toEqual(["COP", "EUR"]);
+    expect(rows).toHaveLength(3);
+    expect(rows.map((r) => r.quoteCurrency).sort()).toEqual(["COP", "EUR", "GTQ"]);
   });
 
   it("is idempotent: ten runs insert once, never overwriting the stored rate", async () => {

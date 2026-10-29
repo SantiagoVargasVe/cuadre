@@ -175,7 +175,7 @@ function simplify(currencyNet: CurrencyNet): SimplifiedPayment[] {
 /**
  * T054 implemented `convertExpenseAmounts` in src/lib/money/convert.ts —
  * re-apportions by the original amounts as weights. Every generated
- * expense currency (COP, USD, EUR) is exponent 2 (currency.md § Supported
+ * expense currency (COP, USD, EUR, GTQ) is exponent 2 (currency.md § Supported
  * currencies), so the exponent-asymmetry path is exercised separately in
  * convert.test.ts's own unit tests, not here; this property is about the
  * apportionment invariant surviving conversion at an arbitrary rate, not

@@ -22,6 +22,7 @@ type Money = { amount: bigint; currency: CurrencyCode };
 | COP | 2 | 100 minor | `$ 150.000` — **0 decimals** |
 | USD | 2 | 100 minor | `$86.45` |
 | EUR | 2 | 100 minor | `€45,00` |
+| GTQ | 2 | 100 minor | `Q 45,00` |
 
 **COP is stored with two decimals and displayed with none, deliberately.** ISO 4217 assigns COP a
 minor unit of 2. Colombians never write centavos, so the UI formats it at 0 decimals — but the

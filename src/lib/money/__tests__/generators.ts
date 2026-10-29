@@ -15,7 +15,7 @@ import { resolveSharesSplit } from "../strategies/shares";
  * fixture.
  */
 
-export const CURRENCIES = ["COP", "USD", "EUR"] as const;
+export const CURRENCIES = ["COP", "USD", "EUR", "GTQ"] as const;
 export type GeneratedCurrency = (typeof CURRENCIES)[number];
 
 export const STRATEGIES = ["equal", "equal_subset", "shares", "percentage", "exact", "loan"] as const;

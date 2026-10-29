@@ -5,13 +5,25 @@ The arithmetic that *uses* these rates lives in [splitting.md](splitting.md) §6
 
 ## Supported currencies
 
-`COP` (default) · `USD` · `EUR`. Declared in `SUPPORTED_CURRENCIES`, validated at boot.
+`COP` (default) · `USD` · `EUR` · `GTQ` (Guatemalan quetzal). Declared in
+`SUPPORTED_CURRENCIES`, validated at boot.
 
 Adding a currency is not a config change alone. It needs: provider coverage confirmed, the
-ISO-4217 minor-unit exponent handled, and a display rule decided. The current three all have
+ISO-4217 minor-unit exponent handled, and a display rule decided. The current four all have
 exponent 2, which makes a lot of arithmetic incidentally simple — **the first exponent-0 currency
 (JPY, CLP, KRW) will break any code that assumed the exponents match.** Write the exponent
 conversion properly the first time; see [splitting.md](splitting.md) §1.
+
+GTQ has [ISO-4217 exponent 2](https://www.six-group.com/dam/download/financial-information/data-center/iso-currrency/lists/list-one.xml)
+(100 centavos per quetzal) and displays two decimals with `Q` via
+`currencyDisplay: "narrowSymbol"`. The app keeps its `es-CO` separators: `Q 1.234,50`.
+Migration `0012_guatemalan_quetzal` adds the reference row; the shared formatter's registry
+adds GTQ to the existing group, expense, filter and display-currency pickers.
+
+**Existing installations:** add `GTQ` to `SUPPORTED_CURRENCIES` (`COP,USD,EUR,GTQ`) and recreate
+the app container with the updated environment. Startup applies the additive migration. The
+next scheduled refresh (or `npm run fx:refresh`) includes GTQ; conversion also fetches lazily.
+Existing expenses and pinned rates stay unchanged.
 
 ## Choosing a provider — read this before swapping it
 
@@ -23,11 +35,14 @@ conversion properly the first time; see [splitting.md](splitting.md) §1.
 
 **Primary: `open.er-api.com`** (exchangerate-api.com's free tier)
 
-- No API key. 166 currencies including COP. One request returns every rate against a base.
+- No API key. Includes COP and GTQ. One request returns every rate against a base.
 - Updates once daily, around 00:00 UTC. The payload carries `time_last_update_utc` and
   `time_next_update_utc` — **use them** rather than assuming, and store `time_last_update_utc`
   as the rate's `as_of`.
 - Verified 2026-08-25: `USD→COP 3042.806266`, `USD→EUR 0.857211`.
+- GTQ coverage verified 2026-10-28 against the
+  [USD response](https://open.er-api.com/v6/latest/USD); the reduced recorded fixture
+  `open-er-api-gtq.json` preserves its rate digits for offline tests.
 
 **Cross-check: Colombia's official TRM** (`datos.gov.co`, SODA dataset `32sa-8pi3`)
 

@@ -13,23 +13,25 @@ export interface CurrencyMeta {
   /**
    * The `Intl` `currencyDisplay` mode this currency renders under. It is
    * per-currency, not one global setting, because no single mode names all
-   * three of this app's currencies distinctly under `es-CO` (T101):
+   * this app's currencies distinctly under `es-CO` (T101):
    *
    * | currency | `symbol` | `narrowSymbol` |
    * |----------|----------|----------------|
    * | COP      | `$`      | `$`            |
    * | USD      | `US$`    | `$`            |  ← collide under narrowSymbol
    * | EUR      | `EUR`    | `€`            |  ← literal code under symbol
+   * | GTQ      | `GTQ`    | `Q`            |  ← local quetzal symbol
    *
    * So: `symbol` for COP (`$`) and USD (`US$`, which disambiguates it from
    * COP — the same `$`/`US$` split T104's helper text already speaks), and
-   * `narrowSymbol` for EUR to keep `€` instead of the literal string `EUR`.
+   * `narrowSymbol` for EUR (`€`) and GTQ (`Q`) instead of literal codes.
    */
   currencyDisplay: "symbol" | "narrowSymbol";
 }
 
 /**
- * Mirrors the seed in migrations/0002_groups_currencies_members.sql — the
+ * Mirrors the seeds in migrations/0002_groups_currencies_members.sql and
+ * migrations/0012_guatemalan_quetzal.sql — the
  * one other place this exact data lives. `src/lib/money/` has no DB access
  * (types.ts § intro), so this is a small static table rather than a query,
  * kept in sync by hand the same way adding a currency already touches
@@ -39,6 +41,7 @@ const CURRENCY_META: Record<string, CurrencyMeta> = {
   COP: { exponent: 2, displayDecimals: 0, currencyDisplay: "symbol" },
   USD: { exponent: 2, displayDecimals: 2, currencyDisplay: "symbol" },
   EUR: { exponent: 2, displayDecimals: 2, currencyDisplay: "narrowSymbol" },
+  GTQ: { exponent: 2, displayDecimals: 2, currencyDisplay: "narrowSymbol" },
 };
 
 export function getCurrencyMeta(currency: string): CurrencyMeta {
@@ -84,7 +87,7 @@ export interface FormatMoneyOptions {
  *   fraction digits (CLDR), so `maximumFractionDigits` has to come from
  *   `displayDecimals`, never the ISO exponent.
  * - `currencyDisplay: 'symbol'` renders EUR as the literal string `EUR`
- *   under `es-CO`, not `€` — so EUR alone uses `narrowSymbol`.
+ *   under `es-CO`, not `€` — EUR and GTQ use `narrowSymbol` for `€` / `Q`.
  * - under `es-CO`, `narrowSymbol` collapses **both** COP and USD onto a bare
  *   `$`: two currencies, one string, in an app that is entirely who-owes-whom
  *   (T101). So the mode is per-currency (`meta.currencyDisplay`): `symbol`

@@ -151,7 +151,7 @@ stopped or `pg_start_backup`-aware). Verify a restore at least once.
 
 ## FX refresh timer
 
-`cuadre-fx.{service,timer}` fetches COP/USD/EUR rates once a day — a **separate** unit from the
+`cuadre-fx.{service,timer}` fetches COP/USD/EUR/GTQ rates once a day — a **separate** unit from the
 deploy timer, so the two can be reasoned about and disabled independently
 ([ADR-0008](../../docs/adr/0008-fx-provider-and-daily-refresh.md) § *The refresh*).
 
