@@ -70,7 +70,7 @@ establish that.
 |---|---|---|---|
 | **E1** foundation | Next.js, Postgres, Drizzle, UI primitives, test harness | T001–T004 | M0 |
 | **E2** auth | Users, invite codes, register/login, JWT, guards, auth pages | T010–T014 | M1 |
-| **E3** groups | Groups, members, invites, join flow | T020–T025 | M2 |
+| **E3** groups | Groups, members, invites, join flow | T020–T025, T134 | M2 / post-MVP |
 | **E4** money | Money primitives, split strategies, expense ledger, CRUD | T030–T036 | M3 |
 | **E5** balances | Balance engine, pairwise view, simplification, settlements | T040–T044 | M4 |
 | **E6** currency | `fx_rates`, providers, daily refresh, display currency, conversion | T050–T054 | M5 |
@@ -111,6 +111,8 @@ the UI lands in M6.
   can't land until E5)*
 - `T025` `GET /api/groups` and the group detail aggregate *(also needs T040 — `yourNet` is a
   balance)*
+- `T134` Reusable group invite links with a server-enforced 24-hour expiry; plain registration
+  invites remain single-use *(post-MVP)*
 
 **E4 — Money and expenses** · M3 — *the highest-risk epic in the project*
 - `T030` Money primitives: `bigint` minor units, parsing, wire format
